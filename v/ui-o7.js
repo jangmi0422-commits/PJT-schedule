@@ -29,17 +29,34 @@
   function tw(t, fs) { var w = 0; t = String(t); for (var i = 0; i < t.length; i++) { var c = t[i]; w += /[ㄱ-힝]/.test(c) ? fs * 0.98 : (c === ' ' ? fs * 0.3 : /[·~×]/.test(c) ? fs * 0.5 : fs * 0.58); } return w; }
 
   /* ───────── 상태 */
+  /* 빈 값은 빈 값 그대로 (D. 직접입력 = 아무것도 고르지 않은 상태) — 엔진에 넘길 때만 기본값 (toInp) */
+  var KEEP_EMPTY = ['use', 'seq', 'struct', 'support', 'wall', 'found', 'coreSys', 'ground', 'rExt', 'rRC', 'rInt', 'mob', 'fin', 'tc', 'hours', 'nB', 'nUp', 'nPH'];
+  var EMPTY = { name: '', use: '', site: '', bldg: '', gfaUp: '', gfaDn: '', nB: '', nUp: '', nPH: '', ground: '', strata: [null, null, null, null], gwl: '', seq: '', tdBase: 0, wall: '', support: '', scw: false, found: '', geo: '',
+    struct: '', pt: false, coreSys: '', lim: '', lim2: '', mob: '', fin: '', tc: '', rExt: '', rRC: '', rInt: '', hours: '', link: false, start: '', adv: {} };
+  PRESETS.blank = EMPTY;
   function norm(p) {
-    var s = GK.normInp(p || GK.BLANK), d = { wall: 'CIP', support: 'ANCHOR', found: 'AUTO', struct: 'RC', coreSys: 'AUTO', seq: 'BU', start: '' };
-    Object.keys(d).forEach(function (k) { if (s[k] == null || s[k] === '') s[k] = d[k]; });
+    var src = p || EMPTY, s = GK.normInp(src);
+    KEEP_EMPTY.forEach(function (k) { if (src[k] == null || src[k] === '') s[k] = ''; });
+    if (s.start == null) s.start = '';
     if (s.name == null) s.name = '';
     s.adv = s.adv || {}; if (!s.adv.dcCycle) s.adv.dcCycle = 'AUTO'; if (!s.adv.dcFlow) s.adv.dcFlow = 'ZONE';
     ['scw', 'pt', 'link'].forEach(function (k) { s[k] = !!s[k]; });
     if (s.seq === 'TD') s.support = 'SLAB'; else if (s.support === 'SLAB') s.support = 'ANCHOR';
     return s;
   }
+  /* 계산 시작 조건 : 지상 층수 · 면적 · 용도 · 공사 순서 · 골조 (없으면 공기 0.0 · 입력 대기) */
+  function missing() {
+    var m = [];
+    if (!(+S.nUp >= 1)) m.push('지상 층수');
+    if (!(+S.bldg > 0 || +S.gfaUp > 0 || (+S.site > 0 && +S.cov > 0))) m.push('면적');
+    if (!S.use) m.push('용도'); if (!S.seq) m.push('공사 순서'); if (!S.struct) m.push('골조');
+    return m;
+  }
   function toInp() {
-    var i = GK.clone(S);
+    var i = GK.clone(S), d0 = { use: 'office', seq: 'BU', struct: 'RC', wall: 'CIP', found: 'AUTO', coreSys: 'AUTO', ground: 'AUTO' };
+    Object.keys(d0).forEach(function (k) { if (i[k] == null || i[k] === '') i[k] = d0[k]; });
+    if (!i.support) i.support = i.seq === 'TD' ? 'SLAB' : 'ANCHOR';
+    if (i.nB == null || i.nB === '') i.nB = 0;
     i.name = S.name || '프로젝트';
     if ((i.bldg == null || i.bldg === '') && i.site > 0 && i.cov > 0) i.bldg = i.site * i.cov / 100;
     i.geo = i.geo || 0; i.tdBase = i.tdBase || 0;
@@ -141,6 +158,8 @@
   function recompute() {
     clearTimeout(timer);
     applyLib(); fillLib();
+    var miss = missing();
+    if (miss.length) { lastR = null; ST.save({ inp: S, preset: current }); renderEmpty(miss); return; }
     var inp = toInp(), R, team = { u: null, c: null, f: null };
     inp.adv = inp.adv || {};
     try {
@@ -170,11 +189,46 @@
     var steps = [renderHead, renderHero, renderMs, renderGantt, renderSection, renderZone, renderKf, renderWarns, renderHints];
     steps.forEach(function (fn) { try { fn(R); } catch (e) { if (window.console) console.error(e); } });
     widths.ms = $('#ms-flow').clientWidth;
-    GK.fill(document, S); syncFloors();
+    GK.fill(document, S); syncFloors(); rateSrc(); fitHero();
+  }
+  /* 입력 대기 (D. 직접입력 처음) : 공기 0.0, 나머지 판은 무엇을 넣어야 하는지만 */
+  function renderEmpty(miss) {
+    var need = '<span>필요한 입력</span><b>' + esc(miss.join(' · ')) + '</b>';
+    $('#h-total').textContent = '0.0'; $('#mini-total').textContent = '0.0'; var sh = $('#sh-total'); if (sh) sh.textContent = '0.00';
+    $('#pj').textContent = (S.name || '새 프로젝트') + ' · 입력 대기';
+    $('#h-exact').innerHTML = '<span><b class="num">0.00</b>개월</span>'; $('#h-range').innerHTML = ''; $('#h-why').innerHTML = ''; $('#h-why').hidden = true;
+    $('#h-foot').innerHTML = '<span class="muted">필요한 입력 · <b>' + esc(miss.join(' · ')) + '</b></span>';
+    $('#ms-list').innerHTML = '<div class="wait">' + need + '</div>'; $('#ms-flow').innerHTML = ''; $('#ms-sub').textContent = '';
+    hideTip(); $('#gantt').innerHTML = '<div class="wait">' + need + '</div>'; $('#cpf').innerHTML = ''; $('#g-lg').innerHTML = '';
+    $('#section').innerHTML = '<div class="wait">' + need + '</div>'; ['#s-chips', '#s-notes', '#s-lg'].forEach(function (q) { var e = $(q); if (e) e.innerHTML = ''; });
+    $('#kf').innerHTML = ''; $('#zone').innerHTML = '<div class="wait">' + need + '</div>'; $('#z-lg').innerHTML = '';
+    $('#warns').innerHTML = '<li>필요한 입력 : ' + esc(miss.join(' · ')) + '</li>'; var wc = $('#w-ct'); if (wc) { wc.textContent = miss.length + '건'; wc.classList.remove('ok'); }
+    $('#notes').innerHTML = ''; $('#notes-g').hidden = true;
+    widths = {};
+    GK.fill(document, S); syncUI(); syncFloors(); rateSrc(); fitHero();
+  }
+  /* 가동률 출처 표시 : 사례 = 실적값, 비어 있으면 기본값 (칸에 흐리게) */
+  function rateSrc() {
+    var el = $('#tb-src'); if (!el) return;
+    var cs = current && current !== 'blank' && GK.PRESET_N[current], empty = ['rRC', 'rExt', 'rInt'].every(function (k) { return S[k] == null || S[k] === ''; });
+    el.textContent = cs ? GK.PRESET_N[current].replace(/ · .*/, '') + ' 실적값' + (S.rInt == null || S.rInt === '' ? ' · 내부는 가정' : '') : empty ? '빈칸 = 기본값' : '';
+    el.classList.toggle('case', !!cs);
+  }
+  /* 총 공기 숫자 : 히어로 칸 폭 안에서 들어가는 가장 큰 글자 (숫자 + '개월') */
+  function fitHero() {
+    var b = $('#h-total'), big = b && b.parentNode, tile = $('#t-hero'); if (!big || !tile) return;
+    var cs = getComputedStyle(tile), avail = tile.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4, sm = big.querySelector('small');
+    var lo = 48, hi = 300;
+    for (var it = 0; it < 14; it++) {
+      var mid = (lo + hi) / 2; b.style.fontSize = mid + 'px'; if (sm) sm.style.fontSize = Math.max(18, mid * 0.26) + 'px';
+      var wd = b.getBoundingClientRect().width + (sm ? sm.getBoundingClientRect().width + (parseFloat(getComputedStyle(big).columnGap) || 10) : 0);
+      if (wd <= avail) lo = mid; else hi = mid;
+    }
+    b.style.fontSize = lo + 'px'; if (sm) sm.style.fontSize = Math.max(18, lo * 0.26) + 'px';
   }
   /* 층수 숫자 · 막대 채움 (드래그 중에도 바로) — 옥탑을 비워 두면 자동값 */
   function syncFloors() {
-    ['nB', 'nUp'].forEach(function (k) { var r = $('#r-' + k), o = $('#o-' + k); if (!r || !o) return; var v = S[k] != null && S[k] !== '' ? S[k] : r.value; o.textContent = v; r.style.setProperty('--p', ((+r.value - +r.min) / Math.max(1, +r.max - +r.min) * 100).toFixed(1) + '%'); });
+    ['nB', 'nUp'].forEach(function (k) { var r = $('#r-' + k), o = $('#o-' + k); if (!r || !o) return; var has = S[k] != null && S[k] !== ''; o.textContent = has ? S[k] : '–'; r.style.setProperty('--p', has ? ((+r.value - +r.min) / Math.max(1, +r.max - +r.min) * 100).toFixed(1) + '%' : '0%'); r.classList.toggle('empty', !has); });
     var auto = S.nPH == null || S.nPH === '', o = $('#o-nPH'), u = $('#o-nPH-u');
     if (o) o.textContent = auto ? (lastR ? lastR.basic.nPH : '-') : S.nPH;
     if (u) { u.textContent = auto ? '층 · 자동' : '층'; u.classList.toggle('auto', auto); }
@@ -1827,6 +1881,7 @@
   }
   function closeSheet() { var d = $('#sheet'); if (d.open) { if (d.close) d.close(); else d.removeAttribute('open'); } }
   function rerenderOnResize() {
+    fitHero();
     if (!lastR) return;
     var a = document.activeElement, inSec = a && a.classList && a.classList.contains('fh');
     if ($('#gantt').clientWidth !== widths.gantt) renderGantt(lastR);

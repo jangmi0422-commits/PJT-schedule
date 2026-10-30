@@ -115,6 +115,8 @@
     var nPH = inp.nPH == null || inp.nPH === '' ? (nUp >= 20 ? 2 : 1) : clamp(Math.round(num(inp.nPH, 1)), 0, 4);
     var site = Math.max(0, num(inp.site, 0)), bldg = Math.max(0, num(inp.bldg, 0)), gUp = Math.max(0, num(inp.gfaUp, 0)), gDn = Math.max(0, num(inp.gfaDn, 0));
     var rExt = clamp(num(inp.rExt, 0.702), 0.3, 1), rRC = clamp(num(inp.rRC, 0.585), 0.3, 1);
+    /* 내부 (마감) 공사 가동률 : 마감 개월 (inp.fin) 은 기준 가동률 R_INT0 에서의 값 → 가동률이 다르면 그 비율로 (사례 실적 없음 — 일요일 · 공휴일만 쉬는 기준 가정) */
+    var R_INT0 = 0.81, rInt = clamp(num(inp.rInt, R_INT0), 0.3, 1);
     /* 1일 작업시간 : 4~12시간 (8시간 = 1.0) — 작업량으로 정해지는 공종만 비례 (양생 · 팀 시차 · 기본값 개월은 고정) */
     var hours = num(inp.hours, 8); if (!(hours > 0)) hours = 8; hours = clamp(hours, 4, 12); var hF = hours / 8;
     var seq = inp.seq === 'TD' ? 'TD' : 'BU';
@@ -127,7 +129,7 @@
     if (nB > 0 && sup === 'OPEN' && wall !== 'NONE' && wall !== 'SCW') R.warn.push('오픈컷 (사면) 에서는 흙막이 벽체 (' + WALL_N[wall] + ') 를 제외했습니다 → 일부 구간 흙막이가 필요하면 지보 형식을 앵커 · 스트럿으로 선택하세요.');
     var struct = STRUCT_N[inp.struct] ? inp.struct : 'RC';
     var MO = function (wd, r) { return wd / ((r || rRC) * D); };
-    R.basic = { use: use, nB: nB, nUp: nUp, nPH: nPH, seq: seq, sup: sup, wall: wall, struct: struct, rExt: rExt, rRC: rRC, hF: hF, hours: hours };
+    R.basic = { use: use, nB: nB, nUp: nUp, nPH: nPH, seq: seq, sup: sup, wall: wall, struct: struct, rExt: rExt, rRC: rRC, rInt: rInt, hF: hF, hours: hours };
 
     /* ── 층고 */
     var HS = parseSpec(A.hSpec); if (HS.err.length) R.warn.push('층고 입력을 읽지 못한 항목 : ' + HS.err.join(', '));
@@ -752,7 +754,8 @@
     /* 기본값 : 일반 마감 8 · T&C 2개월, 데이터센터 마감 6 · T&C 3개월 (v2.8 부서 기준) — 입력하면 입력값 */
     var fin = Math.max(0, num(inp.fin, use === 'dc' ? 6.0 : 8.0)), tc = Math.max(0, num(inp.tc, use === 'dc' ? 3.0 : 2.0));
     t = frameDone;
-    if (fin > 0) { act({ id: 'fin', g: '마감', name: '마감', s: t, e: t + fin, cp: true, basis: '기본값 ' + fin + '개월 · 골조 완료 후' }); t += fin; }
+    var finM = fin * R_INT0 / rInt;
+    if (fin > 0) { act({ id: 'fin', g: '마감', name: '마감', s: t, e: t + finM, cp: true, basis: '기본값 ' + fin + '개월 (내부 가동률 ' + Math.round(R_INT0 * 1000) / 10 + '% 기준)' + (Math.abs(rInt - R_INT0) > 0.0005 ? ' × ' + Math.round(R_INT0 * 1000) / 10 + ' ÷ ' + Math.round(rInt * 1000) / 10 + ' = ' + r2(finM) + '개월' : '') + ' · 골조 완료 후' }); t += finM; }
     if (tc > 0) { act({ id: 'tc', g: '마감', name: 'T&C (시운전)', s: t, e: t + tc, cp: true, basis: '기본값 ' + tc + '개월' }); t += tc; }
     R.total = t; R.frameEnd = frameDone; R.T_F = T_F; R.EXC_END = EXC_END; R.T_1F = T_1F; R.PRD = PRD; R.F0 = F0; R.found = fz; R.geoRes = geoRes; R.acts = acts;
 

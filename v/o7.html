@@ -80,6 +80,23 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tbar { max-width: 1400px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px; }
 .tb-rates, .tb-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 /* @@R 가동률 (이 줄 바로 아래에 추가) */
+.tb-k { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-right: 2px; }
+.rt { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px 0 12px; background: #fff; border: 1px solid var(--rule); border-radius: 999px; box-shadow: 0 1px 2px rgba(20, 24, 32, .04); cursor: text; }
+.rt span { font-size: 12.5px; color: var(--ink-3); }
+.rt input { width: 58px; height: 28px; border: 0; background: var(--sheet-2); border-radius: 8px; padding: 0 8px; text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15.5px; font-weight: 600; color: var(--ink); -moz-appearance: textfield; }
+.rt input::-webkit-outer-spin-button, .rt input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rt input::placeholder { color: var(--slate); font-weight: 500; }
+.rt input:focus { outline: 2px solid var(--accent); outline-offset: 1px; background: #fff; }
+.rt i { font-style: normal; font-size: 12px; color: var(--ink-3); margin-right: 4px; }
+.tb-src { font-size: 12px; color: var(--ink-3); }
+.tb-src.case { color: var(--cp-deep); }
+/* D. 직접입력 : 계산 전 (입력 대기) */
+.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; padding: 18px; border: 1px dashed var(--rule); border-radius: 14px; background: var(--sheet-2); color: var(--ink-3); font-size: 13.5px; text-align: center; }
+.wait b { color: var(--ink-2); font-weight: 600; }
+.sl input[type="range"].empty::-webkit-slider-thumb { opacity: .35; }
+.sl input[type="range"].empty::-moz-range-thumb { opacity: .35; }
+.sel:invalid, select:has(option[value=""]:checked) { color: var(--slate); }
+@media (max-width: 640px) { .rt { height: 34px; padding-left: 10px; } .rt input { width: 52px; } .tb-src { flex-basis: 100%; } }
 /* @@P 저장 · 불러오기 · PDF 단추 (이 줄 바로 아래에 추가) */
 /* ── 벤토 그리드 */
 .wrap { padding: 22px var(--gut-r) 48px var(--gut-l); }
@@ -712,7 +729,13 @@ details.ss[open] > summary::after { content: "접기"; }
 
 <main class="wrap">
   <!-- 맨 위 줄 : 왼쪽 = 가동률 (#tb-rates), 오른쪽 = 저장 · 불러오기 · PDF (#tb-act) -->
-  <div class="tbar" id="tbar"><div class="tb-rates" id="tb-rates"></div><div class="tb-act" id="tb-act"></div></div>
+  <div class="tbar" id="tbar"><div class="tb-rates" id="tb-rates">
+    <span class="tb-k">가동률</span>
+    <label class="rt" title="골조공사 가동률 — 강우 · 동절기 · 휴일 등 비작업일을 뺀 작업일 비율 (골조 기간 = 작업일 ÷ 가동률)"><span>골조</span><input data-k="rRC" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="58.5" aria-label="골조공사 가동률 (%)"><i>%</i></label>
+    <label class="rt" title="외부 (토목 · 외부) 공사 가동률 — 흙막이 · 터파기 · 파일 · 지열 등"><span>외부</span><input data-k="rExt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="70.2" aria-label="외부공사 가동률 (%)"><i>%</i></label>
+    <label class="rt" title="내부 (마감) 공사 가동률 — 마감 기간 = 마감 개월 × 81 ÷ 내부 가동률 (사례 실적 없음 · 일요일 · 공휴일만 쉬는 기준 81% 가정)"><span>내부</span><input data-k="rInt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="81.0" aria-label="내부공사 가동률 (%)"><i>%</i></label>
+    <span class="tb-src" id="tb-src"></span>
+  </div><div class="tb-act" id="tb-act"></div></div>
   <div class="bento" id="bento">
     <section class="tile t-hero" id="t-hero" aria-label="총 공사기간">
       <svg class="hero-deco" viewBox="0 0 230 190" aria-hidden="true"><g fill="none" stroke-linejoin="round">
@@ -743,6 +766,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="sl ph"><span class="lb">옥탑</span><output id="o-nPH">-</output><span class="su" id="o-nPH-u">층</span><button class="pm" type="button" data-step="nPH" data-d="-1" aria-label="옥탑 층수 줄이기">−</button><button class="pm" type="button" data-step="nPH" data-d="1" aria-label="옥탑 층수 늘리기">+</button></div>
       </div>
       <div class="qrow"><label for="q-use">용도</label><select class="sel" id="q-use" data-k="use">
+          <option value="" disabled hidden>선택</option>
         <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div>
       </div><div class="qb">
       <div class="seg-wrap"><span class="qlab" id="q-seq-l">공사 순서</span>
@@ -751,8 +775,10 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="seg" data-chips data-k="ground" role="group" aria-labelledby="q-gr-l"><button type="button" data-v="AUTO">모름</button><button type="button" data-v="SOIL">토사</button><button type="button" data-v="ROCK">암반</button><button type="button" data-v="CUSTOM">주상도</button></div></div>
       <div class="qgrid">
         <div class="qf"><label for="q-sup">지보</label><select class="sel" id="q-sup" data-k="support">
+          <option value="" disabled hidden>선택</option>
           <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷</option><option value="SLAB">슬래브 지지 (역타)</option></select></div>
         <div class="qf"><label for="q-struct">골조</label><select class="sel" id="q-struct" data-k="struct">
+          <option value="" disabled hidden>선택</option>
           <option value="RC">RC</option><option value="SRC">SRC</option><option value="SC">철골 + RC 코어</option><option value="COMP">강합성 + RC 코어</option></select></div>
       </div>
       </div></div>
@@ -813,6 +839,7 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="g">
         <div class="f full"><label for="in-name">프로젝트명</label><div class="in"><input id="in-name" data-k="name" type="text" autocomplete="off"></div></div>
         <div class="f"><label for="in-use">용도</label><div class="in"><select id="in-use" data-k="use">
+          <option value="" disabled hidden>선택</option>
           <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div></div>
         <div class="f"><label for="in-start">착공 예정</label><div class="in"><input id="in-start" data-k="start" type="month"></div></div>
       </div>
@@ -863,8 +890,10 @@ details.ss[open] > summary::after { content: "접기"; }
           <div class="seg" data-chips data-k="seq" role="group" aria-labelledby="in-seq-l"><button type="button" data-v="BU">순타 (Bottom-up)</button><button type="button" data-v="TD">역타 (Top-down)</button></div></div>
         <div class="f full td-only"><label for="in-base">역타 기준층 <span class="auto">외부 도로와 면해 차량 진출입이 되는 층</span></label><div class="in"><select id="in-base" data-k="tdBase" data-type="num"><option value="-2">B2</option><option value="-1">B1</option><option value="0">1F (기본)</option><option value="1">2F</option><option value="2">3F</option></select></div></div>
         <div class="f"><label for="in-wall">흙막이 벽체</label><div class="in"><select id="in-wall" data-k="wall">
+          <option value="" disabled hidden>선택</option>
           <option value="CIP">CIP</option><option value="SW">Slurry Wall</option><option value="HP">H-Pile + 토류판</option><option value="SCW">SCW</option><option value="SP">Sheet Pile</option><option value="NONE">없음 (오픈컷)</option></select></div></div>
         <div class="f"><label for="in-sup">지보 형식</label><div class="in"><select id="in-sup" data-k="support">
+          <option value="" disabled hidden>선택</option>
           <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿 (버팀보)</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷 (사면)</option><option value="SLAB">영구 슬래브 지지 (역타)</option></select></div></div>
         <div class="f"><label for="in-found">기초 형식 <span class="auto" data-auto="found"></span></label><div class="in"><select id="in-found" data-k="found">
           <option value="AUTO">자동 (지층 판정)</option><option value="MAT">매트 (직접기초)</option><option value="PHC">PHC 파일 + 매트</option><option value="BORED">현장타설말뚝 + 매트</option></select></div></div>
@@ -878,8 +907,10 @@ details.ss[open] > summary::after { content: "접기"; }
       <h3 id="ss5">골조</h3>
       <div class="g">
         <div class="f full"><label for="in-struct">구조 형식</label><div class="in"><select id="in-struct" data-k="struct">
+          <option value="" disabled hidden>선택</option>
           <option value="RC">철근콘크리트 (RC)</option><option value="SRC">철골철근콘크리트 (SRC)</option><option value="SC">철골 + RC 코어 (코어 선행)</option><option value="COMP">강합성 (PSRC · TSC 등) + RC 코어</option></select></div></div>
         <div class="f"><label for="in-core">코어 거푸집 <span class="auto" data-auto="core"></span></label><div class="in"><select id="in-core" data-k="coreSys">
+          <option value="" disabled hidden>선택</option>
           <option value="AUTO">자동 (15층 이상 ACS)</option><option value="ACS">ACS (자동상승)</option><option value="GANG">갱폼 · 알폼</option></select></div></div>
         <label class="chk" style="align-self:end"><input id="in-pt" data-k="pt" type="checkbox"> PT 슬래브</label>
         <div class="f td-only"><label for="in-lim">기초 전 지상 허용층 <span class="auto" data-auto="lim"></span></label><div class="in"><input id="in-lim" data-k="lim" data-type="int" type="number" min="1" step="1" inputmode="numeric" class="has-u" placeholder="자동"><span class="u">F</span></div></div>
@@ -896,6 +927,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="f"><label for="in-tc">T&amp;C</label><div class="in"><input id="in-tc" data-k="tc" data-type="num" type="number" min="0" step="0.1" inputmode="decimal" class="has-u"><span class="u">개월</span></div></div>
         <div class="f"><label for="in-rExt">가동률 토목 · 외부</label><div class="in"><input id="in-rExt" data-k="rExt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
         <div class="f"><label for="in-rRC">가동률 골조</label><div class="in"><input id="in-rRC" data-k="rRC" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
+        <div class="f"><label for="in-rInt">가동률 내부 (마감)</label><div class="in"><input id="in-rInt" data-k="rInt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u" placeholder="81.0"><span class="u">%</span></div></div>
         <div class="f"><label for="in-hours">1일 작업</label><div class="in"><select id="in-hours" data-k="hours" data-type="num"><option value="8">8시간</option><option value="10">10시간 (하이테크)</option></select></div></div>
         <label class="chk full"><input id="in-link" data-k="link" type="checkbox"> 지하 → 지상 Zone 연계 착수 (순타)</label>
       </div>

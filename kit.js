@@ -599,7 +599,7 @@
     }
     if (el.type === 'checkbox') { el.checked = !!v; return; }
     if (document.activeElement === el) return;
-    el.value = v == null || (typeof v === 'number' && !isFinite(v)) ? '' : (type === 'pct' ? r1(v * 100) : v);
+    el.value = v == null || v === '' || (typeof v === 'number' && !isFinite(v)) ? '' : (type === 'pct' ? r1(v * 100) : v);
   }
   function fill(rootEl, st) { Array.prototype.forEach.call(rootEl.querySelectorAll('[data-k]'), function (el) { fillOne(el, st); }); }
   function bind(rootEl, getS, onChange) {

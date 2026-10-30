@@ -186,6 +186,23 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tbar { max-width: 1400px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px; }
 .tb-rates, .tb-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 /* @@R 가동률 (이 줄 바로 아래에 추가) */
+.tb-k { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-right: 2px; }
+.rt { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 6px 0 12px; background: #fff; border: 1px solid var(--rule); border-radius: 999px; box-shadow: 0 1px 2px rgba(20, 24, 32, .04); cursor: text; }
+.rt span { font-size: 12.5px; color: var(--ink-3); }
+.rt input { width: 58px; height: 28px; border: 0; background: var(--sheet-2); border-radius: 8px; padding: 0 8px; text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15.5px; font-weight: 600; color: var(--ink); -moz-appearance: textfield; }
+.rt input::-webkit-outer-spin-button, .rt input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rt input::placeholder { color: var(--slate); font-weight: 500; }
+.rt input:focus { outline: 2px solid var(--accent); outline-offset: 1px; background: #fff; }
+.rt i { font-style: normal; font-size: 12px; color: var(--ink-3); margin-right: 4px; }
+.tb-src { font-size: 12px; color: var(--ink-3); }
+.tb-src.case { color: var(--cp-deep); }
+/* D. 직접입력 : 계산 전 (입력 대기) */
+.wait { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; padding: 18px; border: 1px dashed var(--rule); border-radius: 14px; background: var(--sheet-2); color: var(--ink-3); font-size: 13.5px; text-align: center; }
+.wait b { color: var(--ink-2); font-weight: 600; }
+.sl input[type="range"].empty::-webkit-slider-thumb { opacity: .35; }
+.sl input[type="range"].empty::-moz-range-thumb { opacity: .35; }
+.sel:invalid, select:has(option[value=""]:checked) { color: var(--slate); }
+@media (max-width: 640px) { .rt { height: 34px; padding-left: 10px; } .rt input { width: 52px; } .tb-src { flex-basis: 100%; } }
 /* @@P 저장 · 불러오기 · PDF 단추 (이 줄 바로 아래에 추가) */
 /* ── 벤토 그리드 */
 .wrap { padding: 22px var(--gut-r) 48px var(--gut-l); }
@@ -818,7 +835,13 @@ details.ss[open] > summary::after { content: "접기"; }
 
 <main class="wrap">
   <!-- 맨 위 줄 : 왼쪽 = 가동률 (#tb-rates), 오른쪽 = 저장 · 불러오기 · PDF (#tb-act) -->
-  <div class="tbar" id="tbar"><div class="tb-rates" id="tb-rates"></div><div class="tb-act" id="tb-act"></div></div>
+  <div class="tbar" id="tbar"><div class="tb-rates" id="tb-rates">
+    <span class="tb-k">가동률</span>
+    <label class="rt" title="골조공사 가동률 — 강우 · 동절기 · 휴일 등 비작업일을 뺀 작업일 비율 (골조 기간 = 작업일 ÷ 가동률)"><span>골조</span><input data-k="rRC" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="58.5" aria-label="골조공사 가동률 (%)"><i>%</i></label>
+    <label class="rt" title="외부 (토목 · 외부) 공사 가동률 — 흙막이 · 터파기 · 파일 · 지열 등"><span>외부</span><input data-k="rExt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="70.2" aria-label="외부공사 가동률 (%)"><i>%</i></label>
+    <label class="rt" title="내부 (마감) 공사 가동률 — 마감 기간 = 마감 개월 × 81 ÷ 내부 가동률 (사례 실적 없음 · 일요일 · 공휴일만 쉬는 기준 81% 가정)"><span>내부</span><input data-k="rInt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" placeholder="81.0" aria-label="내부공사 가동률 (%)"><i>%</i></label>
+    <span class="tb-src" id="tb-src"></span>
+  </div><div class="tb-act" id="tb-act"></div></div>
   <div class="bento" id="bento">
     <section class="tile t-hero" id="t-hero" aria-label="총 공사기간">
       <svg class="hero-deco" viewBox="0 0 230 190" aria-hidden="true"><g fill="none" stroke-linejoin="round">
@@ -849,6 +872,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="sl ph"><span class="lb">옥탑</span><output id="o-nPH">-</output><span class="su" id="o-nPH-u">층</span><button class="pm" type="button" data-step="nPH" data-d="-1" aria-label="옥탑 층수 줄이기">−</button><button class="pm" type="button" data-step="nPH" data-d="1" aria-label="옥탑 층수 늘리기">+</button></div>
       </div>
       <div class="qrow"><label for="q-use">용도</label><select class="sel" id="q-use" data-k="use">
+          <option value="" disabled hidden>선택</option>
         <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div>
       </div><div class="qb">
       <div class="seg-wrap"><span class="qlab" id="q-seq-l">공사 순서</span>
@@ -857,8 +881,10 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="seg" data-chips data-k="ground" role="group" aria-labelledby="q-gr-l"><button type="button" data-v="AUTO">모름</button><button type="button" data-v="SOIL">토사</button><button type="button" data-v="ROCK">암반</button><button type="button" data-v="CUSTOM">주상도</button></div></div>
       <div class="qgrid">
         <div class="qf"><label for="q-sup">지보</label><select class="sel" id="q-sup" data-k="support">
+          <option value="" disabled hidden>선택</option>
           <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷</option><option value="SLAB">슬래브 지지 (역타)</option></select></div>
         <div class="qf"><label for="q-struct">골조</label><select class="sel" id="q-struct" data-k="struct">
+          <option value="" disabled hidden>선택</option>
           <option value="RC">RC</option><option value="SRC">SRC</option><option value="SC">철골 + RC 코어</option><option value="COMP">강합성 + RC 코어</option></select></div>
       </div>
       </div></div>
@@ -919,6 +945,7 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="g">
         <div class="f full"><label for="in-name">프로젝트명</label><div class="in"><input id="in-name" data-k="name" type="text" autocomplete="off"></div></div>
         <div class="f"><label for="in-use">용도</label><div class="in"><select id="in-use" data-k="use">
+          <option value="" disabled hidden>선택</option>
           <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div></div>
         <div class="f"><label for="in-start">착공 예정</label><div class="in"><input id="in-start" data-k="start" type="month"></div></div>
       </div>
@@ -969,8 +996,10 @@ details.ss[open] > summary::after { content: "접기"; }
           <div class="seg" data-chips data-k="seq" role="group" aria-labelledby="in-seq-l"><button type="button" data-v="BU">순타 (Bottom-up)</button><button type="button" data-v="TD">역타 (Top-down)</button></div></div>
         <div class="f full td-only"><label for="in-base">역타 기준층 <span class="auto">외부 도로와 면해 차량 진출입이 되는 층</span></label><div class="in"><select id="in-base" data-k="tdBase" data-type="num"><option value="-2">B2</option><option value="-1">B1</option><option value="0">1F (기본)</option><option value="1">2F</option><option value="2">3F</option></select></div></div>
         <div class="f"><label for="in-wall">흙막이 벽체</label><div class="in"><select id="in-wall" data-k="wall">
+          <option value="" disabled hidden>선택</option>
           <option value="CIP">CIP</option><option value="SW">Slurry Wall</option><option value="HP">H-Pile + 토류판</option><option value="SCW">SCW</option><option value="SP">Sheet Pile</option><option value="NONE">없음 (오픈컷)</option></select></div></div>
         <div class="f"><label for="in-sup">지보 형식</label><div class="in"><select id="in-sup" data-k="support">
+          <option value="" disabled hidden>선택</option>
           <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿 (버팀보)</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷 (사면)</option><option value="SLAB">영구 슬래브 지지 (역타)</option></select></div></div>
         <div class="f"><label for="in-found">기초 형식 <span class="auto" data-auto="found"></span></label><div class="in"><select id="in-found" data-k="found">
           <option value="AUTO">자동 (지층 판정)</option><option value="MAT">매트 (직접기초)</option><option value="PHC">PHC 파일 + 매트</option><option value="BORED">현장타설말뚝 + 매트</option></select></div></div>
@@ -984,8 +1013,10 @@ details.ss[open] > summary::after { content: "접기"; }
       <h3 id="ss5">골조</h3>
       <div class="g">
         <div class="f full"><label for="in-struct">구조 형식</label><div class="in"><select id="in-struct" data-k="struct">
+          <option value="" disabled hidden>선택</option>
           <option value="RC">철근콘크리트 (RC)</option><option value="SRC">철골철근콘크리트 (SRC)</option><option value="SC">철골 + RC 코어 (코어 선행)</option><option value="COMP">강합성 (PSRC · TSC 등) + RC 코어</option></select></div></div>
         <div class="f"><label for="in-core">코어 거푸집 <span class="auto" data-auto="core"></span></label><div class="in"><select id="in-core" data-k="coreSys">
+          <option value="" disabled hidden>선택</option>
           <option value="AUTO">자동 (15층 이상 ACS)</option><option value="ACS">ACS (자동상승)</option><option value="GANG">갱폼 · 알폼</option></select></div></div>
         <label class="chk" style="align-self:end"><input id="in-pt" data-k="pt" type="checkbox"> PT 슬래브</label>
         <div class="f td-only"><label for="in-lim">기초 전 지상 허용층 <span class="auto" data-auto="lim"></span></label><div class="in"><input id="in-lim" data-k="lim" data-type="int" type="number" min="1" step="1" inputmode="numeric" class="has-u" placeholder="자동"><span class="u">F</span></div></div>
@@ -1002,6 +1033,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <div class="f"><label for="in-tc">T&amp;C</label><div class="in"><input id="in-tc" data-k="tc" data-type="num" type="number" min="0" step="0.1" inputmode="decimal" class="has-u"><span class="u">개월</span></div></div>
         <div class="f"><label for="in-rExt">가동률 토목 · 외부</label><div class="in"><input id="in-rExt" data-k="rExt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
         <div class="f"><label for="in-rRC">가동률 골조</label><div class="in"><input id="in-rRC" data-k="rRC" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
+        <div class="f"><label for="in-rInt">가동률 내부 (마감)</label><div class="in"><input id="in-rInt" data-k="rInt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u" placeholder="81.0"><span class="u">%</span></div></div>
         <div class="f"><label for="in-hours">1일 작업</label><div class="in"><select id="in-hours" data-k="hours" data-type="num"><option value="8">8시간</option><option value="10">10시간 (하이테크)</option></select></div></div>
         <label class="chk full"><input id="in-link" data-k="link" type="checkbox"> 지하 → 지상 Zone 연계 착수 (순타)</label>
       </div>
@@ -1166,6 +1198,8 @@ details.ss[open] > summary::after { content: "접기"; }
     var nPH = inp.nPH == null || inp.nPH === '' ? (nUp >= 20 ? 2 : 1) : clamp(Math.round(num(inp.nPH, 1)), 0, 4);
     var site = Math.max(0, num(inp.site, 0)), bldg = Math.max(0, num(inp.bldg, 0)), gUp = Math.max(0, num(inp.gfaUp, 0)), gDn = Math.max(0, num(inp.gfaDn, 0));
     var rExt = clamp(num(inp.rExt, 0.702), 0.3, 1), rRC = clamp(num(inp.rRC, 0.585), 0.3, 1);
+    /* 내부 (마감) 공사 가동률 : 마감 개월 (inp.fin) 은 기준 가동률 R_INT0 에서의 값 → 가동률이 다르면 그 비율로 (사례 실적 없음 — 일요일 · 공휴일만 쉬는 기준 가정) */
+    var R_INT0 = 0.81, rInt = clamp(num(inp.rInt, R_INT0), 0.3, 1);
     /* 1일 작업시간 : 4~12시간 (8시간 = 1.0) — 작업량으로 정해지는 공종만 비례 (양생 · 팀 시차 · 기본값 개월은 고정) */
     var hours = num(inp.hours, 8); if (!(hours > 0)) hours = 8; hours = clamp(hours, 4, 12); var hF = hours / 8;
     var seq = inp.seq === 'TD' ? 'TD' : 'BU';
@@ -1178,7 +1212,7 @@ details.ss[open] > summary::after { content: "접기"; }
     if (nB > 0 && sup === 'OPEN' && wall !== 'NONE' && wall !== 'SCW') R.warn.push('오픈컷 (사면) 에서는 흙막이 벽체 (' + WALL_N[wall] + ') 를 제외했습니다 → 일부 구간 흙막이가 필요하면 지보 형식을 앵커 · 스트럿으로 선택하세요.');
     var struct = STRUCT_N[inp.struct] ? inp.struct : 'RC';
     var MO = function (wd, r) { return wd / ((r || rRC) * D); };
-    R.basic = { use: use, nB: nB, nUp: nUp, nPH: nPH, seq: seq, sup: sup, wall: wall, struct: struct, rExt: rExt, rRC: rRC, hF: hF, hours: hours };
+    R.basic = { use: use, nB: nB, nUp: nUp, nPH: nPH, seq: seq, sup: sup, wall: wall, struct: struct, rExt: rExt, rRC: rRC, rInt: rInt, hF: hF, hours: hours };
 
     /* ── 층고 */
     var HS = parseSpec(A.hSpec); if (HS.err.length) R.warn.push('층고 입력을 읽지 못한 항목 : ' + HS.err.join(', '));
@@ -1803,7 +1837,8 @@ details.ss[open] > summary::after { content: "접기"; }
     /* 기본값 : 일반 마감 8 · T&C 2개월, 데이터센터 마감 6 · T&C 3개월 (v2.8 부서 기준) — 입력하면 입력값 */
     var fin = Math.max(0, num(inp.fin, use === 'dc' ? 6.0 : 8.0)), tc = Math.max(0, num(inp.tc, use === 'dc' ? 3.0 : 2.0));
     t = frameDone;
-    if (fin > 0) { act({ id: 'fin', g: '마감', name: '마감', s: t, e: t + fin, cp: true, basis: '기본값 ' + fin + '개월 · 골조 완료 후' }); t += fin; }
+    var finM = fin * R_INT0 / rInt;
+    if (fin > 0) { act({ id: 'fin', g: '마감', name: '마감', s: t, e: t + finM, cp: true, basis: '기본값 ' + fin + '개월 (내부 가동률 ' + Math.round(R_INT0 * 1000) / 10 + '% 기준)' + (Math.abs(rInt - R_INT0) > 0.0005 ? ' × ' + Math.round(R_INT0 * 1000) / 10 + ' ÷ ' + Math.round(rInt * 1000) / 10 + ' = ' + r2(finM) + '개월' : '') + ' · 골조 완료 후' }); t += finM; }
     if (tc > 0) { act({ id: 'tc', g: '마감', name: 'T&C (시운전)', s: t, e: t + tc, cp: true, basis: '기본값 ' + tc + '개월' }); t += tc; }
     R.total = t; R.frameEnd = frameDone; R.T_F = T_F; R.EXC_END = EXC_END; R.T_1F = T_1F; R.PRD = PRD; R.F0 = F0; R.found = fz; R.geoRes = geoRes; R.acts = acts;
 
@@ -2553,7 +2588,7 @@ details.ss[open] > summary::after { content: "접기"; }
     }
     if (el.type === 'checkbox') { el.checked = !!v; return; }
     if (document.activeElement === el) return;
-    el.value = v == null || (typeof v === 'number' && !isFinite(v)) ? '' : (type === 'pct' ? r1(v * 100) : v);
+    el.value = v == null || v === '' || (typeof v === 'number' && !isFinite(v)) ? '' : (type === 'pct' ? r1(v * 100) : v);
   }
   function fill(rootEl, st) { Array.prototype.forEach.call(rootEl.querySelectorAll('[data-k]'), function (el) { fillOne(el, st); }); }
   function bind(rootEl, getS, onChange) {
@@ -2895,17 +2930,34 @@ details.ss[open] > summary::after { content: "접기"; }
   function tw(t, fs) { var w = 0; t = String(t); for (var i = 0; i < t.length; i++) { var c = t[i]; w += /[ㄱ-힝]/.test(c) ? fs * 0.98 : (c === ' ' ? fs * 0.3 : /[·~×]/.test(c) ? fs * 0.5 : fs * 0.58); } return w; }
 
   /* ───────── 상태 */
+  /* 빈 값은 빈 값 그대로 (D. 직접입력 = 아무것도 고르지 않은 상태) — 엔진에 넘길 때만 기본값 (toInp) */
+  var KEEP_EMPTY = ['use', 'seq', 'struct', 'support', 'wall', 'found', 'coreSys', 'ground', 'rExt', 'rRC', 'rInt', 'mob', 'fin', 'tc', 'hours', 'nB', 'nUp', 'nPH'];
+  var EMPTY = { name: '', use: '', site: '', bldg: '', gfaUp: '', gfaDn: '', nB: '', nUp: '', nPH: '', ground: '', strata: [null, null, null, null], gwl: '', seq: '', tdBase: 0, wall: '', support: '', scw: false, found: '', geo: '',
+    struct: '', pt: false, coreSys: '', lim: '', lim2: '', mob: '', fin: '', tc: '', rExt: '', rRC: '', rInt: '', hours: '', link: false, start: '', adv: {} };
+  PRESETS.blank = EMPTY;
   function norm(p) {
-    var s = GK.normInp(p || GK.BLANK), d = { wall: 'CIP', support: 'ANCHOR', found: 'AUTO', struct: 'RC', coreSys: 'AUTO', seq: 'BU', start: '' };
-    Object.keys(d).forEach(function (k) { if (s[k] == null || s[k] === '') s[k] = d[k]; });
+    var src = p || EMPTY, s = GK.normInp(src);
+    KEEP_EMPTY.forEach(function (k) { if (src[k] == null || src[k] === '') s[k] = ''; });
+    if (s.start == null) s.start = '';
     if (s.name == null) s.name = '';
     s.adv = s.adv || {}; if (!s.adv.dcCycle) s.adv.dcCycle = 'AUTO'; if (!s.adv.dcFlow) s.adv.dcFlow = 'ZONE';
     ['scw', 'pt', 'link'].forEach(function (k) { s[k] = !!s[k]; });
     if (s.seq === 'TD') s.support = 'SLAB'; else if (s.support === 'SLAB') s.support = 'ANCHOR';
     return s;
   }
+  /* 계산 시작 조건 : 지상 층수 · 면적 · 용도 · 공사 순서 · 골조 (없으면 공기 0.0 · 입력 대기) */
+  function missing() {
+    var m = [];
+    if (!(+S.nUp >= 1)) m.push('지상 층수');
+    if (!(+S.bldg > 0 || +S.gfaUp > 0 || (+S.site > 0 && +S.cov > 0))) m.push('면적');
+    if (!S.use) m.push('용도'); if (!S.seq) m.push('공사 순서'); if (!S.struct) m.push('골조');
+    return m;
+  }
   function toInp() {
-    var i = GK.clone(S);
+    var i = GK.clone(S), d0 = { use: 'office', seq: 'BU', struct: 'RC', wall: 'CIP', found: 'AUTO', coreSys: 'AUTO', ground: 'AUTO' };
+    Object.keys(d0).forEach(function (k) { if (i[k] == null || i[k] === '') i[k] = d0[k]; });
+    if (!i.support) i.support = i.seq === 'TD' ? 'SLAB' : 'ANCHOR';
+    if (i.nB == null || i.nB === '') i.nB = 0;
     i.name = S.name || '프로젝트';
     if ((i.bldg == null || i.bldg === '') && i.site > 0 && i.cov > 0) i.bldg = i.site * i.cov / 100;
     i.geo = i.geo || 0; i.tdBase = i.tdBase || 0;
@@ -3007,6 +3059,8 @@ details.ss[open] > summary::after { content: "접기"; }
   function recompute() {
     clearTimeout(timer);
     applyLib(); fillLib();
+    var miss = missing();
+    if (miss.length) { lastR = null; ST.save({ inp: S, preset: current }); renderEmpty(miss); return; }
     var inp = toInp(), R, team = { u: null, c: null, f: null };
     inp.adv = inp.adv || {};
     try {
@@ -3036,11 +3090,46 @@ details.ss[open] > summary::after { content: "접기"; }
     var steps = [renderHead, renderHero, renderMs, renderGantt, renderSection, renderZone, renderKf, renderWarns, renderHints];
     steps.forEach(function (fn) { try { fn(R); } catch (e) { if (window.console) console.error(e); } });
     widths.ms = $('#ms-flow').clientWidth;
-    GK.fill(document, S); syncFloors();
+    GK.fill(document, S); syncFloors(); rateSrc(); fitHero();
+  }
+  /* 입력 대기 (D. 직접입력 처음) : 공기 0.0, 나머지 판은 무엇을 넣어야 하는지만 */
+  function renderEmpty(miss) {
+    var need = '<span>필요한 입력</span><b>' + esc(miss.join(' · ')) + '</b>';
+    $('#h-total').textContent = '0.0'; $('#mini-total').textContent = '0.0'; var sh = $('#sh-total'); if (sh) sh.textContent = '0.00';
+    $('#pj').textContent = (S.name || '새 프로젝트') + ' · 입력 대기';
+    $('#h-exact').innerHTML = '<span><b class="num">0.00</b>개월</span>'; $('#h-range').innerHTML = ''; $('#h-why').innerHTML = ''; $('#h-why').hidden = true;
+    $('#h-foot').innerHTML = '<span class="muted">필요한 입력 · <b>' + esc(miss.join(' · ')) + '</b></span>';
+    $('#ms-list').innerHTML = '<div class="wait">' + need + '</div>'; $('#ms-flow').innerHTML = ''; $('#ms-sub').textContent = '';
+    hideTip(); $('#gantt').innerHTML = '<div class="wait">' + need + '</div>'; $('#cpf').innerHTML = ''; $('#g-lg').innerHTML = '';
+    $('#section').innerHTML = '<div class="wait">' + need + '</div>'; ['#s-chips', '#s-notes', '#s-lg'].forEach(function (q) { var e = $(q); if (e) e.innerHTML = ''; });
+    $('#kf').innerHTML = ''; $('#zone').innerHTML = '<div class="wait">' + need + '</div>'; $('#z-lg').innerHTML = '';
+    $('#warns').innerHTML = '<li>필요한 입력 : ' + esc(miss.join(' · ')) + '</li>'; var wc = $('#w-ct'); if (wc) { wc.textContent = miss.length + '건'; wc.classList.remove('ok'); }
+    $('#notes').innerHTML = ''; $('#notes-g').hidden = true;
+    widths = {};
+    GK.fill(document, S); syncUI(); syncFloors(); rateSrc(); fitHero();
+  }
+  /* 가동률 출처 표시 : 사례 = 실적값, 비어 있으면 기본값 (칸에 흐리게) */
+  function rateSrc() {
+    var el = $('#tb-src'); if (!el) return;
+    var cs = current && current !== 'blank' && GK.PRESET_N[current], empty = ['rRC', 'rExt', 'rInt'].every(function (k) { return S[k] == null || S[k] === ''; });
+    el.textContent = cs ? GK.PRESET_N[current].replace(/ · .*/, '') + ' 실적값' + (S.rInt == null || S.rInt === '' ? ' · 내부는 가정' : '') : empty ? '빈칸 = 기본값' : '';
+    el.classList.toggle('case', !!cs);
+  }
+  /* 총 공기 숫자 : 히어로 칸 폭 안에서 들어가는 가장 큰 글자 (숫자 + '개월') */
+  function fitHero() {
+    var b = $('#h-total'), big = b && b.parentNode, tile = $('#t-hero'); if (!big || !tile) return;
+    var cs = getComputedStyle(tile), avail = tile.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4, sm = big.querySelector('small');
+    var lo = 48, hi = 300;
+    for (var it = 0; it < 14; it++) {
+      var mid = (lo + hi) / 2; b.style.fontSize = mid + 'px'; if (sm) sm.style.fontSize = Math.max(18, mid * 0.26) + 'px';
+      var wd = b.getBoundingClientRect().width + (sm ? sm.getBoundingClientRect().width + (parseFloat(getComputedStyle(big).columnGap) || 10) : 0);
+      if (wd <= avail) lo = mid; else hi = mid;
+    }
+    b.style.fontSize = lo + 'px'; if (sm) sm.style.fontSize = Math.max(18, lo * 0.26) + 'px';
   }
   /* 층수 숫자 · 막대 채움 (드래그 중에도 바로) — 옥탑을 비워 두면 자동값 */
   function syncFloors() {
-    ['nB', 'nUp'].forEach(function (k) { var r = $('#r-' + k), o = $('#o-' + k); if (!r || !o) return; var v = S[k] != null && S[k] !== '' ? S[k] : r.value; o.textContent = v; r.style.setProperty('--p', ((+r.value - +r.min) / Math.max(1, +r.max - +r.min) * 100).toFixed(1) + '%'); });
+    ['nB', 'nUp'].forEach(function (k) { var r = $('#r-' + k), o = $('#o-' + k); if (!r || !o) return; var has = S[k] != null && S[k] !== ''; o.textContent = has ? S[k] : '–'; r.style.setProperty('--p', has ? ((+r.value - +r.min) / Math.max(1, +r.max - +r.min) * 100).toFixed(1) + '%' : '0%'); r.classList.toggle('empty', !has); });
     var auto = S.nPH == null || S.nPH === '', o = $('#o-nPH'), u = $('#o-nPH-u');
     if (o) o.textContent = auto ? (lastR ? lastR.basic.nPH : '-') : S.nPH;
     if (u) { u.textContent = auto ? '층 · 자동' : '층'; u.classList.toggle('auto', auto); }
@@ -4693,6 +4782,7 @@ details.ss[open] > summary::after { content: "접기"; }
   }
   function closeSheet() { var d = $('#sheet'); if (d.open) { if (d.close) d.close(); else d.removeAttribute('open'); } }
   function rerenderOnResize() {
+    fitHero();
     if (!lastR) return;
     var a = document.activeElement, inSec = a && a.classList && a.classList.contains('fh');
     if ($('#gantt').clientWidth !== widths.gantt) renderGantt(lastR);
