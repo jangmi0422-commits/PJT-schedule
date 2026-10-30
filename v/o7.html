@@ -341,6 +341,15 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tm-o:hover { background: var(--cp); color: #fff; border-color: var(--cp); }
 .tm-o.on { cursor: default; background: transparent; border-color: var(--rule); color: var(--ink-3); }
 /* @@F 코어 여러 개 (이 줄 바로 아래에 추가) */
+.core-n { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; }
+.core-n .core-add { margin-left: 6px; }
+.core-pick { display: inline-flex; align-items: center; gap: 4px; margin-left: 14px; }
+.core-pick button { min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-family: var(--f-num); font-size: 12px; font-weight: 600; cursor: pointer; }
+.core-pick button.on { background: var(--cp); border-color: var(--cp); color: #fff; }
+.core-pick .core-del { font-family: var(--f-ui); font-weight: 500; color: var(--ink-3); margin-left: 4px; }
+.core-pick .core-del:hover { color: var(--cp-deep); border-color: var(--cp-line); }
+.core-h.drag.sel .core-top { stroke: var(--cp); }
+.iso-lab ul li .core-sz, .iso-lab ul li .core-at { margin-left: 14px; }
 /* 지상 코어 블록 : 드래그로 위치 이동 */
 .core-h.drag { cursor: grab; touch-action: none; outline: none; }
 .core-h.drag:hover .core-top, .core-h.drag:focus-visible .core-top { stroke: var(--cp); stroke-width: 1.8; }

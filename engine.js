@@ -32,7 +32,7 @@
       pile: { PHC: { areaPer: 8, rate: 8, teamArea: 5000, maxTeams: 4 }, BORED: { areaPer: 25, rate: 1.0, setPer: 80, maxSets: 4 } },
       found: { zoneV: 850, rebar: 0.15, crew: 20, tPerMD: 0.8, prep: 4, tail: 3, pitAdd: 6, pitRatio: 0.12, teamV: 4500, maxTeams: 6, lag: 3, cureCD: 14 },
       base: { liftAnchor: 3.0, liftOther: 4.5, liftWD: 10, liftRef: 3.0, slabD: 3.25, zoneA: 900, zpt: 4.5, minSlab: 6, backfill: 20 },
-      td: { f1Zone: 13, f1Lag: 4.5, f1CureCD: 7, f1ZoneA: 1400, setup: 3, slabF: 0.8, startOffsetM: 2.5, preF: 1.25, vertFirst: 20, vertNext: 12, d1: 2.5, limTot1: 25, limTot2: 32 },
+      td: { f1Zone: 13, f1Lag: 4.5, f1CureCD: 7, f1ZoneA: 1400, setup: 3, slabF: 0.8, startOffsetM: 2.5, preF: 1.25, vertFirst: 20, vertNext: 12, coreShare: 0.4, d1: 2.5, limTot1: 25, limTot2: 32 },
       frame: {
         d: { RC: 3.25, SRC: 3.5, SC: 4.0, COMP: 3.5 }, minTact: { RC: 6, SRC: 7, SC: 6, COMP: 8 }, ptAdd: 0.25,
         zoneDur: { RC: 8, SRC: 9, SC: 10, COMP: 18 }, zoneA: 900, zonesPerTeam: { RC: 4.5, SRC: 4.5, SC: 2, COMP: 4.5 }, lag: 5,
@@ -471,9 +471,11 @@
       if (inp.link) { ovApplied = Math.min(0.2 * (t - F0), MO(20, rRC)); frameStart = t - ovApplied; }
     } else if (seq === 'BU') { frameStart = t; }
     else {
-      var nPost = Math.ceil(tdSt.length / 2), vwd = (L.td.vertFirst + L.td.vertNext * (nPost - 1)) / hF;
+      /* 코어 벽체 : adv.coreWallK = 코어 벽 길이 ÷ 기본 코어 1개 벽 길이 (화면이 코어 개수 · 크기에서 계산). 수직재 일의 coreShare 만큼이 코어 벽 → 그 몫만 비례 */
+      var cwK = num(A.coreWallK, 0) > 0 ? num(A.coreWallK, 0) : 1, cwF = 1 - (L.td.coreShare || 0) + (L.td.coreShare || 0) * cwK;
+      var nPost = Math.ceil(tdSt.length / 2), vwd = (L.td.vertFirst + L.td.vertNext * (nPost - 1)) * cwF / hF;
       V_END = T_F + MO(vwd, rRC);
-      act({ id: 'vert', g: '골조', name: '지하 수직재 (' + tdSt[tdSt.length - 1].lv + ' ~ ' + tdSt[tdSt.length - nPost].lv + ', 기초 완료 후)', s: T_F, e: V_END, cp: false, wd: vwd, rate: 'rc', basis: '최하층 ' + L.td.vertFirst + 'WD + ' + L.td.vertNext + 'WD × ' + (nPost - 1) + '개층 · 지상 2차 구조제한 해제 조건' });
+      act({ id: 'vert', g: '골조', name: '지하 수직재 (' + tdSt[tdSt.length - 1].lv + ' ~ ' + tdSt[tdSt.length - nPost].lv + ', 기초 완료 후)', s: T_F, e: V_END, cp: false, wd: vwd, rate: 'rc', basis: '최하층 ' + L.td.vertFirst + 'WD + ' + L.td.vertNext + 'WD × ' + (nPost - 1) + '개층' + (Math.abs(cwF - 1) > 0.005 ? ' × 코어 벽 ' + r2(cwF) : '') + ' · 지상 2차 구조제한 해제 조건' });
       base = { td: true, nPost: nPost, wd: vwd };
       frameStart = T_1F + tdOff;
     }

@@ -447,6 +447,15 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tm-o:hover { background: var(--cp); color: #fff; border-color: var(--cp); }
 .tm-o.on { cursor: default; background: transparent; border-color: var(--rule); color: var(--ink-3); }
 /* @@F 코어 여러 개 (이 줄 바로 아래에 추가) */
+.core-n { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 6px; }
+.core-n .core-add { margin-left: 6px; }
+.core-pick { display: inline-flex; align-items: center; gap: 4px; margin-left: 14px; }
+.core-pick button { min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-family: var(--f-num); font-size: 12px; font-weight: 600; cursor: pointer; }
+.core-pick button.on { background: var(--cp); border-color: var(--cp); color: #fff; }
+.core-pick .core-del { font-family: var(--f-ui); font-weight: 500; color: var(--ink-3); margin-left: 4px; }
+.core-pick .core-del:hover { color: var(--cp-deep); border-color: var(--cp-line); }
+.core-h.drag.sel .core-top { stroke: var(--cp); }
+.iso-lab ul li .core-sz, .iso-lab ul li .core-at { margin-left: 14px; }
 /* 지상 코어 블록 : 드래그로 위치 이동 */
 .core-h.drag { cursor: grab; touch-action: none; outline: none; }
 .core-h.drag:hover .core-top, .core-h.drag:focus-visible .core-top { stroke: var(--cp); stroke-width: 1.8; }
@@ -900,7 +909,7 @@ details.ss[open] > summary::after { content: "접기"; }
       pile: { PHC: { areaPer: 8, rate: 8, teamArea: 5000, maxTeams: 4 }, BORED: { areaPer: 25, rate: 1.0, setPer: 80, maxSets: 4 } },
       found: { zoneV: 850, rebar: 0.15, crew: 20, tPerMD: 0.8, prep: 4, tail: 3, pitAdd: 6, pitRatio: 0.12, teamV: 4500, maxTeams: 6, lag: 3, cureCD: 14 },
       base: { liftAnchor: 3.0, liftOther: 4.5, liftWD: 10, liftRef: 3.0, slabD: 3.25, zoneA: 900, zpt: 4.5, minSlab: 6, backfill: 20 },
-      td: { f1Zone: 13, f1Lag: 4.5, f1CureCD: 7, f1ZoneA: 1400, setup: 3, slabF: 0.8, startOffsetM: 2.5, preF: 1.25, vertFirst: 20, vertNext: 12, d1: 2.5, limTot1: 25, limTot2: 32 },
+      td: { f1Zone: 13, f1Lag: 4.5, f1CureCD: 7, f1ZoneA: 1400, setup: 3, slabF: 0.8, startOffsetM: 2.5, preF: 1.25, vertFirst: 20, vertNext: 12, coreShare: 0.4, d1: 2.5, limTot1: 25, limTot2: 32 },
       frame: {
         d: { RC: 3.25, SRC: 3.5, SC: 4.0, COMP: 3.5 }, minTact: { RC: 6, SRC: 7, SC: 6, COMP: 8 }, ptAdd: 0.25,
         zoneDur: { RC: 8, SRC: 9, SC: 10, COMP: 18 }, zoneA: 900, zonesPerTeam: { RC: 4.5, SRC: 4.5, SC: 2, COMP: 4.5 }, lag: 5,
@@ -1339,9 +1348,11 @@ details.ss[open] > summary::after { content: "접기"; }
       if (inp.link) { ovApplied = Math.min(0.2 * (t - F0), MO(20, rRC)); frameStart = t - ovApplied; }
     } else if (seq === 'BU') { frameStart = t; }
     else {
-      var nPost = Math.ceil(tdSt.length / 2), vwd = (L.td.vertFirst + L.td.vertNext * (nPost - 1)) / hF;
+      /* 코어 벽체 : adv.coreWallK = 코어 벽 길이 ÷ 기본 코어 1개 벽 길이 (화면이 코어 개수 · 크기에서 계산). 수직재 일의 coreShare 만큼이 코어 벽 → 그 몫만 비례 */
+      var cwK = num(A.coreWallK, 0) > 0 ? num(A.coreWallK, 0) : 1, cwF = 1 - (L.td.coreShare || 0) + (L.td.coreShare || 0) * cwK;
+      var nPost = Math.ceil(tdSt.length / 2), vwd = (L.td.vertFirst + L.td.vertNext * (nPost - 1)) * cwF / hF;
       V_END = T_F + MO(vwd, rRC);
-      act({ id: 'vert', g: '골조', name: '지하 수직재 (' + tdSt[tdSt.length - 1].lv + ' ~ ' + tdSt[tdSt.length - nPost].lv + ', 기초 완료 후)', s: T_F, e: V_END, cp: false, wd: vwd, rate: 'rc', basis: '최하층 ' + L.td.vertFirst + 'WD + ' + L.td.vertNext + 'WD × ' + (nPost - 1) + '개층 · 지상 2차 구조제한 해제 조건' });
+      act({ id: 'vert', g: '골조', name: '지하 수직재 (' + tdSt[tdSt.length - 1].lv + ' ~ ' + tdSt[tdSt.length - nPost].lv + ', 기초 완료 후)', s: T_F, e: V_END, cp: false, wd: vwd, rate: 'rc', basis: '최하층 ' + L.td.vertFirst + 'WD + ' + L.td.vertNext + 'WD × ' + (nPost - 1) + '개층' + (Math.abs(cwF - 1) > 0.005 ? ' × 코어 벽 ' + r2(cwF) : '') + ' · 지상 2차 구조제한 해제 조건' });
       base = { td: true, nPost: nPost, wd: vwd };
       frameStart = T_1F + tdOff;
     }
@@ -2791,6 +2802,7 @@ details.ss[open] > summary::after { content: "접기"; }
     try {
       var R0 = GE.compute(inp, LIB), ty0 = R0.frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z, Zc = ty0.dc ? ty0.dc.C.N : ty0.core ? ty0.core.Z : 0;
       var pz = pitUnderCore(R0); if (pz) inp.adv.pitZ = pz;
+      var cwk = coreWallK(R0); if (Math.abs(cwk - 1) > 0.005) inp.adv.coreWallK = +cwk.toFixed(3);
       team.u = sweepTeams(inp, 'uTeams', Math.max(1, Math.min(8, Zu)));
       if (!hasTeam('uTeams')) inp.adv.uTeams = team.u.opt;
       if (Zc > 0) { team.c = sweepTeams(inp, 'cTeams', Math.max(1, Math.min(8, Zc))); if (!hasTeam('cTeams')) inp.adv.cTeams = team.c.opt; }
@@ -2998,44 +3010,78 @@ details.ss[open] > summary::after { content: "접기"; }
   }
   function hideTip() { var tip = $('#gtip'); if (tip) tip.hidden = true; tipOn = -1; $$('#gantt .ga.on').forEach(function (el) { el.classList.remove('on'); }); }
   /* 코어 드래그 : 화면 이동량 → 아이소 역변환 → 평면 이동량 (가장자리 · 가운데 근처는 붙음) */
+  /* 코어 드래그 : 화면 이동량 → 아이소 역변환 → 평면 이동량. 블록 = 이동 (가장자리 · 가운데 근처는 붙음), 앞 모서리 손잡이 = 크기 (뒤 모서리 고정).
+     놓으면 다시 계산 (PIT 위치 · 코어 면적 · 지하 수직재가 공기에 반영) */
   function bindCoreDrag() {
     var box = $('#zone'), drag = null, raf = 0, C = 0.8660254;
     function snap(v) { [0, 0.5, 1].forEach(function (t) { if (Math.abs(v - t) < 0.035) v = t; }); return Math.max(0, Math.min(1, v)); }
     function redraw(keepFocus) {
       if (raf) return;
-      raf = requestAnimationFrame(function () { raf = 0; if (!lastR) return; renderZone(lastR); renderSection(lastR); if (keepFocus) { var h = $('#zone .core-h.drag'); if (h) h.focus({ preventScroll: true }); } });
+      raf = requestAnimationFrame(function () { raf = 0; if (!lastR) return; renderZone(lastR); renderSection(lastR); if (keepFocus) { var h = $('#zone .core-h.drag[data-core="' + selCore + '"]'); if (h) h.focus({ preventScroll: true }); } });
     }
-    function setPos(px, py) { S.adv = S.adv || {}; S.adv.coreX = +px.toFixed(3); S.adv.coreY = +py.toFixed(3); }
+    function edit(i, fn) { var list = coreList().map(function (c) { return Object.assign({}, c); }); fn(list[i], list); setCores(list); }
     box.addEventListener('pointerdown', function (e) {
       var h = e.target.closest && e.target.closest('.core-h.drag'), sv = h && h.closest('svg[data-iso]'); if (!sv || !lastR) return;
-      var d = sv.getAttribute('data-iso').split(',').map(Number), cg = coreGeom(lastR), rc = sv.getBoundingClientRect();
-      drag = { rs: !!e.target.closest('.core-rs'), x: e.clientX, y: e.clientY, k: (+sv.getAttribute('width') || rc.width) / Math.max(1, rc.width), s: d[0], fx: Math.max(1e-6, d[3] - d[1]), fy: Math.max(1e-6, d[4] - d[2]), x0: cg.x0, y0: cg.y0, cw: cg.cw, cd: cg.cd, L: cg.L, B: cg.B, Au: cg.Au };
+      var i = +h.getAttribute('data-core'), d = sv.getAttribute('data-iso').split(',').map(Number), cg = coresGeom(lastR)[i], rc = sv.getBoundingClientRect(); if (!cg) return;
+      selCore = i;
+      drag = { i: i, rs: !!e.target.closest('.core-rs'), x: e.clientX, y: e.clientY, k: (+sv.getAttribute('width') || rc.width) / Math.max(1, rc.width), s: d[0], g: cg, moved: false };
       document.body.classList.add('dragging'); e.preventDefault();
     });
     document.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      var dx = (e.clientX - drag.x) * drag.k, dy = (e.clientY - drag.y) * drag.k, a = dx / (C * drag.s), b = 2 * dy / drag.s, dX = (a + b) / 2, dY = (b - a) / 2;
+      var dx = (e.clientX - drag.x) * drag.k, dy = (e.clientY - drag.y) * drag.k, a = dx / (C * drag.s), b = 2 * dy / drag.s, dX = (a + b) / 2, dY = (b - a) / 2, g = drag.g;
+      if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
       if (drag.rs) {
-        /* 크기 : 뒤 모서리 (x0 · y0) 고정, 앞 모서리를 끌어 폭 · 깊이 — 면적은 기준층의 5 ~ 60% */
-        var cw = Math.max(4, Math.min(drag.L - drag.x0, drag.cw + dX)), cd = Math.max(4, Math.min(drag.B - drag.y0, drag.cd + dY)), A = cw * cd, lo = drag.Au * 0.05, hi = drag.Au * 0.6;
+        /* 면적은 기준층의 3 ~ 60% (모든 코어 합계 60% 이하) */
+        var others = coresGeom(lastR).reduce(function (t, q) { return q.i === g.i ? t : t + q.Ac; }, 0);
+        var cw = Math.max(3, Math.min(g.L - g.x0, g.cw + dX)), cd = Math.max(3, Math.min(g.B - g.y0, g.cd + dY)), A = cw * cd, lo = g.Au * 0.03, hi = Math.max(lo, g.Au * 0.6 - others);
         if (A > hi) { var kk = Math.sqrt(hi / A); cw *= kk; cd *= kk; } else if (A < lo) { var k2 = Math.sqrt(lo / A); cw *= k2; cd *= k2; }
-        S.adv = S.adv || {}; S.adv.coreA = Math.round(cw * cd); S.adv.coreAsp = +(cw / cd).toFixed(3);
-        setPos(drag.L - cw > 0.01 ? Math.min(1, drag.x0 / (drag.L - cw)) : 0.5, drag.B - cd > 0.01 ? Math.min(1, drag.y0 / (drag.B - cd)) : 0.5);
-      } else setPos(snap((drag.x0 + dX) / drag.fx), snap((drag.y0 + dY) / drag.fy));
+        edit(g.i, function (c) { c.a = cw * cd; c.asp = cw / cd; c.x = g.L - cw > 0.01 ? Math.min(1, g.x0 / (g.L - cw)) : 0.5; c.y = g.B - cd > 0.01 ? Math.min(1, g.y0 / (g.B - cd)) : 0.5; });
+      } else edit(g.i, function (c) { c.x = snap((g.x0 + dX) / Math.max(1e-6, g.L - g.cw)); c.y = snap((g.y0 + dY) / Math.max(1e-6, g.B - g.cd)); });
       redraw(false);
     });
     document.addEventListener('pointerup', function () {
-      if (!drag) return; var rs = drag.rs; drag = null; document.body.classList.remove('dragging');
-      if (rs && current) markPreset('');
+      if (!drag) return; var d = drag; drag = null; document.body.classList.remove('dragging');
+      if (!d.moved) { renderZone(lastR); return; }
+      if (current) markPreset('');
       GK.fill(document, S); recompute();
     });
     box.addEventListener('keydown', function (e) {
       var h = e.target.closest && e.target.closest('.core-h.drag'); if (!h || !lastR) return;
-      var st = e.shiftKey ? 0.25 : 0.05, cg = coreGeom(lastR), px = cg.px, py = cg.py;
+      var i = +h.getAttribute('data-core'), g = coresGeom(lastR)[i], st = e.shiftKey ? 0.25 : 0.05; if (!g) return;
+      selCore = i;
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); ACT.coreDel(); return; }
+      var px = g.px, py = g.py;
       if (e.key === 'ArrowLeft') px -= st; else if (e.key === 'ArrowRight') px += st; else if (e.key === 'ArrowUp') py -= st; else if (e.key === 'ArrowDown') py += st; else return;
-      e.preventDefault(); setPos(Math.max(0, Math.min(1, px)), Math.max(0, Math.min(1, py))); redraw(true); schedule();
+      e.preventDefault(); edit(i, function (c) { c.x = Math.max(0, Math.min(1, px)); c.y = Math.max(0, Math.min(1, py)); }); redraw(true); if (current) markPreset(''); schedule();
     });
   }
+  /* 코어 추가 · 고르기 · 삭제 · 크기 (± 2%p, 기본값 = 코어 1개 기본) */
+  function coreChanged() { if (current) markPreset(''); GK.fill(document, S); recompute(); }
+  ACT.coreSel = function (el) { selCore = +el.getAttribute('data-i') || 0; if (lastR) { renderZone(lastR); renderSection(lastR); } };
+  ACT.coreAdd = function () {
+    if (!lastR) return; var gs = coresGeom(lastR); if (!gs.length || gs.length >= CORE_MAX) return;
+    /* 지금 코어들을 면적까지 확정하고, 새 코어 (기준층 8%) 는 다른 코어와 가장 멀리 떨어진 자리 */
+    var list = gs.map(function (q) { return { x: q.px, y: q.py, a: q.Ac, asp: q.cw / q.cd }; }), Au = gs[0].Au, L = gs[0].L, B = gs[0].B;
+    var na = Math.min(Au * 0.08, Math.max(Au * 0.03, Au * 0.6 - gs.reduce(function (t, q) { return t + q.Ac; }, 0))), sh = coreShape(na, 1.3, L, B), best = null;
+    [[0.08, 0.5], [0.92, 0.5], [0.5, 0.08], [0.5, 0.92], [0.08, 0.08], [0.92, 0.92], [0.08, 0.92], [0.92, 0.08], [0.3, 0.5], [0.7, 0.5]].forEach(function (p) {
+      var cx = p[0] * (L - sh.cw) + sh.cw / 2, cy = p[1] * (B - sh.cd) + sh.cd / 2, dmin = gs.reduce(function (m, q) { return Math.min(m, Math.hypot(q.x0 + q.cw / 2 - cx, q.y0 + q.cd / 2 - cy)); }, 1e9);
+      if (!best || dmin > best.d) best = { d: dmin, x: p[0], y: p[1] };
+    });
+    list.push({ x: best.x, y: best.y, a: na, asp: 1.3 }); setCores(list); selCore = list.length - 1; coreChanged();
+  };
+  ACT.coreDel = function () {
+    var list = coreList(); if (list.length <= 1 || !lastR) return;
+    var gs = coresGeom(lastR); list = gs.filter(function (q) { return q.i !== selCore; }).map(function (q) { return { x: q.px, y: q.py, a: q.Ac, asp: q.cw / q.cd }; });
+    setCores(list); selCore = Math.min(selCore, list.length - 1); coreChanged();
+  };
+  ACT.coreSize = function (el) {
+    if (!lastR) return; var d = +el.getAttribute('data-d'), gs = coresGeom(lastR), g = gs[selCore]; if (!g) return;
+    if (!d) { S.adv = S.adv || {}; delete S.adv.cores; delete S.adv.coreA; delete S.adv.coreAsp; delete S.adv.coreX; delete S.adv.coreY; selCore = 0; coreChanged(); return; }
+    var others = gs.reduce(function (t, q) { return q.i === g.i ? t : t + q.Ac; }, 0), r = Math.max(0.03, Math.min(0.6 - others / g.Au, Math.round(g.Ac / g.Au * 100) / 100 + d * 0.02));
+    var list = gs.map(function (q) { return { x: q.px, y: q.py, a: q.set || gs.length > 1 || q.i === g.i ? q.Ac : null, asp: q.cw / q.cd }; });
+    list[g.i].a = g.Au * r; setCores(list); coreChanged();
+  };
   function bindTip() {
     var box = $('#gantt'), pin = false;
     box.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse') return; var ga = e.target.closest && e.target.closest('.ga'); if (ga) { pin = false; showTip(+ga.getAttribute('data-a'), e.clientX, e.clientY); } else if (!pin) hideTip(); });
@@ -3255,9 +3301,10 @@ details.ss[open] > summary::after { content: "접기"; }
     }
     /* 지상층 (입면) */
     /* 코어 띠 : 평면 (조닝 지상 판) 에서 옮긴 코어 위치를 긴 변 방향으로 그대로 — 옥탑은 코어 위에 */
-    var up = '', elL = '', cg = coreGeom(R), coreX0 = 0, coreW = 0;
-    if (cg) { coreW = Math.max(6, cg.cw / cg.L * (tR - tL)); coreX0 = tL + cg.x0 / cg.L * (tR - tL); }
-    else if (hasCore) { coreW = Math.max(8, (tR - tL) * 0.2); coreX0 = cx - coreW / 2; }
+    /* 코어가 여러 개면 띠도 여러 개 (긴 변 방향 위치 그대로), 옥탑은 가장 큰 코어 위 */
+    var up = '', elL = '', gsS = coresGeom(R), bands = gsS.map(function (q) { return { x0: tL + q.x0 / q.L * (tR - tL), w: Math.max(6, q.cw / q.L * (tR - tL)), A: q.Ac }; }), coreX0 = 0, coreW = 0;
+    if (!bands.length && hasCore) bands = [{ x0: cx - Math.max(8, (tR - tL) * 0.2) / 2, w: Math.max(8, (tR - tL) * 0.2), A: 1 }];
+    if (bands.length) { var big = bands.slice().sort(function (a, c) { return c.A - a.A; })[0]; coreX0 = big.x0; coreW = big.w; }
     rows.forEach(function (r, gi) {
       if (r.bl) return;
       var gr = r.gr, isPH = gr.kind === 'ph', w = isPH ? Math.max(26, (tR - tL) * 0.36) : (gr.kind === 'b' ? bR - bL : tR - tL), x = cx - w / 2;
@@ -3265,7 +3312,7 @@ details.ss[open] > summary::after { content: "접기"; }
       r.xr = x + w;
       up += Rc(x, r.y0, w, r.hp, 'url(#' + id + '-glass)');
       var ca = coreW ? Math.max(x, coreX0) : 0, cb = coreW ? Math.min(x + w, coreX0 + coreW) : 0;
-      if (cb > ca) up += Rc(ca, r.y0, cb - ca, r.hp, '#E3EAF5') + Ln(ca, r.y0, ca, r.y1, '#A4B6D1', 0.7) + Ln(cb, r.y0, cb, r.y1, '#A4B6D1', 0.7);
+      bands.forEach(function (bd) { var qa = Math.max(x, bd.x0), qb = Math.min(x + w, bd.x0 + bd.w); if (qb > qa) up += Rc(qa, r.y0, qb - qa, r.hp, '#E3EAF5') + Ln(qa, r.y0, qa, r.y1, '#A4B6D1', 0.7) + Ln(qb, r.y0, qb, r.y1, '#A4B6D1', 0.7); });
       var segN = gr.cnt > 1 ? Math.min(gr.cnt, 6) : 1;
       for (var j = 1; j < segN; j++) { var yj = r.y0 + r.hp * j / segN; up += Ln(x, yj, x + w, yj, '#C6D1E0', 0.6); }
       if (gr.n > 1) {
@@ -3467,41 +3514,100 @@ details.ss[open] > summary::after { content: "접기"; }
   /* ───────── 조닝 : 아이소메트릭 적층 (기준층 · 지하골조 · 기초, 같은 축척) */
   /* 지상 코어 : 면적 = 코어 비율 (DC 는 엔진 코어 면적), 모양은 깊이 ≤ 단변 0.6 의 직사각형.
      위치 (S.adv.coreX · coreY = 0~1, 남는 폭 안의 비율) 는 조닝 판에서 드래그 — 공기 계산에는 쓰지 않는 배치 가정 */
-  function coreGeom(R) {
-    var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
-    if (!(Au > 0)) return null;
-    /* RC (코어 별도 경로 없음) 도 코어 벽체는 있으므로 같은 비율의 '일체 타설' 코어로 배치 · PIT 위치에만 쓴다 */
-    /* 크기 : S.adv.coreA (㎡, 엔진 입력과 같은 값) · 모양 : S.adv.coreAsp (긴 변 ÷ 짧은 변 방향 비, 조닝 판 손잡이로) */
-    var A = S.adv || {}, Ac = A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio, integ = !(ty.dc || ty.core); if (!(Ac > 0)) return null;
-    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd, cw;
-    if (A.coreAsp > 0) { cd = Math.sqrt(Ac / A.coreAsp); cw = Ac / cd; if (cw > L * 0.95) { cw = L * 0.95; cd = Ac / cw; } if (cd > B * 0.95) { cd = B * 0.95; cw = Math.min(L * 0.95, Ac / cd); } }
-    else { cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)); cw = Ac / cd; if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); } }
-    var px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
-    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac, Au: Au, integ: integ, set: A.coreA > 0 };
+  /* 지상 코어 (여러 개) : S.adv.cores = [{ x, y, a, asp }] — x · y = 남는 폭 안의 위치 비율 (0~1), a = 면적 ㎡ (없으면 기본 몫), asp = 폭 ÷ 깊이.
+     배열이 없으면 옛 한 개 (coreX · coreY · coreA · coreAsp). 면적이 모두 정해지면 합계 = adv.coreA (엔진 입력 : 철골 · 강합성 · DC 의 코어 · 바닥 Zone).
+     RC (코어 별도 경로 없음) 도 코어 벽체는 있으므로 '일체 타설' 코어로 배치 · PIT 위치 · 지하 수직재에만 쓴다 */
+  var selCore = 0, CORE_MAX = 4;
+  function coreDefA(R) { var ty = R.frame.typ; return ty.dc ? ty.dc.Ac : R.frame.Atyp * LIB.frame.core.ratio; }
+  function coreList() {
+    var A = S.adv || {};
+    if (Array.isArray(A.cores) && A.cores.length) return A.cores;
+    return [{ x: A.coreX, y: A.coreY, a: A.coreA > 0 ? +A.coreA : null, asp: A.coreAsp > 0 ? +A.coreAsp : null }];
   }
-  /* PIT : 지상 코어 아래 (평면 비율 위치를 기초 평면에 그대로) 의 기초 Zone — 수는 S.adv.pitN (사례 보정값), 없으면 2개.
+  function setCores(list) {
+    S.adv = S.adv || {};
+    S.adv.cores = list.map(function (c) { return { x: +(+c.x).toFixed(3), y: +(+c.y).toFixed(3), a: c.a > 0 ? Math.round(c.a) : null, asp: c.asp > 0 ? +(+c.asp).toFixed(3) : null }; });
+    var all = S.adv.cores.every(function (c) { return c.a > 0; });
+    if (all) S.adv.coreA = S.adv.cores.reduce(function (t, c) { return t + c.a; }, 0); else delete S.adv.coreA;
+    delete S.adv.coreX; delete S.adv.coreY; delete S.adv.coreAsp;
+  }
+  function coreShape(Ac, asp, L, B) {
+    var cd, cw;
+    if (asp > 0) { cd = Math.sqrt(Ac / asp); cw = Ac / cd; if (cw > L * 0.95) { cw = L * 0.95; cd = Ac / cw; } if (cd > B * 0.95) { cd = B * 0.95; cw = Math.min(L * 0.95, Ac / cd); } }
+    else { cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)); cw = Ac / cd; if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); } }
+    return { cw: cw, cd: cd };
+  }
+  function coresGeom(R) {
+    var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
+    if (!(Au > 0)) return [];
+    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), integ = !(ty.dc || ty.core), list = coreList(), defA = coreDefA(R);
+    if (!(defA > 0)) return [];
+    var c01 = function (v) { return v != null && v !== '' && isFinite(v) ? Math.max(0, Math.min(1, +v)) : 0.5; };
+    return list.map(function (c, i) {
+      var Ac = c.a > 0 ? Math.min(+c.a, Au * 0.6) : defA / list.length, sh = coreShape(Ac, c.asp, L, B), px = c01(c.x), py = c01(c.y);
+      return { i: i, L: L, B: B, cw: sh.cw, cd: sh.cd, px: px, py: py, x0: px * (L - sh.cw), y0: py * (B - sh.cd), Ac: Ac, Au: Au, integ: integ, set: c.a > 0 };
+    });
+  }
+  /* 다른 평면 (기초 · 지하) 으로 옮길 때 : 코어 중심의 평면 비율 위치를 그대로, 크기는 실제 크기 (판 안으로) */
+  function coreOn(cg, Lt, Bt) {
+    var cw = Math.min(cg.cw, Lt * 0.95), cd = Math.min(cg.cd, Bt * 0.95), cx = (cg.x0 + cg.cw / 2) / cg.L * Lt, cy = (cg.y0 + cg.cd / 2) / cg.B * Bt;
+    return { cw: cw, cd: cd, x0: Math.max(0, Math.min(Lt - cw, cx - cw / 2)), y0: Math.max(0, Math.min(Bt - cd, cy - cd / 2)), cx: cx, cy: cy };
+  }
+  /* 지하 수직재용 코어 벽 비 = 코어 둘레 합 ÷ 기본 코어 1개 둘레 (기본 1개 그대로면 1) */
+  function coreWallK(R) {
+    var gs = coresGeom(R); if (!gs.length) return 1;
+    var L = gs[0].L, B = gs[0].B, d0 = coreShape(coreDefA(R), null, L, B), p0 = 2 * (d0.cw + d0.cd);
+    return gs.reduce(function (t, g) { return t + 2 * (g.cw + g.cd); }, 0) / Math.max(1e-6, p0);
+  }
+  /* PIT : 각 코어 아래 기초 Zone (가까운 순). 수 = S.adv.pitN (사례 보정값) 을 코어 면적 비로 나눔, 없으면 코어당 2개.
      부분 지하는 깊은 구간 Zone 안에서만. 지하층 없으면 PIT 없음 */
   function pitUnderCore(R) {
-    var f = R.found, b = R.basic, cg = coreGeom(R);
-    if (!cg || b.nB === 0 || !(f.nZ > 0)) return null;
-    var Af = f.Af > 0 ? f.Af : R.geo.bldg, Lf = Math.sqrt(Af * 1.6), Bf = Math.sqrt(Af / 1.6), n = S.adv && S.adv.pitN > 0 ? Math.round(S.adv.pitN) : 2;
-    var tx = (cg.x0 + cg.cw / 2) / cg.L * Lf, ty = (cg.y0 + cg.cd / 2) / cg.B * Bf;
+    var f = R.found, b = R.basic, gs = coresGeom(R);
+    if (!gs.length || b.nB === 0 || !(f.nZ > 0)) return null;
+    var Af = f.Af > 0 ? f.Af : R.geo.bldg, Lf = Math.sqrt(Af * 1.6), Bf = Math.sqrt(Af / 1.6);
     var cells = zgridPlan(0, 0, Lf, Bf, f.nZ, function (i) { return { i: i }; }).filter(function (c) { return !(f.nDeep > 0 && f.nDeep < f.nZ) || c.i < f.nDeep; });
-    cells.forEach(function (c) { c.d = Math.hypot((c.X0 + c.X1) / 2 - tx, (c.Y0 + c.Y1) / 2 - ty); });
-    return cells.sort(function (a, c) { return a.d - c.d; }).slice(0, Math.max(1, Math.min(n, cells.length))).map(function (c) { return c.i; });
+    var n = Math.min(cells.length, S.adv && S.adv.pitN > 0 ? Math.round(S.adv.pitN) : 2 * gs.length), per = splitBy(n, gs.map(function (g) { return g.Ac; }), true), used = {}, out = [];
+    gs.forEach(function (g, k) {
+      var m = coreOn(g, Lf, Bf);
+      cells.filter(function (c) { return !used[c.i]; }).map(function (c) { return { i: c.i, d: Math.hypot((c.X0 + c.X1) / 2 - m.cx, (c.Y0 + c.Y1) / 2 - m.cy) }; })
+        .sort(function (a, c) { return a.d - c.d; }).slice(0, per[k]).forEach(function (c) { used[c.i] = 1; out.push(c.i); });
+    });
+    return out.length ? out : null;
+  }
+  /* 정수 N 을 가중치 비로 나눔 (큰 나머지 순), atLeast1 이면 N 이 충분할 때 각 1개 이상 */
+  function splitBy(N, ws, atLeast1) {
+    var tot = ws.reduce(function (t, w) { return t + w; }, 0) || 1, k = ws.length, base = atLeast1 && N >= k ? 1 : 0, rest = N - base * k;
+    var n = ws.map(function (w) { return base + Math.floor(rest * w / tot); }), left = N - n.reduce(function (t, v) { return t + v; }, 0);
+    ws.map(function (w, i) { return { i: i, f: rest * w / tot - Math.floor(rest * w / tot) }; }).sort(function (a, b) { return b.f - a.f; }).forEach(function (q) { if (left > 0) { n[q.i]++; left--; } });
+    return n;
   }
   function coreWhere(cg) {
     var e = 0.04, edge = cg.px < e || cg.px > 1 - e || cg.py < e || cg.py > 1 - e;
     return (cg.px < 0.3 ? '좌측' : cg.px > 0.7 ? '우측' : '중앙') + ' · ' + (edge ? '외주부 면함' : '내부');
   }
-  /* 바닥 Zone : 코어를 뺀 나머지 (코어 왼쪽 · 위 · 아래 · 오른쪽 띠) 에 면적 비례로 나눠 이어 번호 */
-  function slabCells(L, B, cg, N, cellOf) {
-    if (!cg) return zgridPlan(0, 0, L, B, N, cellOf);
-    var x0 = cg.x0, x1 = cg.x0 + cg.cw, y0 = cg.y0, y1 = cg.y0 + cg.cd;
-    var rs = [[0, 0, x0, B], [x0, 0, x1 - x0, y0], [x0, y1, x1 - x0, B - y1], [x1, 0, L - x1, B]].filter(function (r) { return r[2] > 0.5 && r[3] > 0.5; });
-    var tot = rs.reduce(function (a, r) { return a + r[2] * r[3]; }, 0), n = rs.map(function (r) { return Math.floor(N * r[2] * r[3] / tot); }), left = N - n.reduce(function (a, v) { return a + v; }, 0);
-    rs.map(function (r, i) { return { i: i, f: N * r[2] * r[3] / tot - n[i] }; }).sort(function (a, b) { return b.f - a.f; }).forEach(function (q) { if (left > 0) { n[q.i]++; left--; } });
-    var out = [], base = 0;
+  /* 바닥 Zone : 코어들을 뺀 빈 영역을 세로 띠로 쪼개 (같은 위아래 경계면 이어 붙임) 직사각형 목록 → 면적 비로 Zone 을 나눠 이어 번호 */
+  function freeRects(L, B, holes) {
+    var xs = [0, L]; holes.forEach(function (h) { xs.push(Math.max(0, Math.min(L, h.x0)), Math.max(0, Math.min(L, h.x0 + h.cw))); });
+    xs = xs.sort(function (a, b) { return a - b; }).filter(function (v, i, a) { return !i || v - a[i - 1] > 0.05; });
+    var rects = [];
+    for (var i = 0; i + 1 < xs.length; i++) {
+      var xa = xs[i], xb = xs[i + 1], mid = (xa + xb) / 2;
+      var occ = holes.filter(function (h) { return h.x0 < mid && h.x0 + h.cw > mid; }).map(function (h) { return [Math.max(0, h.y0), Math.min(B, h.y0 + h.cd)]; }).sort(function (a, b) { return a[0] - b[0]; });
+      var y = 0, free = [];
+      occ.forEach(function (o) { if (o[0] > y + 0.05) free.push([y, o[0]]); y = Math.max(y, o[1]); });
+      if (B > y + 0.05) free.push([y, B]);
+      free.forEach(function (f) {
+        var prev = rects.filter(function (r) { return Math.abs(r[0] + r[2] - xa) < 0.01 && Math.abs(r[1] - f[0]) < 0.01 && Math.abs(r[1] + r[3] - f[1]) < 0.01; })[0];
+        if (prev) prev[2] = xb - prev[0]; else rects.push([xa, f[0], xb - xa, f[1] - f[0]]);
+      });
+    }
+    return rects.filter(function (r) { return r[2] > 0.5 && r[3] > 0.5; });
+  }
+  function slabCells(L, B, holes, N, cellOf) {
+    if (!holes || !holes.length) return zgridPlan(0, 0, L, B, N, cellOf);
+    var rs = freeRects(L, B, holes);
+    if (!rs.length) return [];
+    var n = splitBy(N, rs.map(function (r) { return r[2] * r[3]; }), false), out = [], base = 0;
     rs.forEach(function (r, i) {
       if (n[i] > 0) { var b0 = base; out = out.concat(zgridPlan(r[0], r[1], r[2], r[3], n[i], function (j) { return cellOf(b0 + j); })); base += n[i]; }
       else { var nb = cellOf(Math.max(0, base - 1)); nb.t = ''; nb.X0 = r[0]; nb.X1 = r[0] + r[2]; nb.Y0 = r[1]; nb.Y1 = r[1] + r[3]; out.push(nb); }
@@ -3520,7 +3626,7 @@ details.ss[open] > summary::after { content: "접기"; }
   /* 팀 배정 : 이어진 Zone 묶음 = 한 팀. 숫자 = 팀 안 타설 순서, 팀마다 1 Zone 이면 Zone 순서 (모두 '1' 이 되지 않게) */
   function zteams(N, T) { var per = Math.ceil(N / Math.max(1, T)); return function (i) { var t = Math.floor(i / per); return { team: t, ord: per > 1 ? i - t * per + 1 : i + 1 }; }; }
   function isoPlate(o, s, FW, idx) {
-    var C = 0.8660254, pad = 14, tz = o.tz || 9, hc = o.core ? (o.core.integ ? 9 : 20) : 0, Lp = o.Lp, Bp = o.Bp;
+    var cores = o.cores || [], C = 0.8660254, pad = 14, tz = o.tz || 9, hc = cores.reduce(function (m, c) { return Math.max(m, c.hc || (c.integ ? 9 : 20)); }, 0), Lp = o.Lp, Bp = o.Bp;
     var topY = pad + hc + 6, hTop = (Lp + Bp) * 0.5 * s, H = Math.ceil(topY + hTop + tz + 34);
     var cx = FW / 2, ox = cx - (Lp - Bp) / 2 * C * s, oy = topY;
     function P(X, Y, Z) { return [ox + (X - Y) * C * s, oy + (X + Y) * 0.5 * s - (Z || 0)]; }
@@ -3543,17 +3649,24 @@ details.ss[open] > summary::after { content: "접기"; }
     }
     v += cells(o.cells, 0);
     v += Pg([p0, pr, pb, pl], ' fill="none" stroke="var(--ink)" stroke-width="1.3" stroke-linejoin="round"');
-    if (o.core && o.core.cw > 0) {
-      var k0 = o.core.x0 || 0, k1 = k0 + o.core.cw, j0 = o.core.y0 || 0, j1 = j0 + (o.core.cd || Br);
-      v += '<g class="core-h' + (o.core.drag ? ' drag' : '') + '"' + (o.core.drag ? ' tabindex="0" role="slider" aria-label="코어 위치 (드래그 · 방향키)" aria-valuetext="' + esc(o.core.where || '') + '"' : '') + '>';
-      v += Pg([P(k0, j1, 0), P(k1, j1, 0), P(k1, j1, hc), P(k0, j1, hc)], ' fill="#9DB0CC"') + Pg([P(k1, j0, 0), P(k1, j1, 0), P(k1, j1, hc), P(k1, j0, hc)], ' fill="#7F95B8"');
-      v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' fill="#EEF2F8"');
-      v += cells(o.core.cells, hc);
-      v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' class="core-top" fill="none" stroke="var(--navy)" stroke-width="1.1" stroke-linejoin="round"');
-      if (o.core.drag) { var rz = P(k1, j1, hc); v += '<g class="core-rs" transform="translate(' + r1(rz[0]) + ' ' + r1(rz[1]) + ')"><circle r="9" fill="transparent"/><rect x="-5" y="-5" width="10" height="10" rx="2.5" fill="#fff" stroke="var(--navy)" stroke-width="1.4"/><path d="M-2.2 2.2l4.4-4.4" stroke="var(--navy)" stroke-width="1.1" stroke-linecap="round"/></g>'; }
-      if (o.core.drag) { var cm = P(k0, j0, hc); v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="var(--navy)"/><path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>'; }
+    /* 코어 블록 : 뒤 → 앞 순서 (X+Y 작은 것 먼저) 로 그려 가림이 맞게. drag = 지상 판 (끌기 · 크기 손잡이), 아니면 낮은 블록 (지하) */
+    cores.slice().sort(function (a, c) { return (a.x0 + a.cw / 2 + a.y0 + a.cd / 2) - (c.x0 + c.cw / 2 + c.y0 + c.cd / 2); }).forEach(function (cr) {
+      var h = cr.hc || (cr.integ ? 9 : 20), k0 = cr.x0, k1 = k0 + cr.cw, j0 = cr.y0, j1 = j0 + cr.cd;
+      v += '<g class="core-h' + (cr.drag ? ' drag' : '') + (cr.sel ? ' sel' : '') + '" data-core="' + cr.i + '"' + (cr.drag ? ' tabindex="0" role="slider" aria-label="코어 ' + (cr.i + 1) + ' (드래그로 이동 · 방향키 · Delete 삭제)" aria-valuetext="' + esc(cr.where || '') + '"' : '') + '>';
+      v += Pg([P(k0, j1, 0), P(k1, j1, 0), P(k1, j1, h), P(k0, j1, h)], ' fill="' + (cr.drag ? '#9DB0CC' : '#AEBBD0') + '"') + Pg([P(k1, j0, 0), P(k1, j1, 0), P(k1, j1, h), P(k1, j0, h)], ' fill="' + (cr.drag ? '#7F95B8' : '#93A3BD') + '"');
+      v += Pg([P(k0, j0, h), P(k1, j0, h), P(k1, j1, h), P(k0, j1, h)], ' fill="' + (cr.drag ? '#EEF2F8' : '#E4E9F1') + '"');
+      v += cells(cr.cells || [], h);
+      v += Pg([P(k0, j0, h), P(k1, j0, h), P(k1, j1, h), P(k0, j1, h)], ' class="core-top" fill="none" stroke="var(--navy)" stroke-width="' + (cr.sel ? 1.8 : 1.1) + '" stroke-linejoin="round"');
+      if (cr.drag) {
+        var rz = P(k1, j1, h), cm = P(k0, j0, h);
+        v += '<g class="core-rs" transform="translate(' + r1(rz[0]) + ' ' + r1(rz[1]) + ')"><circle r="9" fill="transparent"/><rect x="-5" y="-5" width="10" height="10" rx="2.5" fill="#fff" stroke="var(--navy)" stroke-width="1.4"/><path d="M-2.2 2.2l4.4-4.4" stroke="var(--navy)" stroke-width="1.1" stroke-linecap="round"/></g>';
+        v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="' + (cr.sel ? 'var(--cp)' : 'var(--navy)') + '"/>' +
+          (cores.length > 1 ? T(0, 3.6, String(cr.i + 1), { a: 'middle', fs: 10, w: 700, c: '#fff', cls: 'n' }) : '<path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/>') + '</g>';
+      }
       v += '</g>';
-    }
+    });
+    /* 기초 판 : 지상 코어 자리 (점선) — PIT 가 이 아래 Zone 에 놓인다 */
+    (o.ghostCores || []).forEach(function (g) { v += Pg([P(g.x0, g.y0), P(g.x0 + g.cw, g.y0), P(g.x0 + g.cw, g.y0 + g.cd), P(g.x0, g.y0 + g.cd)], ' fill="rgba(30,58,98,.06)" stroke="var(--navy)" stroke-width="1.1" stroke-dasharray="4 3" stroke-linejoin="round"'); });
     /* 판 두께 표기 (기초 매트) : 오른쪽 앞 모서리 옆 */
     if (o.tLab) { var pq = P(Lr, Br), qx = pq[0] - 6; v += Ln(qx, pq[1] + 1, qx, pq[1] + tz, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + 1, qx + 3, pq[1] + 1, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + tz, qx + 3, pq[1] + tz, 'var(--navy)', 0.9) + T(qx - 6, pq[1] + tz / 2 + 4, o.tLab, { a: 'end', fs: 11.5, w: 600, c: 'var(--navy)', cls: 'n', halo: true }); }
     /* 변 치수 (앞 두 변) */
@@ -3562,7 +3675,7 @@ details.ss[open] > summary::after { content: "접기"; }
     if (Br * s > 34) v += T(nx, ny, '≈ ' + r1(Br) + ' m', { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', cls: 'n', tr: 'rotate(-30 ' + r1(nx) + ' ' + r1(ny) + ')' });
     var svg = svgEl(FW, H, v, o.aria);
     /* 드래그용 : 화면 → 평면 좌표 변환에 쓰는 값 */
-    return o.core && o.core.drag ? svg.replace('<svg ', '<svg data-iso="' + r2(s) + ',' + r2(o.core.cw) + ',' + r2(o.core.cd) + ',' + r2(Lr) + ',' + r2(Br) + '" ') : svg;
+    return cores.some(function (c) { return c.drag; }) ? svg.replace('<svg ', '<svg data-iso="' + r2(s) + ',' + r2(Lr) + ',' + r2(Br) + '" ') : svg;
   }
   /* 팀수 조절 : − n팀 + · 최적이 아니면 '최적 n팀 · 공기' 버튼 */
   function teamCtl(key, lab, cur, sw) {
@@ -3591,7 +3704,7 @@ details.ss[open] > summary::after { content: "접기"; }
         '<div class="iso-fig">' + svgHtml + '</div><div class="iso-cy">' + cyHTML(cy) + '</div></div>';
     }
     /* 기초 : 판 두께 = 매트 두께 (세로 ×4), PIT = 지상 코어 아래 Zone (굵은 테두리) */
-    var oF = '', oB = '', oU = '';
+    var oF = '', oB = '', oU = '', gsAll = coresGeom(R);
     maxT = Math.max(maxT, f.teams);
     if (Af > 0) {
       var Z = f.sim.Z.slice().sort(function (a, c) { return a.pour - c.pour; }), rank = {}, byI = {};
@@ -3601,8 +3714,8 @@ details.ss[open] > summary::after { content: "접기"; }
       oF = row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
         '<b>' + f.nZ + '</b> Zone · 매트 <b>' + r1(g.tMat) + '</b>m',
         teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
-        f.nPit ? 'PIT <b>' + f.nPit + '</b> Zone · 코어 아래' : ''
-      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, tz: tzF, tLab: 't=' + r1(g.tMat) + 'm', aria: '기초 조닝 평면 (아이소메트릭) · 매트 ' + r1(g.tMat) + 'm' }, s, FW, 2), cyFound(R));
+        f.nPit ? 'PIT <b>' + f.nPit + '</b> Zone · 코어 아래 (점선)' : ''
+      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, tz: tzF, tLab: 't=' + r1(g.tMat) + 'm', ghostCores: gsAll.map(function (q) { return coreOn(q, dF.L, dF.B); }), aria: '기초 조닝 평면 (아이소메트릭) · 매트 ' + r1(g.tMat) + 'm · 점선 = 지상 코어 자리' }, s, FW, 2), cyFound(R));
     } else oF = '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
     /* 지하골조 */
     var bs = R.base;
@@ -3615,26 +3728,42 @@ details.ss[open] > summary::after { content: "접기"; }
       maxT = Math.max(maxT, NT);
       var tb = zteams(NZ, NT), ghost = Ab < Af * 0.97;
       var Ldb = ghost ? dF : dB;
-      var cellsB = zgridPlan(0, 0, dB.L, dB.B, NZ, function (i) { var q = tb(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      oB = row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
+      /* 지상 코어는 지하까지 이어진다 (같은 평면 비율 위치 · 실제 크기) — 바닥 Zone 은 그 둘레 */
+      var coresB = gsAll.map(function (q) { var m = coreOn(q, dB.L, dB.B); return { i: q.i, cw: m.cw, cd: m.cd, x0: m.x0, y0: m.y0, integ: true, hc: 8 }; });
+      var cellsB = slabCells(dB.L, dB.B, coresB, NZ, function (i) { var q = tb(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
+      var vF = bs.td ? 1 - LIB.td.coreShare + LIB.td.coreShare * coreWallK(R) : 1;
+      if (coresB.length) sub.push('코어 <b>' + coresB.length + '</b>개 지하까지' + (Math.abs(vF - 1) > 0.005 ? ' · 수직재 ×' + r2(vF) : ''));
+      oB = row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, cores: coresB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
     } else oB = '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
     /* 지상골조 (기준층) : 외주부 (RC = 형틀팀 · 철골 = 철골팀) 와 코어 (RC 코어 = 형틀팀) 를 따로. RC 는 코어 일체 타설 */
     var ty = fr.typ, NP, TP, NC = 0, TC = 0;
     if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; }
     else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; } }
     if (Au > 0) {
-      var cg = coreGeom(R), tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = steel ? '철골팀' : '형틀팀';
-      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: 'var(--t1)', op: 0.36 + 0.2 * (q.team % 3), t: q.ord }; });
-      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, integ: cg.integ, where: coreWhere(cg), cells: NC ? zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) : [] } : null;
+      var gs = gsAll, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = steel ? '철골팀' : '형틀팀';
+      if (selCore >= gs.length) selCore = Math.max(0, gs.length - 1);
+      var cellsU = slabCells(dU.L, dU.B, gs, NP, function (i) { var q = tp(i); return { fill: 'var(--t1)', op: 0.36 + 0.2 * (q.team % 3), t: q.ord }; });
+      /* 코어 Zone 은 코어 면적 비로 나눠 이어 번호 */
+      var perC = NC ? splitBy(NC, gs.map(function (q) { return q.Ac; }), true) : gs.map(function () { return 0; }), cb0 = 0;
+      var coresU = gs.map(function (q, k) {
+        var b0 = cb0, cl = perC[k] ? zgridPlan(q.x0, q.y0, q.cw, q.cd, perC[k], function (j) { var t = tc(b0 + j); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (t.team % 2), t: t.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) : [];
+        cb0 += perC[k];
+        return { i: q.i, cw: q.cw, cd: q.cd, x0: q.x0, y0: q.y0, drag: true, integ: q.integ, sel: gs.length > 1 && q.i === selCore, where: coreWhere(q), cells: cl };
+      });
+      var cs = gs[selCore], totA = gs.reduce(function (t, q) { return t + q.Ac; }, 0);
       oU = row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상골조', Au, dU, [
         '<i class="dot" style="background:var(--t1)"></i>외주부 <b>' + NP + '</b> Zone',
         teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
         NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
         NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
-        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : '',
-        cg ? '<span class="tm core-sz"><span class="tm-k">코어 크기</span><button type="button" class="tm-b" data-coresz="-1" aria-label="코어 줄이기"' + (cg.Ac <= cg.Au * 0.051 ? ' disabled' : '') + '>−</button><b class="tm-v">' + Math.round(cg.Ac / cg.Au * 100) + '</b><span class="tm-u">% · ' + fmt(Math.round(cg.Ac)) + '㎡</span><button type="button" class="tm-b" data-coresz="1" aria-label="코어 키우기"' + (cg.Ac >= cg.Au * 0.599 ? ' disabled' : '') + '>+</button>' +
-          (cg.set ? '<button type="button" class="tm-o" data-coresz="0" title="코어 크기 · 모양을 기본값으로">기본값</button>' : '') + '</span>' : ''
-      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
+        gs.length ? '<span class="core-n">코어 <b>' + gs.length + '</b>개 · ' + Math.round(totA / gs[0].Au * 100) + '% · ' + fmt(Math.round(totA)) + '㎡' +
+          (gs.length < CORE_MAX ? '<button type="button" class="tm-o core-add" data-act="coreAdd" title="코어 추가 (최대 ' + CORE_MAX + '개)">+ 코어</button>' : '') + '</span>' : '',
+        gs.length > 1 ? '<span class="core-pick" role="group" aria-label="코어 고르기">' + gs.map(function (q) { return '<button type="button" data-act="coreSel" data-i="' + q.i + '" class="' + (q.i === selCore ? 'on' : '') + '" aria-pressed="' + (q.i === selCore) + '">' + (q.i + 1) + '</button>'; }).join('') +
+          '<button type="button" class="core-del" data-act="coreDel" title="고른 코어 삭제">삭제</button></span>' : '',
+        cs ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">' + (gs.length > 1 ? '코어 ' + (cs.i + 1) + ' ' : '') + '위치 <b>' + coreWhere(cs) + '</b></span>' : '',
+        cs ? '<span class="tm core-sz"><span class="tm-k">크기</span><button type="button" class="tm-b" data-act="coreSize" data-d="-1" aria-label="코어 줄이기"' + (cs.Ac <= cs.Au * 0.031 ? ' disabled' : '') + '>−</button><b class="tm-v">' + Math.round(cs.Ac / cs.Au * 100) + '</b><span class="tm-u">% · ' + fmt(Math.round(cs.Ac)) + '㎡</span><button type="button" class="tm-b" data-act="coreSize" data-d="1" aria-label="코어 키우기"' + (totA >= cs.Au * 0.599 ? ' disabled' : '') + '>+</button>' +
+          (S.adv && (S.adv.cores || S.adv.coreA > 0 || S.adv.coreAsp > 0) ? '<button type="button" class="tm-o" data-act="coreSize" data-d="0" title="코어를 기본 1개 (기본 크기 · 가운데) 로">기본값</button>' : '') + '</span>' : ''
+      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, cores: coresU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
     } else oU = '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
     var lg = ''; for (var t = 0; t < Math.min(maxT, 8); t++) lg += '<span><i style="background:' + TEAMC[t] + ';opacity:.7"></i>' + (t + 1) + '팀</span>';
     lg += '<span><i style="background:#fff;box-shadow:inset 0 0 0 2px var(--cp)"></i>PIT Zone</span>';
@@ -3735,13 +3864,6 @@ details.ss[open] > summary::after { content: "접기"; }
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var ac = t.closest('[data-act]'); if (ac && ACT[ac.getAttribute('data-act')]) { ACT[ac.getAttribute('data-act')](ac, e); return; }
       var pb = t.closest('[data-p]'); if (pb) { loadPreset(pb.getAttribute('data-p')); return; }
-      var cz = t.closest('[data-coresz]');
-      if (cz && lastR) {
-        var cgz = coreGeom(lastR), dz = +cz.getAttribute('data-coresz'); S.adv = S.adv || {};
-        if (!dz) { delete S.adv.coreA; delete S.adv.coreAsp; }
-        else { var rr = Math.max(0.05, Math.min(0.6, Math.round(cgz.Ac / cgz.Au * 100) / 100 + dz * 0.02)); S.adv.coreA = Math.round(cgz.Au * rr); if (!(S.adv.coreAsp > 0)) S.adv.coreAsp = +(cgz.cw / cgz.cd).toFixed(3); }
-        if (current) markPreset(''); GK.fill(document, S); recompute(); return;
-      }
       var ts = t.closest('[data-tstep],[data-topt]');
       if (ts) {
         var tm = ts.closest('[data-team]'), key = tm.getAttribute('data-team'), cur = +tm.querySelector('.tm-v').textContent, mx = +tm.getAttribute('data-max') || 10;
