@@ -1,0 +1,698 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>공기산정 벤토 입체</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/*__KITCSS__*/
+/* 디자인 옵션 7 · 벤토 · 입체 — 처음부터 새로 짠 화면
+   미니멀 벤토 그리드 : 넉넉한 여백 · 아주 큰 숫자 · 부드러운 깊이 · 타일마다 한 가지 통찰
+   조닝 = 아이소메트릭 적층 (기초 · 지하 · 기준층 판을 같은 축척으로) · 단면 = 입면 일러스트 톤 + 정확한 치수
+   팔레트 : 밝은 회백 바탕 + 흰 타일 · 먹색 글자 · 남청은 강조 한 점 · 팀 색 = 코발트 · 청록 · 황토 · 회청 · 쑥 · 하늘 · C.P = 주홍빛 빨강 */
+:root {
+  color-scheme: light;
+  --bg: #F2F3F0; --tile: #FFFFFF; --sheet: #FFFFFF; --sheet-2: #F7F8F8; --band: #F3F4F6;
+  --ink: #141820; --ink-2: #434A57; --ink-3: #636B78; --rule: #E1E4E8; --rule-2: #ECEEF1;
+  --navy: #1E3A62; --accent: #2D5FAE; --accent-soft: #E9EFF8; --steel: #5A6A82;
+  --cp: #D1382C; --cp-ink: #FFFFFF; --cp-soft: #FBE9E6; --cp-deep: #A52A20;
+  --ok: #2E7A5A; --ok-soft: #E4F1EA; --warn: #8E651B; --warn-soft: #F7F0E1;
+  --slate: #98A0AC; --slate-2: #CBD1D9; --slate-3: #E8EBEE;
+  --soil: #EEE4CE; --wsoil: #E2D2AF; --wrock: #CDB78E; --srock: #B6BBC1; --hrock: #8E959E; --gwl: #2A7DC0;
+  --t1: #3C6CB4; --t2: #2C9083; --t3: #D19A3B; --t4: #6B7A94; --t5: #87AB6C; --t6: #5BB2D9;
+  --g-prep: #C9CED6; --g-civ: #C9A66C; --g-frame: #2F4D7A; --g-fin: #2C9083;
+  --f-ui: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+  --f-num: "Inter Tight", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --r-tile: 22px; --r-in: 12px;
+  --sh-tile: 0 1px 1px rgba(20, 24, 32, .03), 0 2px 6px -2px rgba(20, 24, 32, .05), 0 22px 44px -28px rgba(20, 24, 32, .24);
+  --gut-l: max(clamp(16px, 2.4vw, 32px), env(safe-area-inset-left, 0px));
+  --gut-r: max(clamp(16px, 2.4vw, 32px), env(safe-area-inset-right, 0px));
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3 { text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.num, .n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+svg text { font-family: var(--f-ui); }
+svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── 머리 띠 */
+.top { position: sticky; top: 0; z-index: 30; background: rgba(242, 243, 240, .86); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid rgba(20, 24, 32, .06); padding: env(safe-area-inset-top, 0px) var(--gut-r) 0 var(--gut-l); }
+.top-in { max-width: 1400px; margin: 0 auto; height: 68px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.glyph { width: 38px; height: 38px; border-radius: 12px; background: var(--tile); box-shadow: var(--sh-tile); display: grid; place-items: center; flex: none; }
+.brand-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.brand-t b { font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+.brand-t span { font-size: 13px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.presets { display: flex; gap: 2px; padding: 4px; background: rgba(255, 255, 255, .7); border: 1px solid var(--rule); border-radius: 999px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.presets::-webkit-scrollbar { display: none; }
+.presets button { border: 0; background: transparent; border-radius: 999px; padding: 7px 15px; font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+.presets button small { font-size: 12.5px; color: var(--ink-3); font-weight: 400; margin-left: 3px; }
+.presets button:hover { color: var(--ink); background: rgba(20, 24, 32, .04); }
+.presets button.on { background: var(--ink); color: #fff; box-shadow: 0 2px 8px -2px rgba(20, 24, 32, .4); }
+.presets button.on small { color: rgba(255, 255, 255, .7); }
+.top-r { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+.mini { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+.mini b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; color: var(--ink); font-weight: 600; margin: 0 2px 0 6px; }
+.btn { border: 1px solid var(--rule); background: var(--tile); border-radius: 999px; padding: 9px 18px; font-size: 14.5px; font-weight: 500; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.btn:hover { border-color: var(--slate); }
+.btn.pri { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.pri:hover { background: #2A303B; }
+.btn:disabled { opacity: .55; cursor: default; }
+.link { border: 0; background: none; padding: 2px 0; color: var(--accent); font-size: 14px; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(45, 95, 174, .3); text-underline-offset: 3px; }
+.link:hover { text-decoration-color: currentColor; }
+.links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; }
+
+/* ── 벤토 그리드 */
+.wrap { padding: 22px var(--gut-r) 48px var(--gut-l); }
+.bento { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.tile { grid-column: span 12; background: var(--tile); border-radius: var(--r-tile); box-shadow: var(--sh-tile); padding: 26px 28px 28px; min-width: 0; position: relative; }
+.th { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 18px; flex-wrap: wrap; margin-bottom: 18px; }
+.th h2 { font-size: 19px; font-weight: 700; letter-spacing: -.015em; line-height: 1.3; display: flex; align-items: baseline; gap: 10px; }
+.th h2 .idx { font-family: var(--f-num); font-size: 13px; font-weight: 600; color: var(--ink-3); letter-spacing: .02em; }
+.th .sub { font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+.th.sm { margin-bottom: 14px; }
+.th.sm h2 { font-size: 16px; }
+.eyebrow { font-size: 14px; font-weight: 500; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+.eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cp); }
+.muted { color: var(--ink-3); }
+
+/* 히어로 : 총 공기 */
+.t-hero { overflow: hidden; display: flex; flex-direction: column; }
+.hero-deco { position: absolute; right: -18px; top: -6px; width: 230px; height: 190px; pointer-events: none; opacity: .9; }
+.big { display: flex; align-items: baseline; gap: 12px; margin: 14px 0 4px; position: relative; }
+.big b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: clamp(84px, 8.6vw, 150px); line-height: .88; letter-spacing: -.05em; color: var(--ink); }
+.big small { font-size: 24px; color: var(--ink-3); font-weight: 500; letter-spacing: -.01em; }
+.exact { font-size: 15px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 0; align-items: center; position: relative; }
+.exact b { font-weight: 600; color: var(--ink); }
+.exact .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--slate); margin: 0 10px; }
+.rg { margin-top: 26px; }
+.rg-k { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; color: var(--ink-3); }
+.rg-k b { font-size: 17px; color: var(--ink); font-weight: 600; }
+.rg-track { position: relative; height: 26px; margin-top: 10px; }
+.rg-track::before { content: ""; position: absolute; left: 0; right: 0; top: 12px; height: 2px; border-radius: 2px; background: var(--rule); }
+.rg-band { position: absolute; top: 8px; height: 10px; border-radius: 6px; background: linear-gradient(90deg, #E0E7F2, #C4D2EA 50%, #E0E7F2); }
+.rg-band::before, .rg-band::after { content: ""; position: absolute; top: -3px; width: 1.5px; height: 16px; background: #9DB0CF; }
+.rg-band::before { left: 0; } .rg-band::after { right: 0; }
+.rg-dot { position: absolute; top: 1px; width: 3px; height: 24px; margin-left: -1.5px; border-radius: 2px; background: var(--ink); }
+.rg-lab { position: relative; height: 20px; font-size: 13px; color: var(--ink-3); }
+.rg-lab span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.rg-lab span.now { color: var(--ink); font-weight: 600; }
+.why { margin-top: 22px; position: relative; padding: 13px 16px 14px 18px; border-radius: 14px; background: var(--sheet-2); font-size: 14.5px; color: var(--ink-2); line-height: 1.5; }
+.why::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--cp); }
+.why .k { display: block; font-size: 13px; font-weight: 600; color: var(--cp-deep); letter-spacing: .01em; margin-bottom: 2px; }
+.why b { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+.why b .num { font-weight: 600; }
+.why .pc { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--cp-deep); margin-left: 6px; font-size: 14px; }
+.why .ctx { display: block; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.comp { margin-top: 18px; }
+.comp-k { font-size: 13.5px; color: var(--ink-3); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; }
+.fl-wrap { position: relative; }
+.fl-strip { display: flex; height: 30px; gap: 2px; }
+.fl-strip i { display: flex; align-items: center; justify-content: center; min-width: 2px; border-radius: 4px; font-style: normal; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; font-family: var(--f-ui); letter-spacing: -.01em; }
+.fl-strip i:first-child { border-radius: 8px 4px 4px 8px; } .fl-strip i:last-child { border-radius: 4px 8px 8px 4px; }
+.fl-strip i .n { margin-left: 4px; font-weight: 700; }
+.fl-t { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 1.5px solid var(--ink); }
+.fl-t::after { content: ""; position: absolute; left: -5px; bottom: -4px; width: 7px; height: 7px; background: var(--ink); transform: rotate(45deg); }
+.fl-ax { position: relative; height: 18px; margin-top: 9px; font-size: 12.5px; color: var(--ink-3); }
+.fl-ax span { position: absolute; top: 0; white-space: nowrap; transform: translateX(-50%); }
+.fl-ax span:first-child { transform: none; } .fl-ax span:last-child { transform: translateX(-100%); }
+.comp-leg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.comp-leg div { font-size: 13.5px; color: var(--ink-3); min-width: 0; }
+.comp-leg .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.comp-leg b { display: block; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; line-height: 1.2; }
+.comp-leg b small { font-size: 13px; font-weight: 500; color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.hero-foot { margin-top: auto; padding-top: 22px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 14px; color: var(--ink-2); }
+.hero-foot .dt b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); font-size: 15.5px; margin-left: 4px; }
+.wchip { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 4px 12px; text-decoration: none; }
+.wchip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.wchip.ok { color: var(--ok); background: var(--ok-soft); }
+
+/* 마일스톤 */
+.t-ms { display: flex; flex-direction: column; }
+.ms-list { display: flex; flex-direction: column; }
+.ms-flow { margin-top: auto; padding-top: 18px; }
+.ms-item { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 11px 0 13px; border-top: 1px solid var(--rule-2); }
+.ms-item:first-child { border-top: 0; }
+.ms-item .d { width: 12px; height: 12px; border-radius: 4px; transform: rotate(45deg); background: var(--navy); }
+.ms-item.end .d { background: var(--cp); }
+.ms-item .k { font-size: 15.5px; font-weight: 600; color: var(--ink); }
+.ms-item .s { font-size: 13px; color: var(--ink-3); }
+.ms-item .v { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: clamp(28px, 2.6vw, 38px); font-weight: 600; letter-spacing: -.035em; color: var(--ink); text-align: right; line-height: 1.05; }
+.ms-item .v small { font-size: .5em; font-weight: 500; color: var(--ink-3); letter-spacing: 0; margin-right: 2px; }
+.ms-item.end .v { color: var(--cp); }
+.ms-item .bar { grid-column: 2 / 4; position: relative; height: 5px; border-radius: 3px; background: var(--slate-3); margin-top: -2px; overflow: hidden; }
+.ms-item .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.ms-item .bar i.done { left: 0; background: var(--slate-2); }
+
+/* 빠른 입력 타일 */
+.t-quick { display: flex; flex-direction: column; }
+.quick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.qb { display: flex; flex-direction: column; }
+.qlinks { margin-top: auto; padding-top: 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; border-top: 1px solid var(--rule-2); margin-bottom: -4px; }
+.t-quick .quick { margin-bottom: 16px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.step > label { display: block; font-size: 13.5px; color: var(--ink-3); margin-bottom: 6px; }
+.stp { display: grid; grid-template-columns: 28px minmax(0, 1fr) 28px; align-items: center; background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: 12px; height: 46px; padding: 0 3px; }
+.stp button { width: 28px; height: 38px; border: 0; background: transparent; border-radius: 9px; color: var(--ink-2); font-size: 18px; line-height: 1; }
+.stp button:hover { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 32, .12); }
+.stp input { width: 100%; min-width: 0; border: 0; background: transparent; text-align: center; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; color: var(--ink); padding: 0; -moz-appearance: textfield; }
+.stp input::-webkit-outer-spin-button, .stp input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stp input::placeholder { color: var(--ink-3); font-size: 14px; font-weight: 500; }
+.stp:focus-within { border-color: var(--accent); background: #fff; }
+.qrow { margin-top: 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.qrow > label, .qf > label, .qlab { font-size: 13.5px; color: var(--ink-3); }
+.qgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 12px; }
+.qf { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sel { width: 100%; min-width: 0; height: 40px; border: 1px solid var(--rule-2); border-radius: 11px; background: var(--sheet-2); padding: 0 10px; font-size: 14.5px; color: var(--ink); }
+.sel:hover { border-color: var(--slate-2); }
+.sel:focus { border-color: var(--accent); background: #fff; }
+.sel:disabled { color: var(--ink-3); opacity: .75; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 9px; padding: 7px 4px; font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: #fff; color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(20, 24, 32, .08), 0 3px 10px -4px rgba(20, 24, 32, .25); }
+.seg-wrap + .seg-wrap { margin-top: 10px; }
+.seg-wrap .qlab { display: block; margin-bottom: 5px; }
+
+/* 공통 : 칩 · 범례 */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 16px; }
+.chips span { font-size: 13px; color: var(--ink-2); background: var(--band); border-radius: 999px; padding: 4px 12px; }
+.chips span b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+.chips span.hot { background: var(--cp-soft); color: var(--cp-deep); font-weight: 600; }
+.lg { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-3); margin-top: 14px; align-items: center; }
+.lg span { display: inline-flex; align-items: center; gap: 7px; }
+.lg i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; flex: none; }
+.lg svg { flex: none; display: block; }
+
+/* Master Schedule */
+.chart { width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.chart svg { display: block; }
+.cpf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; margin-top: 16px; padding: 14px 16px; background: var(--sheet-2); border-radius: 14px; font-size: 14px; color: var(--ink-2); }
+.cpf .k { font-weight: 700; color: var(--cp); margin-right: 8px; }
+.cpf .t { white-space: nowrap; }
+.cpf .t b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); margin-left: 2px; }
+.cpf .op { color: var(--slate); margin: 0 4px; font-family: var(--f-num); }
+.cpf .sum { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cp); font-size: 17px; white-space: nowrap; }
+
+/* 가정 단면 */
+.sec7 { position: relative; margin: 0 auto; }
+.sec7 > svg { position: absolute; left: 0; top: 0; }
+.fh { position: absolute; height: 26px; padding: 0 6px; border: 1.5px solid #B9C8E2; border-radius: 8px; background: #F4F7FC; color: var(--ink); font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; text-align: right; -moz-appearance: textfield; transition: border-color .15s, background .15s; }
+.fh::-webkit-outer-spin-button, .fh::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fh:hover { border-color: var(--accent); background: #fff; }
+.fh:focus { outline: 2.5px solid var(--accent); outline-offset: 1px; border-color: var(--accent); background: #fff; }
+.t-sec .chart, .t-zone .chart { overflow-x: auto; }
+.t-sec, .t-zone { display: flex; flex-direction: column; }
+.t-sec #section, .t-zone #zone { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; }
+.tile { scroll-margin-top: 84px; }
+/* 모바일 : 층고 칸은 도면 아래 표 (도면은 전체 폭) */
+.fhl { margin-top: 14px; border-top: 1px solid var(--rule-2); }
+.fhl .fr { display: grid; grid-template-columns: minmax(0, 1fr) 84px 76px 58px; gap: 8px; align-items: center; min-height: 48px; padding: 4px 0; border-bottom: 1px solid var(--rule-2); }
+.fhl .fr.hd { min-height: 34px; font-size: 12.5px; color: var(--ink-3); }
+.fhl .fr.hd span:nth-child(n+2) { text-align: center; }
+.fhl .fl { font-family: var(--f-num); font-weight: 700; font-size: 15.5px; color: var(--ink); line-height: 1.2; min-width: 0; }
+.fhl .fl small { display: block; font-family: var(--f-ui); font-weight: 400; font-size: 12.5px; color: var(--ink-3); }
+.fhl .fr.bl .fl { color: var(--ink-2); }
+.fhl .fp { justify-self: center; font-size: 12.5px; font-weight: 500; color: var(--ink-2); background: var(--band); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px #EFB3AC; }
+.fhl .fe { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
+.fh.fh-l { position: static; width: 100%; height: 38px; font-size: 16px; }
+.kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 22px; }
+.kn li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.kn li i { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 11.5px; font-weight: 700; display: grid; place-items: center; margin-top: 0; }
+
+/* 조닝 (아이소메트릭 적층) */
+.iso { display: flex; flex-direction: column; gap: 4px; }
+.iso-row { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 14px; align-items: center; }
+.iso.nar .iso-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.iso.nar + .iso.nar, .iso.nar .iso-row + .iso-row { margin-top: 10px; }
+/* 좁은 타일 · 큰 판 : 이름 · 면적 · 판단을 한 줄 머리로 (판이 폭을 다 쓰게) */
+.iso.nar .iso-lab { padding: 0 2px 4px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.iso.nar .iso-lab .lv { order: 2; margin: 0; align-self: center; }
+.iso.nar .iso-lab ul { order: 3; }
+.iso.nar .iso-lab .ar { display: flex; align-items: baseline; gap: 4px 8px; margin: 0; }
+.iso.nar .iso-lab .ar span { display: inline; }
+.iso.nar .iso-lab ul { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; gap: 0; margin-top: 4px; }
+.iso.nar .iso-lab ul li + li::before { content: "·"; margin: 0 8px; color: var(--slate); }
+/* 넓은 타일 : 세 판 가로 배치 — 이름 줄 · 판 줄이 열마다 맞도록 (행 = display: contents) */
+.iso.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; grid-auto-flow: column; gap: 0; }
+.iso.cols .iso-row { display: contents; }
+.iso.cols .iso-lab, .iso.cols .iso-fig { padding: 0 18px; }
+.iso.cols .iso-lab { padding-bottom: 12px; }
+.iso.cols .iso-fig { display: flex; align-items: center; justify-content: center; }
+.iso.cols > :nth-child(n+2) > * { border-left: 1px solid var(--rule-2); }
+.iso.cols > :first-child > * { padding-left: 0; }
+.iso.cols .iso-none { grid-row: span 2; align-self: start; margin: 0 12px; }
+.iso-fig svg { display: block; margin: 0 auto; }
+.iso-lab { min-width: 0; }
+.iso-lab .lv { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--ink-3); background: var(--band); border-radius: 6px; padding: 1px 8px; margin-bottom: 6px; }
+.iso-lab h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; line-height: 1.3; }
+.iso-lab .ar { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.iso-lab .ar b { font-size: 18px; color: var(--ink); font-weight: 600; letter-spacing: -.01em; }
+.iso-lab .ar span { display: block; font-size: 13px; color: var(--ink-3); }
+.iso-lab ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.iso-lab ul b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+.iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
+
+/* 공종별 C.P 구간 */
+.cbl { display: flex; flex-direction: column; }
+.cb { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 6px 18px; padding: 12px 0 14px; border-top: 1px solid var(--rule-2); align-items: center; align-content: start; }
+.cb:first-child { border-top: 0; padding-top: 2px; }
+.cb-h { display: flex; flex-direction: column; min-width: 0; }
+.cb-h b { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-h span { font-size: 13px; color: var(--ink-3); }
+.cb-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--band); }
+.cb-bar i { display: flex; align-items: center; justify-content: center; height: 100%; font-style: normal; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
+.cb-bar i.pre { background: repeating-linear-gradient(-45deg, #F6D9D5 0 5px, #FCEFED 5px 10px); color: var(--cp-deep); }
+.cb-bar i.cp { background: var(--cp); color: #fff; }
+.cb-bar i.post { background: repeating-linear-gradient(-45deg, #E2E6EB 0 5px, #F1F3F5 5px 10px); color: var(--ink-2); }
+.cb-bar i.non { background: var(--slate-2); color: var(--ink-2); }
+.cb-w { grid-column: 2; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 13.5px; color: var(--ink-2); min-width: 0; }
+.cb-w .tg { font-weight: 500; }
+.cb-w .bs { flex: 1 1 100%; min-width: 0; margin: 0; padding: 0; border: 0; background: none; text-align: left; font-size: 13.5px; line-height: 1.5; color: var(--ink-3); cursor: pointer;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; border-radius: 4px; }
+.cb-w .bs:hover { color: var(--ink-2); }
+.cb-w .bs[aria-expanded="true"] { display: block; -webkit-line-clamp: unset; color: var(--ink-2); }
+.cb.non .cb-h b { color: var(--ink-3); font-weight: 500; }
+
+/* 주요 판단 */
+.kf7 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kc { background: var(--sheet-2); border-radius: 16px; padding: 14px 16px 15px; display: flex; flex-direction: column; gap: 3px; min-width: 0; position: relative; }
+.kc .kk { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
+.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 21px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.25; overflow-wrap: anywhere; }
+.kc .kw { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.kc.hi { background: #fff; box-shadow: inset 0 0 0 1.5px #F1CBC6; }
+.kc.hi .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
+.kc.hi .kv { font-size: 24px; }
+
+/* 확인 사항 (조용히) */
+.t-warn { padding-top: 20px; padding-bottom: 22px; }
+.wgs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.wg h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.wg h3 .ct { font-family: var(--f-num); font-size: 12.5px; font-weight: 600; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 1px 9px; }
+.wg h3 .ct.ok { color: var(--ok); background: var(--ok-soft); }
+.wg.as h3 .ct { color: var(--steel); background: var(--slate-3); }
+.wl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 6px 28px; }
+.wl li { font-size: 14px; color: var(--ink-2); line-height: 1.5; padding-left: 16px; position: relative; }
+.wl li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 6px; height: 6px; border-radius: 50%; background: #C99A3E; }
+.wl li.none::before { background: var(--ok); }
+.wg.as .wl li { color: var(--ink-3); }
+.wg.as .wl li::before { border-radius: 1px; background: none; box-shadow: inset 0 0 0 1.5px var(--slate); }
+.foot { max-width: 1400px; margin: 22px auto 0; font-size: 13px; color: var(--ink-3); text-align: center; }
+
+/* ── 입력 시트 (오른쪽에서 열리는 전체 입력) */
+dialog.sheet { margin: 0 0 0 auto; padding: 0; border: 0; width: min(760px, 100vw); max-width: 100vw; height: 100vh; height: 100dvh; max-height: 100dvh; border-radius: 26px 0 0 26px; background: var(--bg); color: var(--ink); box-shadow: -30px 0 80px -30px rgba(20, 24, 32, .45); }
+dialog.sheet[open] { display: flex; flex-direction: column; }
+dialog.sheet::backdrop { background: rgba(20, 24, 32, .26); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.sh-h { flex: none; padding: max(18px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 14px 26px; border-bottom: 1px solid var(--rule); background: rgba(242, 243, 240, .96); }
+.sh-h1 { display: flex; align-items: center; gap: 14px; }
+.sh-h1 h2 { font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
+.sh-h1 .tot { margin-left: auto; font-size: 13.5px; color: var(--ink-3); white-space: nowrap; }
+.sh-h1 .tot b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 24px; font-weight: 600; color: var(--ink); margin: 0 3px 0 8px; letter-spacing: -.02em; }
+.xbtn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; font-size: 20px; line-height: 1; color: var(--ink-2); flex: none; }
+.xbtn:hover { color: var(--ink); border-color: var(--slate); }
+.sh-h2 { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.sh-h2 .presets { background: #fff; }
+.sh-h2 .note { font-size: 13px; color: var(--ink-3); }
+.sh-b { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 18px max(24px, env(safe-area-inset-right, 0px)) 40px 26px; display: flex; flex-direction: column; gap: 14px; }
+.ss { background: var(--tile); border-radius: 18px; box-shadow: 0 1px 2px rgba(20, 24, 32, .04); padding: 18px 20px 20px; }
+.ss > h3, .ss > summary { font-size: 16px; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.ss > h3 .h, .ss > summary .h { font-size: 13px; font-weight: 400; color: var(--ink-3); }
+details.ss > summary { list-style: none; cursor: pointer; margin-bottom: 0; }
+details.ss > summary::-webkit-details-marker { display: none; }
+details.ss > summary::after { content: "펼치기"; font-size: 13px; font-weight: 500; color: var(--accent); }
+details.ss[open] > summary { margin-bottom: 14px; }
+details.ss[open] > summary::after { content: "접기"; }
+.g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.g.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g + .g { margin-top: 12px; }
+.g .full { grid-column: 1 / -1; }
+.f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.f > label, .f > .lb { font-size: 13.5px; color: var(--ink-2); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; white-space: nowrap; }
+.f .auto { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--accent); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.in { position: relative; display: flex; align-items: center; }
+.in input, .in select, .f textarea { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--rule); border-radius: var(--r-in); background: var(--sheet-2); color: var(--ink); font-size: 15px; }
+.in input { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.in input[type="text"], .in input[type="month"] { font-family: var(--f-ui); }
+.in input.has-u { padding-right: 44px; }
+.in .u { position: absolute; right: 12px; font-size: 13px; color: var(--ink-3); pointer-events: none; }
+.in input:hover, .in select:hover, .f textarea:hover { border-color: var(--slate-2); }
+.in input:focus, .in select:focus, .f textarea:focus { border-color: var(--accent); background: #fff; }
+.in input::placeholder, .f textarea::placeholder { color: var(--ink-3); }
+.in input[readonly] { background: var(--band); color: var(--ink-2); }
+.in select:disabled { color: var(--ink-3); }
+.f textarea { height: auto; min-height: 68px; padding: 10px 12px; font-family: var(--f-num); font-size: 14px; line-height: 1.5; resize: vertical; }
+.chk { display: flex; align-items: center; gap: 9px; font-size: 14.5px; color: var(--ink-2); cursor: pointer; min-height: 42px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--ink); }
+.gprof { margin: 12px 0 2px; display: flex; flex-direction: column; gap: 6px; }
+.gcap { font-size: 13px; color: var(--ink-3); line-height: 1.55; }
+.gcap b { color: var(--ink-2); font-weight: 500; }
+.gbar { height: 14px; border-radius: 7px; border: 0; }
+.strata7 { display: grid; grid-template-columns: 14px minmax(0, 1fr) 120px 92px; gap: 8px 10px; align-items: center; margin-top: 12px; }
+.strata7 .sw { width: 14px; height: 14px; border-radius: 4px; }
+.strata7 .nm { font-size: 14px; color: var(--ink-2); }
+.strata7 .dp { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
+.strata7 .hd { font-size: 12.5px; color: var(--ink-3); }
+.ss .note { font-size: 13px; color: var(--ink-3); line-height: 1.55; margin-top: 12px; }
+.ss .seg { margin-top: 0; }
+.libw { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.lib7 { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13.5px; }
+.lib7 th { font-size: 12.5px; font-weight: 500; color: var(--ink-3); text-align: right; padding: 0 4px 6px; }
+.lib7 th:first-child { text-align: left; }
+.lib7 td { padding: 3px 4px; border-top: 1px solid var(--rule-2); color: var(--ink-2); }
+.lib7 td input { width: 100%; min-width: 58px; height: 34px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sheet-2); font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; text-align: right; color: var(--ink); }
+.lib7 td input:focus { border-color: var(--accent); background: #fff; }
+.lib-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+.lib-act .note { margin-top: 0; }
+
+@media (min-width: 1180px) {
+  .t-hero { grid-column: 1 / span 5; grid-row: span 2; }
+  .t-ms { grid-column: 6 / span 4; grid-row: span 2; }
+  .t-quick { grid-column: 10 / span 3; grid-row: span 2; }
+  .t-sec { grid-column: 1 / span 7; grid-row: span 2; }
+  .t-zone { grid-column: 8 / span 5; }
+  .t-kf { grid-column: 8 / span 5; }
+  /* 단면이 낮으면 (넓고 낮은 건물) 단면 | 조닝 한 줄 + 주요 판단은 전체 폭 4열 */
+  .bento.kf-wide .t-sec { grid-row: auto; }
+  .bento.kf-wide .t-kf { grid-column: 1 / -1; }
+  .bento.kf-wide .kf7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bento.measure > .tile { align-self: start; }
+  .cbl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 6), auto); grid-auto-flow: column; }
+  .cbl .cb { padding-right: 22px; }
+  .cbl .cb.c0 { border-top: 0; padding-top: 2px; }
+  .cbl .cb.c2 { padding-right: 0; padding-left: 22px; border-left: 1px solid var(--rule-2); }
+}
+@media (min-width: 820px) {
+  .wgs.two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 40px; }
+}
+@media (min-width: 820px) and (max-width: 1179.98px) {
+  .t-hero { grid-column: span 7; grid-row: span 2; }
+  .t-ms { grid-column: span 5; grid-row: span 2; }
+  .t-quick { grid-column: span 12; }
+  .quick { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 32px; }
+}
+@media (max-width: 900px) {
+  .top-in { grid-template-columns: minmax(0, 1fr) auto; height: auto; padding: 10px 0 8px; row-gap: 8px; }
+  .presets.hdr { grid-column: 1 / -1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .mini { display: none; }
+}
+@media (max-width: 640px) {
+  .tile { padding: 20px 18px 22px; border-radius: 20px; }
+  .wrap { padding-top: 14px; }
+  .bento { gap: 12px; }
+  .th h2 { font-size: 18px; }
+  .big b { font-size: 92px; }
+  .comp-leg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kf7 { grid-template-columns: minmax(0, 1fr); }
+  .cb { grid-template-columns: minmax(0, 1fr); }
+  .cb-w { grid-column: 1; }
+  .g, .g.c3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .strata7 { grid-template-columns: 14px minmax(0, 1fr) 96px 72px; }
+  dialog.sheet { border-radius: 0; width: 100vw; }
+  .sh-h, .sh-b { padding-left: 18px; padding-right: 18px; }
+  .brand-t span { max-width: 52vw; }
+  .presets button { padding: 7px 12px; font-size: 13.5px; }
+  .hero-deco { width: 150px; height: 124px; right: -20px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .presets button, .seg button { transition: background .18s, color .18s, box-shadow .18s; }
+}
+</style>
+
+<header class="top" id="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="glyph" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 15.6 3.5 11.4 12 7.2l8.5 4.2z" fill="#E3E8F0"/><path d="M12 12.4 3.5 8.2 12 4l8.5 4.2z" fill="#9FB3D2"/><path d="M12 9.2 6.4 6.4 12 3.6l5.6 2.8z" fill="#1E3A62"/><path d="M3.5 14.6 12 18.8l8.5-4.2" fill="none" stroke="#D1382C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <div class="brand-t"><b>공기산정 에이전트</b><span id="pj">-</span></div>
+    </div>
+    <nav class="presets hdr" id="presets" aria-label="실적 사례 불러오기">
+      <button type="button" data-p="refA">사례 A<small>역타</small></button>
+      <button type="button" data-p="refB">사례 B<small>순타</small></button>
+      <button type="button" data-p="refC">사례 C<small>DC</small></button>
+      <button type="button" data-p="blank">새 프로젝트</button>
+    </nav>
+    <div class="top-r">
+      <span class="mini" aria-hidden="true">총 공기<b id="mini-total">-</b>개월</span>
+      <button class="btn pri" id="open-sheet" type="button" aria-haspopup="dialog">입력 시트</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="bento" id="bento">
+    <section class="tile t-hero" id="t-hero" aria-label="총 공사기간">
+      <svg class="hero-deco" viewBox="0 0 230 190" aria-hidden="true"><g fill="none" stroke-linejoin="round">
+        <path d="M128 146 52 108l76-38 76 38z" fill="#F4F6F9" stroke="#E2E7EE"/><path d="M52 108v8l76 38 76-38v-8" stroke="#E2E7EE"/>
+        <path d="M128 112 70 83l58-29 58 29z" fill="#EEF2F8" stroke="#D9E1EC"/><path d="M70 83v7l58 29 58-29v-7" stroke="#D9E1EC"/>
+        <path d="M128 80 88 60l40-20 40 20z" fill="#E6ECF5" stroke="#CDD8E8"/><path d="M88 60v6l40 20 40-20v-6" stroke="#CDD8E8"/>
+        <path d="M128 40v-22" stroke="#F0B7B0" stroke-width="1.5" stroke-dasharray="3 3"/></g></svg>
+      <div class="eyebrow">총 공사기간 · C.P 합계</div>
+      <div class="big"><b id="h-total">-</b><small>개월</small></div>
+      <div class="exact" id="h-exact"></div>
+      <div class="rg" id="h-range"></div>
+      <div class="why" id="h-why"></div>
+      <div class="hero-foot" id="h-foot"></div>
+    </section>
+
+    <section class="tile t-ms" aria-labelledby="ms-t">
+      <header class="th sm"><h2 id="ms-t">마일스톤</h2><span class="sub" id="ms-sub"></span></header>
+      <div class="ms-list" id="ms-list"></div>
+      <div class="ms-flow comp" id="ms-flow"></div>
+    </section>
+
+    <section class="tile t-quick" aria-labelledby="q1-t">
+      <header class="th sm"><h2 id="q1-t">빠른 입력</h2><span class="sub">바꾸면 바로 다시 계산</span></header>
+      <div class="quick"><div class="qa">
+      <div class="steps">
+        <div class="step"><label for="q-nB">지하</label><div class="stp"><button type="button" data-step="nB" data-d="-1" aria-label="지하 층수 줄이기">−</button><input id="q-nB" data-k="nB" data-type="int" type="number" min="0" max="12" step="1" inputmode="numeric"><button type="button" data-step="nB" data-d="1" aria-label="지하 층수 늘리기">+</button></div></div>
+        <div class="step"><label for="q-nUp">지상</label><div class="stp"><button type="button" data-step="nUp" data-d="-1" aria-label="지상 층수 줄이기">−</button><input id="q-nUp" data-k="nUp" data-type="int" type="number" min="1" max="120" step="1" inputmode="numeric"><button type="button" data-step="nUp" data-d="1" aria-label="지상 층수 늘리기">+</button></div></div>
+        <div class="step"><label for="q-nPH">옥탑</label><div class="stp"><button type="button" data-step="nPH" data-d="-1" aria-label="옥탑 층수 줄이기">−</button><input id="q-nPH" data-k="nPH" data-type="int" type="number" min="0" max="4" step="1" inputmode="numeric" placeholder="자동"><button type="button" data-step="nPH" data-d="1" aria-label="옥탑 층수 늘리기">+</button></div></div>
+      </div>
+      <div class="qrow"><label for="q-use">용도</label><select class="sel" id="q-use" data-k="use">
+        <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div>
+      </div><div class="qb">
+      <div class="seg-wrap"><span class="qlab" id="q-seq-l">공사 순서</span>
+        <div class="seg" data-chips data-k="seq" role="group" aria-labelledby="q-seq-l"><button type="button" data-v="BU">순타</button><button type="button" data-v="TD">역타</button></div></div>
+      <div class="seg-wrap"><span class="qlab" id="q-gr-l">지반</span>
+        <div class="seg" data-chips data-k="ground" role="group" aria-labelledby="q-gr-l"><button type="button" data-v="AUTO">모름</button><button type="button" data-v="SOIL">토사</button><button type="button" data-v="ROCK">암반</button><button type="button" data-v="CUSTOM">주상도</button></div></div>
+      <div class="qgrid">
+        <div class="qf"><label for="q-sup">지보</label><select class="sel" id="q-sup" data-k="support">
+          <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷</option><option value="SLAB">슬래브 지지 (역타)</option></select></div>
+        <div class="qf"><label for="q-struct">골조</label><select class="sel" id="q-struct" data-k="struct">
+          <option value="RC">RC</option><option value="SRC">SRC</option><option value="SC">철골 + RC 코어</option><option value="COMP">강합성 + RC 코어</option></select></div>
+      </div>
+      </div></div>
+      <div class="qlinks"><button class="link" type="button" data-open="in-site">면적 입력</button><button class="link" type="button" data-goto="sec-sec">층고 → 단면</button><button class="link" type="button" data-open="in-wall">공법 전체</button></div>
+    </section>
+
+    <section class="tile t-gantt" id="sec-gantt" aria-labelledby="g-t">
+      <header class="th"><h2 id="g-t"><span class="idx">01</span>Master Schedule</h2><span class="sub" id="g-sub"></span></header>
+      <div class="chart" id="gantt"></div>
+      <div class="cpf" id="cpf"></div>
+      <div class="lg" id="g-lg"></div>
+    </section>
+
+    <section class="tile t-sec" id="sec-sec" aria-labelledby="s-t">
+      <header class="th"><h2 id="s-t"><span class="idx">02</span>가정 단면 · 층고</h2><span class="sub">층고 칸을 바꾸면 바로 다시 계산 · 빨간 점선 = 수직재 2회 타설 이음</span></header>
+      <div class="chips" id="s-chips"></div>
+      <div class="chart" id="section"></div>
+      <ol class="kn" id="s-notes" aria-label="단면 주석"></ol>
+      <div class="lg" id="s-lg"></div>
+    </section>
+
+    <section class="tile t-zone" id="sec-zone" aria-labelledby="z-t">
+      <header class="th"><h2 id="z-t"><span class="idx">03</span>조닝 계획</h2><span class="sub">입력 면적 직사각형 · 장단변비 1.6 가정 · 세 판 같은 축척</span></header>
+      <div class="chart" id="zone"></div>
+      <div class="lg" id="z-lg"></div>
+    </section>
+
+    <section class="tile t-kf" id="sec-kf" aria-labelledby="k-t">
+      <header class="th"><h2 id="k-t"><span class="idx">04</span>주요 판단</h2><span class="sub">빨간 점 = 공기 영향 큼</span></header>
+      <div class="kf7" id="kf"></div>
+    </section>
+
+    <section class="tile t-cpb" id="sec-cpb" aria-labelledby="c-t">
+      <header class="th"><h2 id="c-t"><span class="idx">05</span>공종별 C.P 구간</h2><span class="sub">빗금 빨강 = 앞 공종과 병행 (Non-C.P) · 빨강 = C.P · 회색 = 전체 Non-C.P · 근거 글을 누르면 펼침</span></header>
+      <div class="cbl" id="cpb"></div>
+    </section>
+
+    <section class="tile t-warn" id="sec-warn" aria-labelledby="w-t">
+      <h2 class="sr" id="w-t">확인 사항 · 계산 가정</h2>
+      <div class="wgs" id="wgs">
+        <div class="wg"><h3>확인 사항 <span class="ct" id="w-ct"></span></h3><ul class="wl" id="warns"></ul></div>
+        <div class="wg as" id="notes-g"><h3>계산 가정 <span class="ct" id="n-ct"></span></h3><ul class="wl" id="notes"></ul></div>
+      </div>
+    </section>
+  </div>
+  <p class="foot">결정론적 규칙 엔진 (같은 입력 = 같은 결과) · 화면의 숫자는 모두 계산값 · 1개월 = 30.4일 × 가동률 · 해체공사 별도</p>
+</main>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-t">
+  <div class="sh-h">
+    <div class="sh-h1">
+      <h2 id="sheet-t">입력 시트</h2>
+      <span class="tot" aria-live="polite">총 공기<b id="sh-total">-</b>개월</span>
+      <button class="xbtn" id="sheet-x" type="button" aria-label="입력 시트 닫기">×</button>
+    </div>
+    <div class="sh-h2">
+      <nav class="presets" id="presets2" aria-label="실적 사례 불러오기 (시트)">
+        <button type="button" data-p="refA">사례 A</button><button type="button" data-p="refB">사례 B</button><button type="button" data-p="refC">사례 C</button><button type="button" data-p="blank">새 프로젝트</button>
+      </nav>
+      <button class="btn" id="btn-xlsx" type="button" hidden>엑셀 저장</button>
+      <span class="note">바꾸는 즉시 다시 계산됩니다</span>
+    </div>
+  </div>
+  <div class="sh-b">
+    <section class="ss" aria-labelledby="ss1">
+      <h3 id="ss1">프로젝트</h3>
+      <div class="g">
+        <div class="f full"><label for="in-name">프로젝트명</label><div class="in"><input id="in-name" data-k="name" type="text" autocomplete="off"></div></div>
+        <div class="f"><label for="in-use">용도</label><div class="in"><select id="in-use" data-k="use">
+          <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div></div>
+        <div class="f"><label for="in-start">착공 예정</label><div class="in"><input id="in-start" data-k="start" type="month"></div></div>
+      </div>
+    </section>
+
+    <section class="ss" aria-labelledby="ss2">
+      <h3 id="ss2">건축개요 <span class="h">건폐율 = 건축면적 ÷ 대지면적</span></h3>
+      <div class="g">
+        <div class="f"><label for="in-site">대지면적</label><div class="in"><input id="in-site" data-k="site" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-bldg">건축면적</label><div class="in"><input id="in-bldg" data-k="bldg" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-cov">건폐율 <span class="auto" data-auto="cov"></span></label><div class="in"><input id="in-cov" data-k="cov" data-type="num" type="number" min="0" max="100" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">%</span></div></div>
+        <div class="f"><label for="in-gfa">연면적 합계</label><div class="in"><input id="in-gfa" type="text" readonly tabindex="-1"></div></div>
+        <div class="f"><label for="in-gUp">연면적 (지상)</label><div class="in"><input id="in-gUp" data-k="gfaUp" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-gDn">연면적 (지하)</label><div class="in"><input id="in-gDn" data-k="gfaDn" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
+      </div>
+      <div class="g c3">
+        <div class="f"><label for="in-nB">지하 층수</label><div class="in"><input id="in-nB" data-k="nB" data-type="int" type="number" min="0" max="12" step="1" inputmode="numeric"></div></div>
+        <div class="f"><label for="in-nUp">지상 층수</label><div class="in"><input id="in-nUp" data-k="nUp" data-type="int" type="number" min="1" max="120" step="1" inputmode="numeric"></div></div>
+        <div class="f"><label for="in-nPH">옥탑 <span class="auto" data-auto="nPH"></span></label><div class="in"><input id="in-nPH" data-k="nPH" data-type="int" type="number" min="0" max="4" step="1" inputmode="numeric" placeholder="자동"></div></div>
+      </div>
+    </section>
+
+    <section class="ss" aria-labelledby="ss3">
+      <h3 id="ss3">지반 · 굴착 <span class="h">지반 유형만 골라도 됩니다</span></h3>
+      <div class="seg" data-chips data-k="ground" role="group" aria-labelledby="ss3"><button type="button" data-v="AUTO">모름 (자동)</button><button type="button" data-v="SOIL">토사 지반</button><button type="button" data-v="ROCK">암반 지반</button><button type="button" data-v="CUSTOM">주상도 입력</button></div>
+      <div class="gprof"><div class="gbar" id="gbar" aria-hidden="true"></div><div class="gcap" id="gcap"></div></div>
+      <div class="strata7" id="strata-in" hidden>
+        <span></span><span class="hd">지층</span><span class="hd">두께</span><span class="hd" style="text-align:right">GL 깊이</span>
+        <span class="sw" style="background:var(--soil)"></span><label class="nm" for="in-s0">매립 · 퇴적층 (토사)</label><div class="in"><input id="in-s0" data-k="strata.0" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">m</span></div><span class="dp" data-dp="0"></span>
+        <span class="sw" style="background:var(--wsoil)"></span><label class="nm" for="in-s1">풍화토</label><div class="in"><input id="in-s1" data-k="strata.1" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">m</span></div><span class="dp" data-dp="1"></span>
+        <span class="sw" style="background:var(--wrock)"></span><label class="nm" for="in-s2">풍화암</label><div class="in"><input id="in-s2" data-k="strata.2" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">m</span></div><span class="dp" data-dp="2"></span>
+        <span class="sw" style="background:var(--srock)"></span><label class="nm" for="in-s3">연암</label><div class="in"><input id="in-s3" data-k="strata.3" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">m</span></div><span class="dp" data-dp="3"></span>
+        <span class="sw" style="background:var(--hrock)"></span><span class="nm">경암 · 보통암</span><span class="dp" style="text-align:left">이하 전체</span><span class="dp" data-dp="4"></span>
+      </div>
+      <div class="g" style="margin-top:14px">
+        <div class="f"><label for="in-gwl">지하수위</label><div class="in"><input id="in-gwl" data-k="gwl" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="GL−"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-H">굴착 깊이 <span class="auto" data-auto="H"></span></label><div class="in"><input id="in-H" data-k="adv.H" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-A">굴착 면적 <span class="auto" data-auto="A"></span></label><div class="in"><input id="in-A" data-k="adv.Aexc" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-P">흙막이 연장 <span class="auto" data-auto="P"></span></label><div class="in"><input id="in-P" data-k="adv.P" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">m</span></div></div>
+      </div>
+      <p class="note">굴착 깊이와 층고는 공기에 가장 민감합니다. 도면 값이 있으면 직접 입력하세요.</p>
+    </section>
+
+    <section class="ss" aria-labelledby="ss4">
+      <h3 id="ss4">공사 순서 · 토목 공법</h3>
+      <div class="g">
+        <div class="f full"><span class="lb" id="in-seq-l">공사 순서</span>
+          <div class="seg" data-chips data-k="seq" role="group" aria-labelledby="in-seq-l"><button type="button" data-v="BU">순타 (Bottom-up)</button><button type="button" data-v="TD">역타 (Top-down)</button></div></div>
+        <div class="f full td-only"><label for="in-base">역타 기준층 <span class="auto">외부 도로와 면해 차량 진출입이 되는 층</span></label><div class="in"><select id="in-base" data-k="tdBase" data-type="num"><option value="-2">B2</option><option value="-1">B1</option><option value="0">1F (기본)</option><option value="1">2F</option><option value="2">3F</option></select></div></div>
+        <div class="f"><label for="in-wall">흙막이 벽체</label><div class="in"><select id="in-wall" data-k="wall">
+          <option value="CIP">CIP</option><option value="SW">Slurry Wall</option><option value="HP">H-Pile + 토류판</option><option value="SCW">SCW</option><option value="SP">Sheet Pile</option><option value="NONE">없음 (오픈컷)</option></select></div></div>
+        <div class="f"><label for="in-sup">지보 형식</label><div class="in"><select id="in-sup" data-k="support">
+          <option value="ANCHOR">어스앵커</option><option value="STRUT">스트럿 (버팀보)</option><option value="RAKER">레이커</option><option value="OPEN">오픈컷 (사면)</option><option value="SLAB">영구 슬래브 지지 (역타)</option></select></div></div>
+        <div class="f"><label for="in-found">기초 형식 <span class="auto" data-auto="found"></span></label><div class="in"><select id="in-found" data-k="found">
+          <option value="AUTO">자동 (지층 판정)</option><option value="MAT">매트 (직접기초)</option><option value="PHC">PHC 파일 + 매트</option><option value="BORED">현장타설말뚝 + 매트</option></select></div></div>
+        <div class="f"><label for="in-geo">지열 (건물 하부)</label><div class="in"><input id="in-geo" data-k="geo" data-type="int" type="number" min="0" step="1" inputmode="numeric" class="has-u" placeholder="0"><span class="u">공</span></div></div>
+        <label class="chk full" id="scw-wrap"><input id="in-scw" data-k="scw" type="checkbox"> 오픈컷 외곽 차수 SCW 병행</label>
+      </div>
+      <p class="note td-only">기준층 바닥을 GL로 보고 굴착 깊이를 계산합니다. 기준층 아래 층은 역타, 위 층은 상향 골조입니다.</p>
+    </section>
+
+    <section class="ss" aria-labelledby="ss5">
+      <h3 id="ss5">골조</h3>
+      <div class="g">
+        <div class="f full"><label for="in-struct">구조 형식</label><div class="in"><select id="in-struct" data-k="struct">
+          <option value="RC">철근콘크리트 (RC)</option><option value="SRC">철골철근콘크리트 (SRC)</option><option value="SC">철골 + RC 코어 (코어 선행)</option><option value="COMP">강합성 (PSRC · TSC 등) + RC 코어</option></select></div></div>
+        <div class="f"><label for="in-core">코어 거푸집 <span class="auto" data-auto="core"></span></label><div class="in"><select id="in-core" data-k="coreSys">
+          <option value="AUTO">자동 (15층 이상 ACS)</option><option value="ACS">ACS (자동상승)</option><option value="GANG">갱폼 · 알폼</option></select></div></div>
+        <label class="chk" style="align-self:end"><input id="in-pt" data-k="pt" type="checkbox"> PT 슬래브</label>
+        <div class="f td-only"><label for="in-lim">기초 전 지상 허용층 <span class="auto" data-auto="lim"></span></label><div class="in"><input id="in-lim" data-k="lim" data-type="int" type="number" min="1" step="1" inputmode="numeric" class="has-u" placeholder="자동"><span class="u">F</span></div></div>
+        <div class="f td-only"><label for="in-lim2">지하 수직재 전 허용층 <span class="auto" data-auto="lim2"></span></label><div class="in"><input id="in-lim2" data-k="lim2" data-type="int" type="number" min="1" step="1" inputmode="numeric" class="has-u" placeholder="자동"><span class="u">F</span></div></div>
+      </div>
+      <p class="note td-only">역타 구조제한 (외주부 바닥 기준, 코어는 +3개층). 모르면 기초 완료 전 지하 + 지상 25개층, 지하 수직재 완료 전 32개층으로 계산합니다.</p>
+    </section>
+
+    <section class="ss" aria-labelledby="ss6">
+      <h3 id="ss6">기본값 · 가동률 <span class="h">사용자 수정 가능</span></h3>
+      <div class="g c3">
+        <div class="f"><label for="in-mob">MOB</label><div class="in"><input id="in-mob" data-k="mob" data-type="num" type="number" min="0" step="0.1" inputmode="decimal" class="has-u"><span class="u">개월</span></div></div>
+        <div class="f"><label for="in-fin">마감</label><div class="in"><input id="in-fin" data-k="fin" data-type="num" type="number" min="0" step="0.1" inputmode="decimal" class="has-u"><span class="u">개월</span></div></div>
+        <div class="f"><label for="in-tc">T&amp;C</label><div class="in"><input id="in-tc" data-k="tc" data-type="num" type="number" min="0" step="0.1" inputmode="decimal" class="has-u"><span class="u">개월</span></div></div>
+        <div class="f"><label for="in-rExt">가동률 토목 · 외부</label><div class="in"><input id="in-rExt" data-k="rExt" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
+        <div class="f"><label for="in-rRC">가동률 골조</label><div class="in"><input id="in-rRC" data-k="rRC" data-type="pct" type="number" min="30" max="100" step="0.1" inputmode="decimal" class="has-u"><span class="u">%</span></div></div>
+        <div class="f"><label for="in-hours">1일 작업</label><div class="in"><select id="in-hours" data-k="hours" data-type="num"><option value="8">8시간</option><option value="10">10시간 (하이테크)</option></select></div></div>
+        <label class="chk full"><input id="in-link" data-k="link" type="checkbox"> 지하 → 지상 Zone 연계 착수 (순타)</label>
+      </div>
+      <p class="note">가동률 = (365 − 공사 불능일) ÷ 365. 1개월 = 30.4일 × 가동률. 용도를 데이터센터로 바꾸면 마감 · T&amp;C 기본값이 8 · 2 → 6 · 3개월로 바뀝니다 (직접 고친 값은 유지).</p>
+    </section>
+
+    <details class="ss" id="adv">
+      <summary>상세 조정 <span class="h">층고 구성 · Zone · 기초 · DC 사이클</span></summary>
+      <div class="g">
+        <div class="f full"><label for="in-hSpec">층고 구성 <span class="auto">예) B1:6, B2:8.6, 1:4.2, 3-8:6.6, PH:6.3</span></label><textarea id="in-hSpec" data-k="adv.hSpec" rows="2" spellcheck="false"></textarea></div>
+        <div class="f full"><label for="in-zSpec">바닥 Zone 수 (층별) <span class="auto">예) 1-8:11, 9-17:4</span></label><div class="in"><input id="in-zSpec" data-k="adv.zSpec" type="text" spellcheck="false" placeholder="자동 (900㎡/Zone)"></div></div>
+        <div class="f"><label for="in-Atyp">기준층 면적 <span class="auto" data-auto="Atyp"></span></label><div class="in"><input id="in-Atyp" data-k="adv.Atyp" data-type="num" type="number" min="0" step="any" class="has-u" placeholder="자동"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-coreZ">코어 Zone 수 <span class="auto" data-auto="coreZ"></span></label><div class="in"><input id="in-coreZ" data-k="adv.coreZ" data-type="num" type="number" min="1" step="1" placeholder="자동"></div></div>
+        <div class="f"><label for="in-mat">매트 두께 <span class="auto" data-auto="mat"></span></label><div class="in"><input id="in-mat" data-k="adv.mat" data-type="num" type="number" min="0" step="0.1" class="has-u" placeholder="자동"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-zoneV">기초 Zone 물량</label><div class="in"><input id="in-zoneV" data-k="adv.zoneV" data-type="num" type="number" min="300" step="10" class="has-u" placeholder="850"><span class="u">㎥</span></div></div>
+        <div class="f"><label for="in-rebar">기초 철근 원단위</label><div class="in"><input id="in-rebar" data-k="adv.rebar" data-type="num" type="number" min="0" step="0.01" class="has-u" placeholder="0.15"><span class="u">t/㎥</span></div></div>
+        <div class="f"><label for="in-crew">철근팀 인원</label><div class="in"><input id="in-crew" data-k="adv.crew" data-type="num" type="number" min="5" max="40" step="1" class="has-u" placeholder="20"><span class="u">명</span></div></div>
+        <div class="f"><label for="in-fTeams">기초 철근팀 수 <span class="auto" data-auto="fTeams"></span></label><div class="in"><input id="in-fTeams" data-k="adv.fTeams" data-type="num" type="number" min="1" max="10" step="1" class="has-u" placeholder="자동"><span class="u">팀</span></div></div>
+        <div class="f"><label for="in-lag">팀 착수 시차</label><div class="in"><input id="in-lag" data-k="adv.lag" data-type="num" type="number" min="0" step="1" class="has-u" placeholder="3"><span class="u">WD</span></div></div>
+        <div class="f"><label for="in-liftWD">지하 외벽 (3m당)</label><div class="in"><input id="in-liftWD" data-k="adv.liftWD" data-type="num" type="number" min="1" step="0.5" class="has-u" placeholder="10"><span class="u">WD</span></div></div>
+        <div class="f"><label for="in-backfill">방수 · 되메우기</label><div class="in"><input id="in-backfill" data-k="adv.backfill" data-type="num" type="number" min="0" step="1" class="has-u" placeholder="20"><span class="u">WD</span></div></div>
+        <div class="f"><label for="in-prdN">PRD 공수 <span class="auto" data-auto="prd"></span></label><div class="in"><input id="in-prdN" data-k="adv.prdN" data-type="num" type="number" min="0" step="1" class="has-u" placeholder="자동"><span class="u">공</span></div></div>
+        <div class="f"><label for="in-pileN">파일 본수 <span class="auto" data-auto="pile"></span></label><div class="in"><input id="in-pileN" data-k="adv.pileN" data-type="num" type="number" min="0" step="1" class="has-u" placeholder="자동"><span class="u">본</span></div></div>
+        <div class="f"><label for="in-exVoidA">기존 지하 면적</label><div class="in"><input id="in-exVoidA" data-k="adv.exVoidA" data-type="num" type="number" min="0" step="any" class="has-u" placeholder="0"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-exVoidD">기존 지하 깊이</label><div class="in"><input id="in-exVoidD" data-k="adv.exVoidD" data-type="num" type="number" min="0" step="any" class="has-u" placeholder="0"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-tdOffset">역타 지상 착수</label><div class="in"><input id="in-tdOffset" data-k="adv.tdOffset" data-type="num" type="number" min="0" step="0.1" class="has-u" placeholder="2.5"><span class="u">개월</span></div></div>
+        <div class="f"><label for="in-dcCycle">DC 층 사이클 <span class="auto" data-auto="dc"></span></label><div class="in"><select id="in-dcCycle" data-k="adv.dcCycle"><option value="AUTO">자동 (데이터센터 순타)</option><option value="ON">적용</option><option value="OFF">미적용</option></select></div></div>
+        <div class="f"><label for="in-dcFlow">DC 층 진행</label><div class="in"><select id="in-dcFlow" data-k="adv.dcFlow"><option value="ZONE">Zone 연속</option><option value="FLOOR">층 단위 완결</option></select></div></div>
+        <div class="f"><label for="in-spanL">스팬 장변</label><div class="in"><input id="in-spanL" data-k="adv.spanL" data-type="num" type="number" min="3" step="0.1" class="has-u" placeholder="12"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-spanS">스팬 단변</label><div class="in"><input id="in-spanS" data-k="adv.spanS" data-type="num" type="number" min="3" step="0.1" class="has-u" placeholder="9"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-coreA">코어 바닥면적 <span class="auto" data-auto="coreA"></span></label><div class="in"><input id="in-coreA" data-k="adv.coreA" data-type="num" type="number" min="0" step="any" class="has-u" placeholder="자동"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-colN">기둥 수 (층당) <span class="auto" data-auto="colN"></span></label><div class="in"><input id="in-colN" data-k="adv.colN" data-type="num" type="number" min="1" step="1" class="has-u" placeholder="자동"><span class="u">개</span></div></div>
+        <div class="f"><label for="in-slabT">슬래브 두께</label><div class="in"><input id="in-slabT" data-k="adv.slabT" data-type="num" type="number" min="0.1" step="0.01" class="has-u" placeholder="0.3"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-dcCrewH">슬래브 · 보 철근팀</label><div class="in"><input id="in-dcCrewH" data-k="adv.dcCrewH" data-type="num" type="number" min="5" max="40" step="1" class="has-u" placeholder="25"><span class="u">명</span></div></div>
+      </div>
+      <p class="note">기존 지하 = 해체 후 비워지는 기존 건물 지하 (굴착량에서 제외). 역타 지상 착수 = 기준층 슬래브 완료 후 개월. DC 층 사이클 = 외주부 (기둥 · 보 · 슬래브) 와 코어를 따로 타설, Zone = 체적 ÷ 500㎥, Zone 4개당 1팀, 층고 6.5m 이상 수직재 분할. 바닥 Zone 수 · 코어 Zone 수를 넣으면 그 값을 씁니다. 층고는 단면도의 층고 칸에서도 바로 고칠 수 있습니다.</p>
+    </details>
+
+    <details class="ss" id="libbox">
+      <summary>기준 라이브러리 (생산성) <span class="h">바꾸면 모든 계산에 반영</span></summary>
+      <div class="libw"><table class="lib7" id="libtbl"></table></div>
+      <div class="lib-act"><button class="btn" id="lib-reset" type="button">기본값으로 되돌리기</button><span class="note">사례 A · B · C 재현값은 기본값 기준입니다.</span></div>
+    </details>
+  </div>
+</dialog>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__KIT__*/
+</script>
+<script>
+/*__UI__*/
+</script>
+</body></html>
