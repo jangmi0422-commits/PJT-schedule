@@ -343,6 +343,10 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .core-h.drag:hover .core-grip, .core-h.drag:focus-visible .core-grip { opacity: 1; }
 body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none; }
 .core-at { color: var(--ink-3); }
+.core-rs { cursor: nwse-resize; }
+.core-h.drag .core-rs rect { transition: fill .15s; }
+.core-h.drag .core-rs:hover rect { fill: var(--cp-soft); stroke: var(--cp); }
+.tm-u { white-space: nowrap; }
 .iso-lab ul .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; opacity: .75; vertical-align: 0; }
 .iso-lab ul li .tm { margin-left: 14px; }
 .core-at b { font-family: var(--f-ui) !important; font-weight: 600; color: var(--cp-deep) !important; }

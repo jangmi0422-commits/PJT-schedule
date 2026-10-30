@@ -328,20 +328,31 @@
     box.addEventListener('pointerdown', function (e) {
       var h = e.target.closest && e.target.closest('.core-h.drag'), sv = h && h.closest('svg[data-iso]'); if (!sv || !lastR) return;
       var d = sv.getAttribute('data-iso').split(',').map(Number), cg = coreGeom(lastR), rc = sv.getBoundingClientRect();
-      drag = { x: e.clientX, y: e.clientY, k: (+sv.getAttribute('width') || rc.width) / Math.max(1, rc.width), s: d[0], fx: Math.max(1e-6, d[3] - d[1]), fy: Math.max(1e-6, d[4] - d[2]), x0: cg.x0, y0: cg.y0 };
+      drag = { rs: !!e.target.closest('.core-rs'), x: e.clientX, y: e.clientY, k: (+sv.getAttribute('width') || rc.width) / Math.max(1, rc.width), s: d[0], fx: Math.max(1e-6, d[3] - d[1]), fy: Math.max(1e-6, d[4] - d[2]), x0: cg.x0, y0: cg.y0, cw: cg.cw, cd: cg.cd, L: cg.L, B: cg.B, Au: cg.Au };
       document.body.classList.add('dragging'); e.preventDefault();
     });
     document.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      var dx = (e.clientX - drag.x) * drag.k, dy = (e.clientY - drag.y) * drag.k, a = dx / (C * drag.s), b = 2 * dy / drag.s;
-      setPos(snap((drag.x0 + (a + b) / 2) / drag.fx), snap((drag.y0 + (b - a) / 2) / drag.fy)); redraw(false);
+      var dx = (e.clientX - drag.x) * drag.k, dy = (e.clientY - drag.y) * drag.k, a = dx / (C * drag.s), b = 2 * dy / drag.s, dX = (a + b) / 2, dY = (b - a) / 2;
+      if (drag.rs) {
+        /* 크기 : 뒤 모서리 (x0 · y0) 고정, 앞 모서리를 끌어 폭 · 깊이 — 면적은 기준층의 5 ~ 60% */
+        var cw = Math.max(4, Math.min(drag.L - drag.x0, drag.cw + dX)), cd = Math.max(4, Math.min(drag.B - drag.y0, drag.cd + dY)), A = cw * cd, lo = drag.Au * 0.05, hi = drag.Au * 0.6;
+        if (A > hi) { var kk = Math.sqrt(hi / A); cw *= kk; cd *= kk; } else if (A < lo) { var k2 = Math.sqrt(lo / A); cw *= k2; cd *= k2; }
+        S.adv = S.adv || {}; S.adv.coreA = Math.round(cw * cd); S.adv.coreAsp = +(cw / cd).toFixed(3);
+        setPos(drag.L - cw > 0.01 ? Math.min(1, drag.x0 / (drag.L - cw)) : 0.5, drag.B - cd > 0.01 ? Math.min(1, drag.y0 / (drag.B - cd)) : 0.5);
+      } else setPos(snap((drag.x0 + dX) / drag.fx), snap((drag.y0 + dY) / drag.fy));
+      redraw(false);
     });
-    document.addEventListener('pointerup', function () { if (!drag) return; drag = null; document.body.classList.remove('dragging'); ST.save({ inp: S, preset: current }); });
+    document.addEventListener('pointerup', function () {
+      if (!drag) return; var rs = drag.rs; drag = null; document.body.classList.remove('dragging');
+      if (rs && current) markPreset('');
+      GK.fill(document, S); recompute();
+    });
     box.addEventListener('keydown', function (e) {
       var h = e.target.closest && e.target.closest('.core-h.drag'); if (!h || !lastR) return;
       var st = e.shiftKey ? 0.25 : 0.05, cg = coreGeom(lastR), px = cg.px, py = cg.py;
       if (e.key === 'ArrowLeft') px -= st; else if (e.key === 'ArrowRight') px += st; else if (e.key === 'ArrowUp') py -= st; else if (e.key === 'ArrowDown') py += st; else return;
-      e.preventDefault(); setPos(Math.max(0, Math.min(1, px)), Math.max(0, Math.min(1, py))); redraw(true); ST.save({ inp: S, preset: current });
+      e.preventDefault(); setPos(Math.max(0, Math.min(1, px)), Math.max(0, Math.min(1, py))); redraw(true); schedule();
     });
   }
   function bindTip() {
@@ -778,11 +789,13 @@
     var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
     if (!(Au > 0)) return null;
     /* RC (코어 별도 경로 없음) 도 코어 벽체는 있으므로 같은 비율의 '일체 타설' 코어로 배치 · PIT 위치에만 쓴다 */
-    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio, integ = !(ty.dc || ty.core); if (!(Ac > 0)) return null;
-    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)), cw = Ac / cd;
-    if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); }
-    var A = S.adv || {}, px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
-    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac, integ: integ };
+    /* 크기 : S.adv.coreA (㎡, 엔진 입력과 같은 값) · 모양 : S.adv.coreAsp (긴 변 ÷ 짧은 변 방향 비, 조닝 판 손잡이로) */
+    var A = S.adv || {}, Ac = A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio, integ = !(ty.dc || ty.core); if (!(Ac > 0)) return null;
+    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd, cw;
+    if (A.coreAsp > 0) { cd = Math.sqrt(Ac / A.coreAsp); cw = Ac / cd; if (cw > L * 0.95) { cw = L * 0.95; cd = Ac / cw; } if (cd > B * 0.95) { cd = B * 0.95; cw = Math.min(L * 0.95, Ac / cd); } }
+    else { cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)); cw = Ac / cd; if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); } }
+    var px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
+    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac, Au: Au, integ: integ, set: A.coreA > 0 };
   }
   /* PIT : 지상 코어 아래 (평면 비율 위치를 기초 평면에 그대로) 의 기초 Zone — 수는 S.adv.pitN (사례 보정값), 없으면 2개.
      부분 지하는 깊은 구간 Zone 안에서만. 지하층 없으면 PIT 없음 */
@@ -855,6 +868,7 @@
       v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' fill="#EEF2F8"');
       v += cells(o.core.cells, hc);
       v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' class="core-top" fill="none" stroke="var(--navy)" stroke-width="1.1" stroke-linejoin="round"');
+      if (o.core.drag) { var rz = P(k1, j1, hc); v += '<g class="core-rs" transform="translate(' + r1(rz[0]) + ' ' + r1(rz[1]) + ')"><circle r="9" fill="transparent"/><rect x="-5" y="-5" width="10" height="10" rx="2.5" fill="#fff" stroke="var(--navy)" stroke-width="1.4"/><path d="M-2.2 2.2l4.4-4.4" stroke="var(--navy)" stroke-width="1.1" stroke-linecap="round"/></g>'; }
       if (o.core.drag) { var cm = P(k0, j0, hc); v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="var(--navy)"/><path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>'; }
       v += '</g>';
     }
@@ -935,7 +949,9 @@
         teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
         NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
         NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
-        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
+        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : '',
+        cg ? '<span class="tm core-sz"><span class="tm-k">코어 크기</span><button type="button" class="tm-b" data-coresz="-1" aria-label="코어 줄이기"' + (cg.Ac <= cg.Au * 0.051 ? ' disabled' : '') + '>−</button><b class="tm-v">' + Math.round(cg.Ac / cg.Au * 100) + '</b><span class="tm-u">% · ' + fmt(Math.round(cg.Ac)) + '㎡</span><button type="button" class="tm-b" data-coresz="1" aria-label="코어 키우기"' + (cg.Ac >= cg.Au * 0.599 ? ' disabled' : '') + '>+</button>' +
+          (cg.set ? '<button type="button" class="tm-o" data-coresz="0" title="코어 크기 · 모양을 기본값으로">기본값</button>' : '') + '</span>' : ''
       ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
     } else oU = '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
     var lg = ''; for (var t = 0; t < Math.min(maxT, 8); t++) lg += '<span><i style="background:' + TEAMC[t] + ';opacity:.7"></i>' + (t + 1) + '팀</span>';
@@ -1036,6 +1052,13 @@
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var pb = t.closest('[data-p]'); if (pb) { loadPreset(pb.getAttribute('data-p')); return; }
+      var cz = t.closest('[data-coresz]');
+      if (cz && lastR) {
+        var cgz = coreGeom(lastR), dz = +cz.getAttribute('data-coresz'); S.adv = S.adv || {};
+        if (!dz) { delete S.adv.coreA; delete S.adv.coreAsp; }
+        else { var rr = Math.max(0.05, Math.min(0.6, Math.round(cgz.Ac / cgz.Au * 100) / 100 + dz * 0.02)); S.adv.coreA = Math.round(cgz.Au * rr); if (!(S.adv.coreAsp > 0)) S.adv.coreAsp = +(cgz.cw / cgz.cd).toFixed(3); }
+        if (current) markPreset(''); GK.fill(document, S); recompute(); return;
+      }
       var ts = t.closest('[data-tstep],[data-topt]');
       if (ts) {
         var tm = ts.closest('[data-team]'), key = tm.getAttribute('data-team'), cur = +tm.querySelector('.tm-v').textContent, mx = +tm.getAttribute('data-max') || 10;

@@ -492,9 +492,11 @@
     /* 지상 형틀팀 수 (adv.uTeams) = 기준층 팀 수. 다른 층은 자동 규칙 (Zone ÷ 팀당 Zone) 에 같은 비율 (입력 ÷ 기준층 자동값) 을 곱한다
        → 입력이 기준층 자동값과 같으면 모든 층이 입력 없을 때와 똑같다 */
     var typN0 = Math.min(nUp, Math.max(2, Math.floor(nUp / 2))), uTin = num(A.uTeams, 0) > 0 ? Math.round(num(A.uTeams, 0)) : 0;
+    /* 코어 바닥면적 (adv.coreA) : 있으면 코어 Zone = 코어 면적 ÷ 코어 Zone 면적, 바닥 Zone = 나머지 면적 기준 (없으면 비율 · 바닥 몫 기본값) */
+    var coreAin = num(A.coreA, 0) > 0 ? Math.min(num(A.coreA, 0), Atyp * 0.6) : 0, slabK = coreAin ? Math.max(0.4, 1 - coreAin / Atyp) : FR.core.slabShare;
     function zOf(n, area) {
       var spec = n >= 1 ? ZS.up[n] : ZS.b[1 - n], Au = area != null && area > 0 ? area : Atyp;
-      return spec != null ? Math.max(1, Math.round(spec)) : Math.max(1, Math.round(Au * (hasCore ? FR.core.slabShare : 1) / FR.zoneA));
+      return spec != null ? Math.max(1, Math.round(spec)) : Math.max(1, Math.round(Au * (hasCore ? slabK : 1) / FR.zoneA));
     }
     function teamsAuto(Zx) { return Math.ceil(Zx / FR.zonesPerTeam[struct] - 1e-9); }
     var uK = uTin ? uTin / teamsAuto(zOf(typN0)) : 1;
@@ -508,7 +510,7 @@
     /* 코어 형틀팀 수 (adv.cTeams) : 코어 Zone 수는 층마다 같으므로 입력이 있으면 그 값 (1 ~ Zone 수) */
     var cTin = num(A.cTeams, 0) > 0 ? Math.round(num(A.cTeams, 0)) : 0;
     function coreT(h) {
-      var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(2, Math.round(Atyp * FR.core.ratio / FR.core.zoneA));
+      var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(coreAin ? 1 : 2, Math.round((coreAin || Atyp * FR.core.ratio) / FR.core.zoneA));
       var Tc = cTin ? clamp(cTin, 1, Zc) : Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
       return { Z: Zc, T: Tc, per: per, lifts: lifts, hf: hfac(hl), wd: lifts * per * dC * hfac(hl) };
     }
