@@ -45,7 +45,7 @@
       /* DC 층 사이클 (체적 Zone · 코어 / 외주부 분리 타설) — 사내 적정공기 가이드라인 v2.8 DC 로직을 참고해 옮김
          Zone = 부위 체적 ÷ 일 타설량, 팀 = Zone 4개당 1팀, 층고 6.5m 이상이면 수직재 분할, 층간 = Zone 1개 작업 합계 (Zone 연속) */
       dc: { pourV: 500, zpt: 4, split: 6.5, spanL: 12, spanS: 9, colA: 1.21, beamsPerCol: 3.5, beamA: { RC: 0.88, steel: 0.3 }, slabT: 0.3, coreWall: 0.24,
-        rebCB: 0.21, rebSC: 0.1, tPerMD: 0.3, crewH: 25, crewC: 25, lift: 1, form: 2, strip: 1, scaf: 2, table: 50, bform: 2, cure: 2, coreForm: 2, me: 1, steelPc: 18, bolt: 2, deck: 300 }
+        rebCB: 0.21, rebSC: 0.1, tPerMD: 0.3, crewH: 25, crewC: 25, lift: 1, form: 2, strip: 1, pour: 1, scaf: 2, table: 50, bform: 2, cure: 2, coreForm: 2, me: 1, steelPc: 18, bolt: 2, deck: 300 }
     };
   }
 
@@ -393,7 +393,8 @@
     var rebR = num(A.rebar, 0) > 0 ? clamp(num(A.rebar, 0), 0.03, 0.4) : fl.rebar, lagF = A.lag != null && A.lag !== '' ? clamp(num(A.lag, fl.lag), 0, 60) : fl.lag;
     /* 준비 (영구배수 · 버림 · 먹) · 마무리 (형틀 · 검측 · 타설) · PIT 추가는 작업량 → 작업시간 비례. 팀 시차는 계획값 (고정) */
     var prepW = fl.prep / hF, tailW = fl.tail / hF, pitW = fl.pitAdd / hF;
-    var reb = vZ * rebR, tpd = crew * fl.tPerMD * hF, Rr = Math.max(1, Math.ceil(reb / tpd - 1e-9)), Rpit = Rr + pitW;
+    /* Zone 당 철근 WD : adv.fRwd (화면 사이클 바차트에서 고친 값) 가 있으면 그 값, 없으면 철근량 ÷ (인원 × 생산성) */
+    var reb = vZ * rebR, tpd = crew * fl.tPerMD * hF, Rr0 = Math.max(1, Math.ceil(reb / tpd - 1e-9)), Rr = num(A.fRwd, 0) > 0 ? clamp(num(A.fRwd, 0), 0.5, 200) : Rr0, Rpit = Rr + pitW;
     var teamsF = num(A.fTeams, 0) > 0 ? clamp(Math.round(num(A.fTeams, 0)), 1, 10) : clamp(Math.ceil(Vf / fl.teamV), 1, fl.maxTeams);
     var nSlopeZ = open && partial ? Math.min(nZ - nDeep, Math.ceil(slopeA * teq / zoneV)) : 0;
     function sim(avail) {
@@ -428,14 +429,14 @@
       bPath = { start: deepDone, walls: wv, backfill: bf, backfillExt: open ? backfillWD : 0, slab: slT, slabPer: sl1, nSlab: nB, end: deepDone + wv + bf + slT };
     }
     var fEndWD = S1.end;
-    fz = { rebR: rebR, lag: lagF, Af: Af, t: tMat, teq: teq, V: Vf, nZ: nZ, vZ: vZ, nPit: nPit, reb: reb, R: Rr, Rpit: Rpit, prep: prepW, tail: tailW, cyc: Rr + prepW + tailW, cycPit: Rpit + prepW + tailW, teams: teamsF, crew: crew, tpd: tpd, sim: S1, nDeep: nDeep, nSlopeZ: nSlopeZ, bPath: bPath };
+    fz = { rebR: rebR, lag: lagF, Af: Af, t: tMat, teq: teq, V: Vf, nZ: nZ, vZ: vZ, nPit: nPit, reb: reb, R: Rr, R0: Rr0, Rpit: Rpit, prep: prepW, tail: tailW, cyc: Rr + prepW + tailW, cycPit: Rpit + prepW + tailW, teams: teamsF, crew: crew, tpd: tpd, sim: S1, nDeep: nDeep, nSlopeZ: nSlopeZ, bPath: bPath };
     if (crew > 25) R.warn.push('철근팀 ' + crew + '명/팀 : 팀당 25명 초과는 작업 간섭으로 비권장 (기준 20명, 최대 25명)');
     var fM;
     if (seq === 'BU') {
       fM = MO(fEndWD, rRC);
       var fEndM = F0 + fM;
       act({ id: 'found', g: '골조', name: '기초 (' + nZ + ' Zone · 철근 ' + teamsF + '팀)', s: F0, e: fEndM, cp: true, wd: fEndWD, rate: 'rc', qty: fmt(Vf) + '㎥ · 철근 ' + fmt(Vf * rebR) + 't',
-        basis: 'Zone ' + fmt(vZ) + '㎥ · 철근 ' + r1(reb) + 't ÷ ' + r1(tpd) + 't/일 (' + crew + '명) = ' + Rr + 'WD → 사이클 ' + r1(fz.cyc) + 'WD (PIT ' + r1(fz.cycPit) + 'WD) · ' + teamsF + '팀 ' + lagF + 'WD 시차 착수' });
+        basis: 'Zone ' + fmt(vZ) + '㎥ · 철근 ' + r1(reb) + 't ÷ ' + r1(tpd) + 't/일 (' + crew + '명) = ' + (Rr !== Rr0 ? r1(Rr) + 'WD (입력)' : Rr + 'WD') + ' → 사이클 ' + r1(fz.cyc) + 'WD (PIT ' + r1(fz.cycPit) + 'WD) · ' + teamsF + '팀 ' + lagF + 'WD 시차 착수' });
       t = fEndM; T_F = fEndM;
     } else {
       var cureWD = fl.cureCD * rRC;
@@ -544,10 +545,11 @@
       var lifts = h >= DCL.split ? 1 + Math.floor(h / DCL.split) : 1;
       var crewV = num(A.crew, 0) > 0 ? num(A.crew, 0) : L.found.crew, crewH = num(A.dcCrewH, 0) > 0 ? num(A.dcCrewH, 0) : DCL.crewH;
       function rb(t, crew) { return Math.ceil(t / (DCL.tPerMD * crew * hF) - 1e-9); }
+      var pourD = DCL.pour > 0 ? DCL.pour : 1;   /* 타설 WD (라이브러리 dc.pour, 없으면 1일) */
       function vert(R1, N, items) {
         for (var q = 1; q <= lifts; q++) {
           var tg = lifts > 1 ? ' ' + q + '/' + lifts + '차' : '';
-          items.push(['양중' + tg, DCL.lift / hF], ['철근' + tg, rb(R1 / lifts / N, crewV)], ['형틀' + tg, DCL.form / hF], ['타설' + tg, 1], ['해체' + tg, DCL.strip]);
+          items.push(['양중' + tg, DCL.lift / hF], ['철근' + tg, rb(R1 / lifts / N, crewV)], ['형틀' + tg, DCL.form / hF], ['타설' + tg, pourD], ['해체' + tg, DCL.strip]);
         }
       }
       /* 외주부 */
@@ -556,15 +558,15 @@
       vert(Vcol * DCL.rebCB, Np, pIt);
       if (steelF) {
         lead = Math.ceil((nCol + nBm) / Np / (DCL.steelPc * hF) - 1e-9) + DCL.bolt / hF + Math.ceil(Math.max(0, Au - Ac) / Np / (DCL.deck * hF) - 1e-9);
-        pIt.push(['비계 · 안전망', DCL.scaf / hF], ['슬래브 · 보 철근', rb(Rh, crewH)], ['M&E', DCL.me / hF], ['타설', 1], ['양생', DCL.cure]);
+        pIt.push(['비계 · 안전망', DCL.scaf / hF], ['슬래브 · 보 철근', rb(Rh, crewH)], ['M&E', DCL.me / hF], ['타설', pourD], ['양생', DCL.cure]);
       } else {
         var tbl = Math.ceil(nb3 * sS / 2.4) + Math.ceil((nBm - nb3) * sL / 2.4);
-        pIt.push(['비계 · 동바리', DCL.scaf / hF], ['테이블폼', Math.ceil(tbl / Np / (DCL.table * hF) - 1e-9)], ['보 형틀', DCL.bform / hF], ['슬래브 · 보 철근', rb(Rh, crewH)], ['타설', 1], ['양생 · 해체', DCL.cure]);
+        pIt.push(['비계 · 동바리', DCL.scaf / hF], ['테이블폼', Math.ceil(tbl / Np / (DCL.table * hF) - 1e-9)], ['보 형틀', DCL.bform / hF], ['슬래브 · 보 철근', rb(Rh, crewH)], ['타설', pourD], ['양생 · 해체', DCL.cure]);
       }
       /* 코어 */
       var Nc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(1, Math.ceil((Vw + Vcs) / DCL.pourV - 1e-9)), cIt = [];
       vert(Vw * DCL.rebSC, Nc, cIt);
-      cIt.push(['코어 슬래브 형틀', DCL.coreForm / hF], ['코어 슬래브 철근', rb(Vcs * DCL.rebSC / Nc, DCL.crewC)], ['타설', 1], ['양생', DCL.cure]);
+      cIt.push(['코어 슬래브 형틀', DCL.coreForm / hF], ['코어 슬래브 철근', rb(Vcs * DCL.rebSC / Nc, DCL.crewC)], ['타설', pourD], ['양생', DCL.cure]);
       function st(name, N, items, V, k) {
         var T0 = Math.ceil(N / DCL.zpt - 1e-9), T = k && k !== 1 ? clamp(Math.round(T0 * k), 1, N) : T0, nt = Math.ceil(N / T - 1e-9), z = items.reduce(function (s, x) { return s + x[1]; }, 0);
         return { name: name, N: N, T: T, nt: nt, V: V, items: items, zone: z, gap: nt - 1, cyc: z + nt - 1 };
@@ -886,6 +888,7 @@
       div(L.frame.core, 'ACS'); div(L.frame.core, 'GANG'); div(L.frame, 'acsSetup');
       ['tPerMD', 'table', 'steelPc', 'deck'].forEach(function (k) { mul(L.dc, k); }); ['lift', 'form', 'scaf', 'bform', 'coreForm', 'me', 'bolt'].forEach(function (k) { div(L.dc, k); });
       if (num(A.liftWD, 0) > 0) A.liftWD /= f;
+      if (num(A.fRwd, 0) > 0) A.fRwd /= f;
       if (A.backfill != null && A.backfill !== '' && isFinite(parseFloat(A.backfill))) A.backfill = parseFloat(A.backfill) / f;
       return compute(I, L).total;
     }
