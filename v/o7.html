@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic+Coding:wght@400;700&family=Inter+Tight:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 /*__KITCSS__*/
 /* 디자인 옵션 7 · 벤토 · 입체 — 처음부터 새로 짠 화면
@@ -22,6 +22,9 @@
   --g-prep: #C9CED6; --g-civ: #C9A66C; --g-frame: #2F4D7A; --g-fin: #2C9083;
   --f-ui: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
   --f-num: "Inter Tight", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* 메인 공기 : V5 퀵산정과 같은 두꺼운 표시 글꼴 · 라벨은 코딩 글꼴 */
+  --f-disp: "Black Han Sans", "Noto Sans KR", sans-serif;
+  --f-code: "Nanum Gothic Coding", ui-monospace, Menlo, monospace;
   --r-tile: 22px; --r-in: 12px;
   --sh-tile: 0 1px 1px rgba(20, 24, 32, .03), 0 2px 6px -2px rgba(20, 24, 32, .05), 0 22px 44px -28px rgba(20, 24, 32, .24);
   --gut-l: max(clamp(16px, 2.4vw, 32px), env(safe-area-inset-left, 0px));
@@ -59,7 +62,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .presets button.on small { color: rgba(255, 255, 255, .7); }
 .top-r { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
 .mini { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
-.mini b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; color: var(--ink); font-weight: 600; margin: 0 2px 0 6px; }
+.mini b { font-family: var(--f-disp); font-variant-numeric: tabular-nums; font-size: 21px; color: var(--ink); font-weight: 400; margin: 0 2px 0 6px; }
 .btn { border: 1px solid var(--rule); background: var(--tile); border-radius: 999px; padding: 9px 18px; font-size: 14.5px; font-weight: 500; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .btn:hover { border-color: var(--slate); }
 .btn.pri { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -86,9 +89,10 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 /* 히어로 : 총 공기 */
 .t-hero { overflow: hidden; display: flex; flex-direction: column; }
 .hero-deco { position: absolute; right: -18px; top: -6px; width: 230px; height: 190px; pointer-events: none; opacity: .9; }
-.big { display: flex; align-items: baseline; gap: 12px; margin: 14px 0 4px; position: relative; }
-.big b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: clamp(84px, 8.6vw, 150px); line-height: .88; letter-spacing: -.05em; color: var(--ink); }
-.big small { font-size: 24px; color: var(--ink-3); font-weight: 500; letter-spacing: -.01em; }
+.big { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 6px; position: relative; }
+.big b { font-family: var(--f-disp); font-variant-numeric: tabular-nums; font-weight: 400; font-size: clamp(88px, 8.6vw, 150px); line-height: .95; letter-spacing: -.01em; color: var(--ink); }
+.big small { font-family: var(--f-disp); font-weight: 400; font-size: clamp(28px, 2.7vw, 45px); color: var(--ink-2); }
+.t-hero .eyebrow { font-family: var(--f-code); font-size: 12.5px; letter-spacing: .06em; }
 .exact { font-size: 15px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 0; align-items: center; position: relative; }
 .exact b { font-weight: 600; color: var(--ink); }
 .exact .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--slate); margin: 0 10px; }
@@ -159,10 +163,10 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .t-quick .quick { margin-bottom: 16px; }
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .step > label { display: block; font-size: 13.5px; color: var(--ink-3); margin-bottom: 6px; }
-.stp { display: grid; grid-template-columns: 28px minmax(0, 1fr) 28px; align-items: center; background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: 12px; height: 46px; padding: 0 3px; }
-.stp button { width: 28px; height: 38px; border: 0; background: transparent; border-radius: 9px; color: var(--ink-2); font-size: 18px; line-height: 1; }
+.stp { display: grid; grid-template-columns: 22px minmax(0, 1fr) 22px; align-items: center; background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: 12px; height: 46px; padding: 0 3px; }
+.stp button { width: 22px; height: 38px; border: 0; background: transparent; border-radius: 9px; color: var(--ink-2); font-size: 18px; line-height: 1; }
 .stp button:hover { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 32, .12); }
-.stp input { width: 100%; min-width: 0; border: 0; background: transparent; text-align: center; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; color: var(--ink); padding: 0; -moz-appearance: textfield; }
+.stp input { width: 100%; min-width: 0; border: 0; background: transparent; text-align: center; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); padding: 0; -moz-appearance: textfield; }
 .stp input::-webkit-outer-spin-button, .stp input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .stp input::placeholder { color: var(--ink-3); font-size: 14px; font-weight: 500; }
 .stp:focus-within { border-color: var(--accent); background: #fff; }
@@ -199,6 +203,28 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .cpf .t { white-space: nowrap; }
 .cpf .t b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); margin-left: 2px; }
 .cpf .op { color: var(--slate); margin: 0 4px; font-family: var(--f-num); }
+/* Master Schedule 말풍선 */
+.ga { cursor: pointer; }
+.ga .hit { transition: fill .12s; }
+.ga.on .hit { fill: rgba(30, 58, 98, .05); }
+.gtip { position: absolute; z-index: 6; width: max-content; max-width: min(340px, calc(100% - 24px)); padding: 11px 13px 12px; background: #fff; border-radius: 12px; box-shadow: 0 8px 28px rgba(20, 32, 54, .16), 0 0 0 1px rgba(20, 32, 54, .07); font-size: 12.5px; line-height: 1.45; color: var(--ink-2); pointer-events: none; }
+.gtip .gt-h { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.gtip .gt-h b { font-size: 14px; color: var(--ink); }
+.gtip .n, .gtip .gt-seg { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.gtip .gt-h .n { color: var(--ink-3); white-space: nowrap; }
+.gtip .gt-nm { color: var(--ink-3); margin-top: 1px; }
+.gtip .gt-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--band); margin: 8px 0 5px; }
+.gtip .gt-bar i { display: block; height: 100%; }
+.gtip .gt-bar i.pre { background: repeating-linear-gradient(-45deg, #F2C9C3 0 3px, #FCEFED 3px 6px); }
+.gtip .gt-bar i.cp { background: var(--cp); }
+.gtip .gt-bar i.non { background: var(--slate-2); }
+.gtip .gt-seg { display: flex; flex-wrap: wrap; gap: 0 6px; color: var(--ink-2); }
+.gtip .gt-seg b { color: var(--cp-deep); }
+.gtip .gt-seg span { color: var(--slate); }
+.gtip .gt-seg em { font-style: normal; color: var(--ink-3); }
+.gtip .gt-b { list-style: none; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px solid var(--rule-2); display: flex; flex-direction: column; gap: 1px; }
+.gtip .gt-b li { padding-left: 10px; position: relative; }
+.gtip .gt-b li::before { content: ""; position: absolute; left: 1px; top: .62em; width: 4px; height: 4px; border-radius: 50%; background: var(--slate); }
 .cpf .sum { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cp); font-size: 17px; white-space: nowrap; }
 
 /* 가정 단면 */
@@ -242,14 +268,15 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .iso.nar .iso-lab ul { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; gap: 0; margin-top: 4px; }
 .iso.nar .iso-lab ul li + li::before { content: "·"; margin: 0 8px; color: var(--slate); }
 /* 넓은 타일 : 세 판 가로 배치 — 이름 줄 · 판 줄이 열마다 맞도록 (행 = display: contents) */
-.iso.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; grid-auto-flow: column; gap: 0; }
+.iso.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto auto; grid-auto-flow: column; gap: 0; }
 .iso.cols .iso-row { display: contents; }
-.iso.cols .iso-lab, .iso.cols .iso-fig { padding: 0 18px; }
+.iso.cols .iso-lab, .iso.cols .iso-fig, .iso.cols .iso-cy { padding: 0 18px; }
 .iso.cols .iso-lab { padding-bottom: 12px; }
 .iso.cols .iso-fig { display: flex; align-items: center; justify-content: center; }
 .iso.cols > :nth-child(n+2) > * { border-left: 1px solid var(--rule-2); }
 .iso.cols > :first-child > * { padding-left: 0; }
-.iso.cols .iso-none { grid-row: span 2; align-self: start; margin: 0 12px; }
+.iso.cols .iso-none { grid-row: span 3; align-self: start; margin: 0 12px; }
+.iso.cols .iso-cy { grid-column: auto; align-self: start; padding-top: 10px; }
 .iso-fig svg { display: block; margin: 0 auto; }
 .iso-lab { min-width: 0; }
 .iso-lab .lv { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--ink-3); background: var(--band); border-radius: 6px; padding: 1px 8px; margin-bottom: 6px; }
@@ -259,28 +286,32 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .iso-lab .ar span { display: block; font-size: 13px; color: var(--ink-3); }
 .iso-lab ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 .iso-lab ul b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+/* 사이클 바차트 (조닝 판 아래) — 막대 = 시작 · 기간 (WD), 진한 레인 = 층 사이클을 정하는 쪽 */
+.iso-cy { grid-column: 1 / -1; min-width: 0; }
+.iso-row + .iso-row { margin-top: 12px; }
+.cy { margin: 2px 0 4px; padding: 10px 12px 9px; background: var(--sheet-2); border-radius: 12px; }
+.cy-hd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; margin-bottom: 5px; font-size: 12px; color: var(--ink-3); }
+.cy-hd b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; color: var(--ink); }
+.cy-hd em { font-style: normal; font-family: var(--f-num); color: var(--cp-deep); }
+.cy-key { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
+.cy-key i { width: 10px; height: 6px; border-radius: 1.5px; background: var(--t1); display: inline-block; margin-left: 6px; }
+.cy-key i.w { background: var(--navy); }
+.cy-ln { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 1px; font-size: 12px; color: var(--ink-3); }
+.cy-ln b { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.cy-ln.gov b { color: var(--ink); }
+.cy-ln.gov b::after { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--cp); margin-left: 6px; vertical-align: 2px; }
+.cy-r { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 8px; height: 17px; }
+.cy-n { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cy-t { position: relative; height: 100%; }
+.cy-t i { position: absolute; top: 4px; height: 9px; left: calc(var(--s) * (100% - 44px)); width: max(2px, calc(var(--w) * (100% - 44px))); background: var(--t1); border-radius: 2px; box-shadow: inset -1px 0 0 var(--sheet-2); }
+.cy-t i.w { background: var(--navy); }
+.cy-t i.gh { background: transparent; border: 1px dashed var(--cp); box-shadow: none; }
+.cy-t i span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-num); font-size: 9.5px; font-weight: 600; color: #fff; line-height: 1; }
+.cy-g.sub .cy-t i { background: var(--slate-2); }
+.cy-g.sub .cy-t i span { color: var(--ink-2); }
+.cy-t em { position: absolute; top: 0; left: calc(var(--e) * (100% - 44px) + 5px); font-style: normal; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 17px; white-space: nowrap; }
+.cy-t em small { font-size: 10.5px; font-weight: 500; color: var(--cp-deep); margin-left: 4px; }
 .iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
-
-/* 공종별 C.P 구간 */
-.cbl { display: flex; flex-direction: column; }
-.cb { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 6px 18px; padding: 12px 0 14px; border-top: 1px solid var(--rule-2); align-items: center; align-content: start; }
-.cb:first-child { border-top: 0; padding-top: 2px; }
-.cb-h { display: flex; flex-direction: column; min-width: 0; }
-.cb-h b { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cb-h span { font-size: 13px; color: var(--ink-3); }
-.cb-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--band); }
-.cb-bar i { display: flex; align-items: center; justify-content: center; height: 100%; font-style: normal; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
-.cb-bar i.pre { background: repeating-linear-gradient(-45deg, #F6D9D5 0 5px, #FCEFED 5px 10px); color: var(--cp-deep); }
-.cb-bar i.cp { background: var(--cp); color: #fff; }
-.cb-bar i.post { background: repeating-linear-gradient(-45deg, #E2E6EB 0 5px, #F1F3F5 5px 10px); color: var(--ink-2); }
-.cb-bar i.non { background: var(--slate-2); color: var(--ink-2); }
-.cb-w { grid-column: 2; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 13.5px; color: var(--ink-2); min-width: 0; }
-.cb-w .tg { font-weight: 500; }
-.cb-w .bs { flex: 1 1 100%; min-width: 0; margin: 0; padding: 0; border: 0; background: none; text-align: left; font-size: 13.5px; line-height: 1.5; color: var(--ink-3); cursor: pointer;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; border-radius: 4px; }
-.cb-w .bs:hover { color: var(--ink-2); }
-.cb-w .bs[aria-expanded="true"] { display: block; -webkit-line-clamp: unset; color: var(--ink-2); }
-.cb.non .cb-h b { color: var(--ink-3); font-weight: 500; }
 
 /* 주요 판단 */
 /* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
@@ -386,19 +417,15 @@ details.ss[open] > summary::after { content: "접기"; }
   .t-hero { grid-column: 1 / span 5; grid-row: span 2; }
   .t-ms { grid-column: 6 / span 4; grid-row: span 2; }
   .t-quick { grid-column: 10 / span 3; grid-row: span 2; }
-  .t-sec { grid-column: 1 / span 7; grid-row: span 2; }
-  .t-zone { grid-column: 8 / span 5; }
-  .t-kf { grid-column: 8 / span 5; }
-  /* 단면이 낮으면 (넓고 낮은 건물) 단면 | 조닝 한 줄 + 주요 판단은 전체 폭 4열 */
-  .bento.kf-wide .t-sec { grid-row: auto; }
-  .bento.kf-wide .t-kf { grid-column: 1 / -1; }
-  .bento.kf-wide .kf-hi { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .bento.kf-wide .kf-lo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .bento.measure > .tile { align-self: start; }
-  .cbl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 6), auto); grid-auto-flow: column; }
-  .cbl .cb { padding-right: 22px; }
-  .cbl .cb.c0 { border-top: 0; padding-top: 2px; }
-  .cbl .cb.c2 { padding-right: 0; padding-left: 22px; border-left: 1px solid var(--rule-2); }
+  /* 단면 · 조닝 · 주요 판단은 전체 폭 — 단면은 도면 | 칩 · 주석 · 범례, 조닝은 세 판 가로 (판 아래 사이클) */
+  .t-sec { display: grid; grid-template-columns: minmax(0, 860px) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; grid-template-areas: "h h" "d c" "d n" "d l"; column-gap: 40px; align-content: start; }
+  .t-sec > .th { grid-area: h; }
+  .t-sec > #s-chips { grid-area: c; align-self: start; }
+  .t-sec > #section { grid-area: d; }
+  .t-sec > #s-notes { grid-area: n; align-self: start; grid-template-columns: minmax(0, 1fr); }
+  .t-sec > #s-lg { grid-area: l; align-self: start; }
+  .kf-hi { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .kf-lo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 820px) {
   .wgs.two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 40px; }
@@ -422,8 +449,6 @@ details.ss[open] > summary::after { content: "접기"; }
   .big b { font-size: 92px; }
   .comp-leg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kf7 { grid-template-columns: minmax(0, 1fr); }
-  .cb { grid-template-columns: minmax(0, 1fr); }
-  .cb-w { grid-column: 1; }
   .g, .g.c3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .strata7 { grid-template-columns: 14px minmax(0, 1fr) 96px 72px; }
   dialog.sheet { border-radius: 0; width: 100vw; }
@@ -466,7 +491,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <path d="M128 112 70 83l58-29 58 29z" fill="#EEF2F8" stroke="#D9E1EC"/><path d="M70 83v7l58 29 58-29v-7" stroke="#D9E1EC"/>
         <path d="M128 80 88 60l40-20 40 20z" fill="#E6ECF5" stroke="#CDD8E8"/><path d="M88 60v6l40 20 40-20v-6" stroke="#CDD8E8"/>
         <path d="M128 40v-22" stroke="#F0B7B0" stroke-width="1.5" stroke-dasharray="3 3"/></g></svg>
-      <div class="eyebrow">총 공사기간 · C.P 합계</div>
+      <div class="eyebrow">적정 공사기간</div>
       <div class="big"><b id="h-total">-</b><small>개월</small></div>
       <div class="exact" id="h-exact"></div>
       <div class="rg" id="h-range"></div>
@@ -481,7 +506,7 @@ details.ss[open] > summary::after { content: "접기"; }
     </section>
 
     <section class="tile t-quick" aria-labelledby="q1-t">
-      <header class="th sm"><h2 id="q1-t">빠른 입력</h2><span class="sub">바꾸면 바로 다시 계산</span></header>
+      <header class="th sm"><h2 id="q1-t">빠른 입력</h2></header>
       <div class="quick"><div class="qa">
       <div class="steps">
         <div class="step"><label for="q-nB">지하</label><div class="stp"><button type="button" data-step="nB" data-d="-1" aria-label="지하 층수 줄이기">−</button><input id="q-nB" data-k="nB" data-type="int" type="number" min="0" max="12" step="1" inputmode="numeric"><button type="button" data-step="nB" data-d="1" aria-label="지하 층수 늘리기">+</button></div></div>
@@ -510,10 +535,11 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="chart" id="gantt"></div>
       <div class="cpf" id="cpf"></div>
       <div class="lg" id="g-lg"></div>
+      <div class="gtip" id="gtip" role="tooltip" hidden></div>
     </section>
 
     <section class="tile t-sec" id="sec-sec" aria-labelledby="s-t">
-      <header class="th"><h2 id="s-t"><span class="idx">02</span>가정 단면 · 층고</h2><span class="sub">층고 칸을 바꾸면 바로 다시 계산 · 빨간 점선 = 수직재 2회 타설 이음</span></header>
+      <header class="th"><h2 id="s-t"><span class="idx">02</span>가정 단면 · 층고</h2></header>
       <div class="chips" id="s-chips"></div>
       <div class="chart" id="section"></div>
       <ol class="kn" id="s-notes" aria-label="단면 주석"></ol>
@@ -521,19 +547,14 @@ details.ss[open] > summary::after { content: "접기"; }
     </section>
 
     <section class="tile t-zone" id="sec-zone" aria-labelledby="z-t">
-      <header class="th"><h2 id="z-t"><span class="idx">03</span>조닝 계획</h2><span class="sub">입력 면적 직사각형 · 장단변비 1.6 가정 · 세 판 같은 축척</span></header>
+      <header class="th"><h2 id="z-t"><span class="idx">03</span>조닝 계획</h2></header>
       <div class="chart" id="zone"></div>
       <div class="lg" id="z-lg"></div>
     </section>
 
     <section class="tile t-kf" id="sec-kf" aria-labelledby="k-t">
-      <header class="th"><h2 id="k-t"><span class="idx">04</span>주요 판단</h2><span class="sub">빨간 점 = 공기 영향 큼</span></header>
+      <header class="th"><h2 id="k-t"><span class="idx">04</span>주요 판단</h2></header>
       <div class="kf7" id="kf"></div>
-    </section>
-
-    <section class="tile t-cpb" id="sec-cpb" aria-labelledby="c-t">
-      <header class="th"><h2 id="c-t"><span class="idx">05</span>공종별 C.P 구간</h2><span class="sub">빗금 빨강 = 앞 공종과 병행 (Non-C.P) · 빨강 = C.P · 회색 = 전체 Non-C.P · 근거 글을 누르면 펼침</span></header>
-      <div class="cbl" id="cpb"></div>
     </section>
 
     <section class="tile t-warn" id="sec-warn" aria-labelledby="w-t">
@@ -544,7 +565,7 @@ details.ss[open] > summary::after { content: "접기"; }
       </div>
     </section>
   </div>
-  <p class="foot">결정론적 규칙 엔진 (같은 입력 = 같은 결과) · 화면의 숫자는 모두 계산값 · 1개월 = 30.4일 × 가동률 · 해체공사 별도</p>
+  <p class="foot">1개월 = 30.4일 · 해체공사 별도</p>
 </main>
 
 <dialog class="sheet" id="sheet" aria-labelledby="sheet-t">
