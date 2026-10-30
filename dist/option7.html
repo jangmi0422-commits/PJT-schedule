@@ -182,6 +182,11 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .link:hover { text-decoration-color: currentColor; }
 .links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; }
 
+/* ── 맨 위 줄 (가동률 · 저장 / 불러오기 / PDF) */
+.tbar { max-width: 1400px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px; }
+.tb-rates, .tb-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+/* @@R 가동률 (이 줄 바로 아래에 추가) */
+/* @@P 저장 · 불러오기 · PDF 단추 (이 줄 바로 아래에 추가) */
 /* ── 벤토 그리드 */
 .wrap { padding: 22px var(--gut-r) 48px var(--gut-l); }
 .bento { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
@@ -466,6 +471,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .iso-lab ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; word-break: keep-all; }
 .iso-lab ul b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
 /* @@E 사이클 바차트 편집 (이 줄 바로 아래에 추가) */
+/* @@Z 조닝 근거 · 사이클 표 · 오버랩 (이 줄 바로 아래에 추가) */
 /* 숫자 = 단추 (점선 밑줄 · 고친 값은 점 + 진한 글자) → 누르면 숫자 칸. 묶음 행은 이름 · 숫자로 펼침. 왼쪽 손잡이 = 순서 끌기 */
 .cy-blk { position: relative; border-radius: 6px; }
 .cy-blk.cy-drag { z-index: 4; background: var(--sheet-2); box-shadow: 0 6px 16px -8px rgba(20, 32, 54, .45); }
@@ -786,6 +792,7 @@ details.ss[open] > summary::after { content: "접기"; }
 @media (prefers-reduced-motion: no-preference) {
   .presets button, .seg button { transition: background .18s, color .18s, box-shadow .18s; }
 }
+/* @@PRINT 인쇄 (PDF) — 이 줄 아래에 @media print · @page 규칙 */
 </style>
 
 <header class="top" id="top">
@@ -810,6 +817,8 @@ details.ss[open] > summary::after { content: "접기"; }
 </header>
 
 <main class="wrap">
+  <!-- 맨 위 줄 : 왼쪽 = 가동률 (#tb-rates), 오른쪽 = 저장 · 불러오기 · PDF (#tb-act) -->
+  <div class="tbar" id="tbar"><div class="tb-rates" id="tb-rates"></div><div class="tb-act" id="tb-act"></div></div>
   <div class="bento" id="bento">
     <section class="tile t-hero" id="t-hero" aria-label="총 공사기간">
       <svg class="hero-deco" viewBox="0 0 230 190" aria-hidden="true"><g fill="none" stroke-linejoin="round">
