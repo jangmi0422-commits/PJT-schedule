@@ -320,7 +320,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tile { scroll-margin-top: 84px; }
 /* 모바일 : 층고 칸은 도면 아래 표 (도면은 전체 폭) */
 .fhl { margin-top: 14px; border-top: 1px solid var(--rule-2); }
-.fhl .fr { display: grid; grid-template-columns: minmax(0, 1fr) 84px 76px 58px; gap: 8px; align-items: center; min-height: 48px; padding: 4px 0; border-bottom: 1px solid var(--rule-2); }
+.fhl .fr { display: grid; grid-template-columns: minmax(0, 1fr) 84px 76px 58px; gap: 8px; align-items: center; min-height: 40px; padding: 3px 0; border-bottom: 1px solid var(--rule-2); }
 .fhl .fr.hd { min-height: 34px; font-size: 12.5px; color: var(--ink-3); }
 .fhl .fr.hd span:nth-child(n+2) { text-align: center; }
 .fhl .fl { font-family: var(--f-num); font-weight: 700; font-size: 15.5px; color: var(--ink); line-height: 1.2; min-width: 0; }
@@ -329,7 +329,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .fhl .fp { justify-self: center; font-size: 12.5px; font-weight: 500; color: var(--ink-2); background: var(--band); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
 .fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px #EFB3AC; }
 .fhl .fe { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
-.fh.fh-l { position: static; width: 100%; height: 38px; font-size: 16px; }
+.fh.fh-l { position: static; width: 100%; height: 34px; font-size: 16px; }
 .kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 22px; }
 .kn li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
 .kn li i { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 11.5px; font-weight: 700; display: grid; place-items: center; margin-top: 0; }
@@ -389,14 +389,24 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .cb.non .cb-h b { color: var(--ink-3); font-weight: 500; }
 
 /* 주요 판단 */
-.kf7 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.kc { background: var(--sheet-2); border-radius: 16px; padding: 14px 16px 15px; display: flex; flex-direction: column; gap: 3px; min-width: 0; position: relative; }
-.kc .kk { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
-.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 21px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.25; overflow-wrap: anywhere; }
-.kc .kw { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
-.kc.hi { background: #fff; box-shadow: inset 0 0 0 1.5px #F1CBC6; }
-.kc.hi .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
-.kc.hi .kv { font-size: 24px; }
+/* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
+.kf7 { display: flex; flex-direction: column; gap: 12px; }
+.kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px #F1CBC6; padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
+.kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
+.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
+.kc .kw { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kf-lo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; }
+.kf-lo > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; padding: 6px 0; border-bottom: 1px solid var(--rule-2); cursor: help; }
+.kf-lo dt { flex: none; font-size: 13px; color: var(--ink-3); }
+.kf-lo dd { margin: 0; min-width: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--ink); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) {
+  .kf-hi { gap: 6px; }
+  .kc { padding: 9px 12px 10px; }
+  .kc .kv { font-size: 16px; word-break: keep-all; overflow-wrap: break-word; }
+  .kf-lo { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* 확인 사항 (조용히) */
 .t-warn { padding-top: 20px; padding-bottom: 22px; }
@@ -488,7 +498,8 @@ details.ss[open] > summary::after { content: "접기"; }
   /* 단면이 낮으면 (넓고 낮은 건물) 단면 | 조닝 한 줄 + 주요 판단은 전체 폭 4열 */
   .bento.kf-wide .t-sec { grid-row: auto; }
   .bento.kf-wide .t-kf { grid-column: 1 / -1; }
-  .bento.kf-wide .kf7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bento.kf-wide .kf-hi { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .bento.kf-wide .kf-lo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .bento.measure > .tile { align-self: start; }
   .cbl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 6), auto); grid-auto-flow: column; }
   .cbl .cb { padding-right: 22px; }
@@ -2843,11 +2854,14 @@ details.ss[open] > summary::after { content: "접기"; }
     var nm = /^([\d,]+)(공|본|매|㎡)/.exec(o.qty), nt = /엄지말뚝 ([\d,]+)공/.exec(o.qty);
     return { main: Ls[0], thumb: thumb, max: Math.max.apply(null, Ls), n: nm ? nm[1] + nm[2] : '', nT: nt ? nt[1] + '공' : '' };
   }
-  /* want = 원하는 도면 높이 (벤토 오른쪽 열과 높이를 맞출 때) — 세로 비율을 키워 다시 그린다 (줄이지는 않음) */
+  /* want = 원하는 도면 높이 (벤토 오른쪽 열과 높이를 맞출 때) — 세로 비율을 키워 다시 그린다 (줄이지는 않음).
+     단면이 길어지지 않게 기본 높이는 낮게, 옆 열에 맞춰 늘리는 것도 SEC_GROW 배까지만 */
+  var SEC_GROW = 1.15;
+  function secT0(Wc) { return Wc < 600 ? 520 : 600; }
   function section(R, Wc, want) {
-    var T0 = Wc < 600 ? 640 : 820, res = sectionAt(R, Wc, T0);
+    var T0 = secT0(Wc), res = sectionAt(R, Wc, T0);
     if (!want || res.Ht >= want - 14) return res;
-    var lo = T0, hi = T0 * 4;
+    var lo = T0, hi = T0 * SEC_GROW;
     for (var it = 0; it < 8; it++) {
       var md = (lo + hi) / 2, nx = sectionAt(R, Wc, md);
       if (nx.Ht <= want) { res = nx; lo = md; if (want - nx.Ht < 14) break; } else hi = md;
@@ -3141,7 +3155,7 @@ details.ss[open] > summary::after { content: "접기"; }
     return { html: '<div class="sec7" style="width:' + W + 'px;height:' + Ht + 'px">' + svgEl(W, Ht, s, '가정 단면도 · 지상 ' + b.nUp + '층 · 지하 ' + b.nB + '층') + html + '</div>' + lst, groups: G, elTop: elTop, notes: nh, Ht: Ht, vx: vx };
   }
   /* 넓은 화면 배치 : 단면이 높으면 단면 (2행) | 조닝 + 주요 판단, 낮으면 (넓고 낮은 건물) 단면 | 조닝 한 줄 + 주요 판단 전체 폭.
-     단면은 옆 열 높이에 맞춰 세로를 조금 키우되, 세로 과장 상한 (가로의 4배) 안에서만 — 남는 높이는 도면을 가운데 둔다 */
+     단면은 옆 열 높이에 맞춰 세로를 조금 키우되, SEC_GROW 배 안에서만 — 남는 높이는 도면을 가운데 둔다 */
   function fitSection(R) {
     var bento = $('#bento');
     zoneFW = 0; if (zoneBig) { zoneBig = false; renderZone(R); }
@@ -3150,12 +3164,14 @@ details.ss[open] > summary::after { content: "접기"; }
     bento.classList.remove('kf-wide'); bento.classList.add('measure');
     var secN = tile.offsetHeight, boxN = box.offsetHeight, zN = z.offsetHeight, kfN = kf.offsetHeight, over = secN - boxN;
     /* 단면 높이는 자연 높이 ~ 세로 과장 상한 사이에서만 늘릴 수 있다 → 세 배치 중 남는 빈칸이 가장 작은 것 */
-    var secMax = over + sectionAt(R, box.clientWidth || 700, 1e5).Ht;
+    var secW = box.clientWidth || 700, secMax = over + sectionAt(R, secW, secT0(secW) * SEC_GROW).Ht;
     function gap(h) { return Math.abs(h - Math.max(secN, Math.min(secMax, h))); }
-    var opts = [{ m: 'tall', h: zN + 16 + kfN }, { m: 'wide', h: zN }];
+    /* 조닝 + 주요 판단을 단면 옆에 세우는 배치는 단면을 늘리지 않을 때만 */
+    var opts = [{ m: 'wide', h: zN }], tallH = zN + 16 + kfN;
     bento.classList.add('kf-wide');
     zoneBig = true; renderZone(R); opts.push({ m: 'big', h: z.offsetHeight });
     var best = opts[0]; opts.forEach(function (o) { if (gap(o.h) < gap(best.h) - 40) best = o; });
+    if (tallH <= secMax + 24 && gap(tallH) < gap(best.h) - 40) best = { m: 'tall', h: tallH };
     if (best.m !== 'big') { zoneBig = false; renderZone(R); }
     else if (best.h > secMax + 24) {
       /* 큰 판이 단면 상한보다 높으면 판을 줄여 두 타일 높이를 맞춘다 (판 높이 ∝ 판 폭) */
@@ -3378,8 +3394,9 @@ details.ss[open] > summary::after { content: "접기"; }
     add('분할 타설 층', two.length ? two.map(function (x) { return x.label; }).join(', ') : '없음', fr.dc ? '층고 ' + L.dc.split + 'm 이상 = 수직재 2회 (그 아래 1회)' : fr.coreRows.length ? '코어 ' + L.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + L.frame.split + 'm 이상 = 수직재 2회 · 층 사이클 × ' + r2(1 + L.frame.vShare), two.length > 0);
     if (fr.coreRows.length) add('코어 거푸집', fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼', R.inp.coreSys && R.inp.coreSys !== 'AUTO' ? '선택값' : '자동 : 지상 15층 이상 ACS');
     if (b.seq === 'TD') add('역타 구조제한', '기초 전 ' + fr.lim + 'F · 수직재 전 ' + fr.lim2 + 'F', R.tags.lim === '기본' ? '모를 때 기본값 (지하 + 지상 25 · 32개층)' : '입력값', true);
-    F = F.filter(function (x) { return x.hi; }).concat(F.filter(function (x) { return !x.hi; }));
-    $('#kf').innerHTML = F.map(function (x) { return '<div class="kc' + (x.hi ? ' hi' : '') + '"><span class="kk">' + esc(x.k) + '</span><b class="kv">' + esc(x.v) + '</b><span class="kw">' + esc(x.why) + '</span></div>'; }).join('');
+    var hi = F.filter(function (x) { return x.hi; }), lo = F.filter(function (x) { return !x.hi; });
+    $('#kf').innerHTML = (hi.length ? '<div class="kf-hi">' + hi.map(function (x) { return '<div class="kc" title="' + esc(x.why) + '"><span class="kk">' + esc(x.k) + '</span><b class="kv">' + esc(x.v) + '</b><span class="kw">' + esc(x.why) + '</span></div>'; }).join('') + '</div>' : '') +
+      (lo.length ? '<dl class="kf-lo">' + lo.map(function (x) { return '<div title="' + esc(x.k + ' : ' + x.why) + '"><dt>' + esc(x.k) + '</dt><dd>' + esc(x.v) + '</dd></div>'; }).join('') + '</dl>' : '');
   }
   /* 확인 사항 (= 히어로 칩 건수) 과 계산 가정 (엔진 notes) 을 나눠 보여 준다 */
   function renderWarns(R) {

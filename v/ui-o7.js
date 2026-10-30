@@ -263,11 +263,14 @@
     var nm = /^([\d,]+)(공|본|매|㎡)/.exec(o.qty), nt = /엄지말뚝 ([\d,]+)공/.exec(o.qty);
     return { main: Ls[0], thumb: thumb, max: Math.max.apply(null, Ls), n: nm ? nm[1] + nm[2] : '', nT: nt ? nt[1] + '공' : '' };
   }
-  /* want = 원하는 도면 높이 (벤토 오른쪽 열과 높이를 맞출 때) — 세로 비율을 키워 다시 그린다 (줄이지는 않음) */
+  /* want = 원하는 도면 높이 (벤토 오른쪽 열과 높이를 맞출 때) — 세로 비율을 키워 다시 그린다 (줄이지는 않음).
+     단면이 길어지지 않게 기본 높이는 낮게, 옆 열에 맞춰 늘리는 것도 SEC_GROW 배까지만 */
+  var SEC_GROW = 1.15;
+  function secT0(Wc) { return Wc < 600 ? 520 : 600; }
   function section(R, Wc, want) {
-    var T0 = Wc < 600 ? 640 : 820, res = sectionAt(R, Wc, T0);
+    var T0 = secT0(Wc), res = sectionAt(R, Wc, T0);
     if (!want || res.Ht >= want - 14) return res;
-    var lo = T0, hi = T0 * 4;
+    var lo = T0, hi = T0 * SEC_GROW;
     for (var it = 0; it < 8; it++) {
       var md = (lo + hi) / 2, nx = sectionAt(R, Wc, md);
       if (nx.Ht <= want) { res = nx; lo = md; if (want - nx.Ht < 14) break; } else hi = md;
@@ -561,7 +564,7 @@
     return { html: '<div class="sec7" style="width:' + W + 'px;height:' + Ht + 'px">' + svgEl(W, Ht, s, '가정 단면도 · 지상 ' + b.nUp + '층 · 지하 ' + b.nB + '층') + html + '</div>' + lst, groups: G, elTop: elTop, notes: nh, Ht: Ht, vx: vx };
   }
   /* 넓은 화면 배치 : 단면이 높으면 단면 (2행) | 조닝 + 주요 판단, 낮으면 (넓고 낮은 건물) 단면 | 조닝 한 줄 + 주요 판단 전체 폭.
-     단면은 옆 열 높이에 맞춰 세로를 조금 키우되, 세로 과장 상한 (가로의 4배) 안에서만 — 남는 높이는 도면을 가운데 둔다 */
+     단면은 옆 열 높이에 맞춰 세로를 조금 키우되, SEC_GROW 배 안에서만 — 남는 높이는 도면을 가운데 둔다 */
   function fitSection(R) {
     var bento = $('#bento');
     zoneFW = 0; if (zoneBig) { zoneBig = false; renderZone(R); }
@@ -570,12 +573,14 @@
     bento.classList.remove('kf-wide'); bento.classList.add('measure');
     var secN = tile.offsetHeight, boxN = box.offsetHeight, zN = z.offsetHeight, kfN = kf.offsetHeight, over = secN - boxN;
     /* 단면 높이는 자연 높이 ~ 세로 과장 상한 사이에서만 늘릴 수 있다 → 세 배치 중 남는 빈칸이 가장 작은 것 */
-    var secMax = over + sectionAt(R, box.clientWidth || 700, 1e5).Ht;
+    var secW = box.clientWidth || 700, secMax = over + sectionAt(R, secW, secT0(secW) * SEC_GROW).Ht;
     function gap(h) { return Math.abs(h - Math.max(secN, Math.min(secMax, h))); }
-    var opts = [{ m: 'tall', h: zN + 16 + kfN }, { m: 'wide', h: zN }];
+    /* 조닝 + 주요 판단을 단면 옆에 세우는 배치는 단면을 늘리지 않을 때만 */
+    var opts = [{ m: 'wide', h: zN }], tallH = zN + 16 + kfN;
     bento.classList.add('kf-wide');
     zoneBig = true; renderZone(R); opts.push({ m: 'big', h: z.offsetHeight });
     var best = opts[0]; opts.forEach(function (o) { if (gap(o.h) < gap(best.h) - 40) best = o; });
+    if (tallH <= secMax + 24 && gap(tallH) < gap(best.h) - 40) best = { m: 'tall', h: tallH };
     if (best.m !== 'big') { zoneBig = false; renderZone(R); }
     else if (best.h > secMax + 24) {
       /* 큰 판이 단면 상한보다 높으면 판을 줄여 두 타일 높이를 맞춘다 (판 높이 ∝ 판 폭) */
@@ -798,8 +803,9 @@
     add('분할 타설 층', two.length ? two.map(function (x) { return x.label; }).join(', ') : '없음', fr.dc ? '층고 ' + L.dc.split + 'm 이상 = 수직재 2회 (그 아래 1회)' : fr.coreRows.length ? '코어 ' + L.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + L.frame.split + 'm 이상 = 수직재 2회 · 층 사이클 × ' + r2(1 + L.frame.vShare), two.length > 0);
     if (fr.coreRows.length) add('코어 거푸집', fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼', R.inp.coreSys && R.inp.coreSys !== 'AUTO' ? '선택값' : '자동 : 지상 15층 이상 ACS');
     if (b.seq === 'TD') add('역타 구조제한', '기초 전 ' + fr.lim + 'F · 수직재 전 ' + fr.lim2 + 'F', R.tags.lim === '기본' ? '모를 때 기본값 (지하 + 지상 25 · 32개층)' : '입력값', true);
-    F = F.filter(function (x) { return x.hi; }).concat(F.filter(function (x) { return !x.hi; }));
-    $('#kf').innerHTML = F.map(function (x) { return '<div class="kc' + (x.hi ? ' hi' : '') + '"><span class="kk">' + esc(x.k) + '</span><b class="kv">' + esc(x.v) + '</b><span class="kw">' + esc(x.why) + '</span></div>'; }).join('');
+    var hi = F.filter(function (x) { return x.hi; }), lo = F.filter(function (x) { return !x.hi; });
+    $('#kf').innerHTML = (hi.length ? '<div class="kf-hi">' + hi.map(function (x) { return '<div class="kc" title="' + esc(x.why) + '"><span class="kk">' + esc(x.k) + '</span><b class="kv">' + esc(x.v) + '</b><span class="kw">' + esc(x.why) + '</span></div>'; }).join('') + '</div>' : '') +
+      (lo.length ? '<dl class="kf-lo">' + lo.map(function (x) { return '<div title="' + esc(x.k + ' : ' + x.why) + '"><dt>' + esc(x.k) + '</dt><dd>' + esc(x.v) + '</dd></div>'; }).join('') + '</dl>' : '');
   }
   /* 확인 사항 (= 히어로 칩 건수) 과 계산 가정 (엔진 notes) 을 나눠 보여 준다 */
   function renderWarns(R) {
