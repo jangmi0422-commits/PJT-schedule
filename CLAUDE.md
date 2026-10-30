@@ -25,6 +25,11 @@
 - 빌드 : `node build.js`
 - 점검 : `node tests/shot.js` — 사례 재현 A 49.86 · B 42.70 · C 28.74, 사례 C 1F 9.8 → 6.0 → 9.8 (28.74 → 28.32 → 28.74), 1440 · 390px 가로 스크롤 없음, 콘솔 오류 0, 스크린샷 `tests/out/`
 
+## 배포 (결과물 전달)
+- 사용자에게 줄 결과물은 `node build.js release` → `releases/공기산정 에이전트_vN.html` (번호는 하나씩 늘림, 이전 버전은 지우지 않음) → 커밋 · 푸시 → GitHub 링크로 전달
+- 버전 목록 : https://github.com/jangmi0422-commits/PJT-schedule/tree/claude/air-calculation-agent-data-cf7y78/releases
+- 저장소는 공개 — 실제 현장명 · 회사명은 코드 주석에도 쓰지 않는다
+
 ## 지킬 것
 - 화면에 회사명 · 로고 금지. 실제 현장명 금지 (사례 A · B · C 로 표기)
 - v2.8 관리자 비밀번호는 문서 · 메모리 · 답변 · 파일 어디에도 쓰지 않는다
