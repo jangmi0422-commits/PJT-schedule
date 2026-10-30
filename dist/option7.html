@@ -270,13 +270,12 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .t-quick { display: flex; flex-direction: column; }
 .quick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .qb { display: flex; flex-direction: column; }
-.qlinks { margin-top: auto; padding-top: 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; border-top: 1px solid var(--rule-2); margin-bottom: -4px; }
 .t-quick .quick { margin-bottom: 16px; }
 /* 층수 : V5 퀵산정처럼 큰 숫자 + 드래그 막대 */
 .floors { display: flex; flex-direction: column; gap: 8px; }
 .sl { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) 28px 28px; align-items: baseline; column-gap: 6px; user-select: none; -webkit-user-select: none; }
 .sl .lb { font-size: 13.5px; color: var(--ink-3); }
-.sl output { font-family: var(--f-disp); font-size: 28px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 1.2em; text-align: right; }
+.sl output { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 600; letter-spacing: -.035em; line-height: 1.05; color: var(--ink); min-width: 1.2em; text-align: right; }
 .sl .su { font-size: 12.5px; color: var(--ink-3); }
 .sl .su.auto { color: var(--cp-deep); }
 .sl .pm { align-self: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; }
@@ -313,6 +312,8 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .lg span { display: inline-flex; align-items: center; gap: 7px; }
 .lg i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; flex: none; }
 .lg svg { flex: none; display: block; }
+.lg .lg-ph { margin-left: auto; gap: 6px; }
+.lg .lg-ph i + i, .lg .lg-ph i { margin-left: 8px; }
 
 /* Master Schedule */
 .chart { width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
@@ -448,17 +449,21 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .core-h.drag:hover .core-grip, .core-h.drag:focus-visible .core-grip { opacity: 1; }
 body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none; }
 .core-at { color: var(--ink-3); }
+.iso-lab ul .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; opacity: .75; vertical-align: 0; }
+.iso-lab ul li .tm { margin-left: 14px; }
 .core-at b { font-family: var(--f-ui) !important; font-weight: 600; color: var(--cp-deep) !important; }
 .iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
 
 /* 주요 판단 */
 /* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
+.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); }
+.sec-kf h3 { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
 .kf7 { display: flex; flex-direction: column; gap: 12px; }
 .kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--cp-line); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
 .kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
-.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
+.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; word-break: keep-all; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
 .kc .kw { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kf-lo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; }
 .kf-lo > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; padding: 6px 0; border-bottom: 1px solid var(--rule-2); cursor: help; }
@@ -556,14 +561,13 @@ details.ss[open] > summary::after { content: "접기"; }
   .t-ms { grid-column: 6 / span 4; grid-row: span 2; }
   .t-quick { grid-column: 10 / span 3; grid-row: span 2; }
   /* 단면 · 조닝 · 주요 판단은 전체 폭 — 단면은 도면 | 칩 · 주석 · 범례, 조닝은 세 판 가로 (판 아래 사이클) */
-  .t-sec { display: grid; grid-template-columns: minmax(0, 860px) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; grid-template-areas: "h h" "d c" "d n" "d l"; column-gap: 40px; align-content: start; }
+  .t-sec { display: grid; grid-template-columns: minmax(0, 860px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; grid-template-areas: "h h" "d c" "d n" "d l" "d k"; column-gap: 40px; align-content: start; }
+  .t-sec > .sec-kf { grid-area: k; align-self: start; }
   .t-sec > .th { grid-area: h; }
   .t-sec > #s-chips { grid-area: c; align-self: start; }
   .t-sec > #section { grid-area: d; }
   .t-sec > #s-notes { grid-area: n; align-self: start; grid-template-columns: minmax(0, 1fr); }
   .t-sec > #s-lg { grid-area: l; align-self: start; }
-  .kf-hi { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .kf-lo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 820px) {
   .wgs.two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 40px; }
@@ -665,7 +669,6 @@ details.ss[open] > summary::after { content: "접기"; }
           <option value="RC">RC</option><option value="SRC">SRC</option><option value="SC">철골 + RC 코어</option><option value="COMP">강합성 + RC 코어</option></select></div>
       </div>
       </div></div>
-      <div class="qlinks"><button class="link" type="button" data-open="in-site">면적 입력</button><button class="link" type="button" data-goto="sec-sec">층고 → 단면</button><button class="link" type="button" data-open="in-wall">공법 전체</button></div>
     </section>
 
     <section class="tile t-gantt" id="sec-gantt" aria-labelledby="g-t">
@@ -682,17 +685,13 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="chart" id="section"></div>
       <ol class="kn" id="s-notes" aria-label="단면 주석"></ol>
       <div class="lg" id="s-lg"></div>
+      <div class="sec-kf" id="sec-kf"><h3 id="k-t">주요 가정사항 및 조건</h3><div class="kf7" id="kf"></div></div>
     </section>
 
     <section class="tile t-zone" id="sec-zone" aria-labelledby="z-t">
       <header class="th"><h2 id="z-t"><span class="idx">03</span>조닝 계획</h2></header>
       <div class="chart" id="zone"></div>
       <div class="lg" id="z-lg"></div>
-    </section>
-
-    <section class="tile t-kf" id="sec-kf" aria-labelledby="k-t">
-      <header class="th"><h2 id="k-t"><span class="idx">04</span>주요 판단</h2></header>
-      <div class="kf7" id="kf"></div>
     </section>
 
     <section class="tile t-warn" id="sec-warn" aria-labelledby="w-t">
@@ -1246,7 +1245,9 @@ details.ss[open] > summary::after { content: "접기"; }
     var Vf = Af * teq, zoneV = clamp(num(A.zoneV, fl.zoneV), 300, 2000);
     var nZ = Math.max(1, Math.ceil(Vf / zoneV - 1e-9)), vZ = Vf / nZ;
     var nDeep = nB > 0 ? Math.min(nZ, Math.ceil((Adeep / 1.08) * teq / zoneV - 1e-9)) : 0;
-    var nPit = nB > 0 ? Math.min(Math.max(1, Math.round(nZ * fl.pitRatio)), nDeep > 0 ? nDeep : nZ) : 0;
+    /* PIT Zone : 입력 (adv.pitZ = Zone 번호 목록, 0부터 — 화면이 지상 코어 아래 Zone 으로 채움) 이 있으면 그 Zone, 없으면 Zone 수 × pitRatio 를 고르게 */
+    var pitIn = Array.isArray(A.pitZ) ? A.pitZ.map(function (v) { return Math.round(+v); }).filter(function (v, k, a) { return v >= 0 && v < nZ && a.indexOf(v) === k; }) : [];
+    var nPit = pitIn.length ? pitIn.length : nB > 0 ? Math.min(num(A.pitN, 0) > 0 ? Math.round(num(A.pitN, 0)) : Math.max(1, Math.round(nZ * fl.pitRatio)), nDeep > 0 ? nDeep : nZ) : 0;
     var rebR = num(A.rebar, 0) > 0 ? clamp(num(A.rebar, 0), 0.03, 0.4) : fl.rebar, lagF = A.lag != null && A.lag !== '' ? clamp(num(A.lag, fl.lag), 0, 60) : fl.lag;
     /* 준비 (영구배수 · 버림 · 먹) · 마무리 (형틀 · 검측 · 타설) · PIT 추가는 작업량 → 작업시간 비례. 팀 시차는 계획값 (고정) */
     var prepW = fl.prep / hF, tailW = fl.tail / hF, pitW = fl.pitAdd / hF;
@@ -1254,7 +1255,7 @@ details.ss[open] > summary::after { content: "접기"; }
     var teamsF = num(A.fTeams, 0) > 0 ? clamp(Math.round(num(A.fTeams, 0)), 1, 10) : clamp(Math.ceil(Vf / fl.teamV), 1, fl.maxTeams);
     var nSlopeZ = open && partial ? Math.min(nZ - nDeep, Math.ceil(slopeA * teq / zoneV)) : 0;
     function sim(avail) {
-      var pit = {}; for (var j = 0; j < nPit; j++) pit[Math.min(nZ - 1, Math.floor((j + 0.5) * (nDeep > 0 ? nDeep : nZ) / nPit))] = true;
+      var pit = {}; if (pitIn.length) pitIn.forEach(function (v) { pit[v] = true; }); else for (var j = 0; j < nPit; j++) pit[Math.min(nZ - 1, Math.floor((j + 0.5) * (nDeep > 0 ? nDeep : nZ) / nPit))] = true;
       var free = []; for (var q = 0; q < teamsF; q++) free.push(q * lagF);
       var pours = {}, Z = [], order = []; for (var i = 0; i < nZ; i++) order.push(i);
       order.sort(function (a, b) { return avail[a] - avail[b] || a - b; });
@@ -1362,9 +1363,11 @@ details.ss[open] > summary::after { content: "접기"; }
       var lf = h >= FR.split ? 1 + Math.floor(h / FR.split) : 1, lk = 1 - FR.vShare + FR.vShare * lf, hf1 = hfac(h / lf);
       return { Z: Zx, T: Tx, per: per, hf: hf1, lifts: lf, lk: lk, wd: Math.max(minT, per * dS * lk * hf1) };
     }
+    /* 코어 형틀팀 수 (adv.cTeams) : 코어 Zone 수는 층마다 같으므로 입력이 있으면 그 값 (1 ~ Zone 수) */
+    var cTin = num(A.cTeams, 0) > 0 ? Math.round(num(A.cTeams, 0)) : 0;
     function coreT(h) {
       var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(2, Math.round(Atyp * FR.core.ratio / FR.core.zoneA));
-      var Tc = Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
+      var Tc = cTin ? clamp(cTin, 1, Zc) : Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
       return { Z: Zc, T: Tc, per: per, lifts: lifts, hf: hfac(hl), wd: lifts * per * dC * hfac(hl) };
     }
     /* DC 층 사이클 (순타 · 용도 데이터센터 기본, 상세 조정 'DC 층 사이클' 로 켜고 끔)
@@ -1378,6 +1381,11 @@ details.ss[open] > summary::after { content: "접기"; }
     function dcK() {
       if (dcKv == null) { dcKv = 1; var t0 = dcFloor(typN0, hUp[typN0 - 1], Atyp); dcKv = uTin / Math.ceil(t0.P.N / L.dc.zpt - 1e-9); }
       return dcKv;
+    }
+    var dcKcv = null;
+    function dcKc() {
+      if (dcKcv == null) { dcKcv = 1; var t0 = dcFloor(typN0, hUp[typN0 - 1], Atyp); dcKcv = cTin / Math.ceil(t0.C.N / L.dc.zpt - 1e-9); }
+      return dcKcv;
     }
     function dcFloor(n, h, Au) {
       var Ac = num(A.coreA, 0) > 0 ? Math.min(num(A.coreA, 0), Au * 0.6) : Au * FR.core.ratio;
@@ -1415,7 +1423,7 @@ details.ss[open] > summary::after { content: "접기"; }
         var T0 = Math.ceil(N / DCL.zpt - 1e-9), T = k && k !== 1 ? clamp(Math.round(T0 * k), 1, N) : T0, nt = Math.ceil(N / T - 1e-9), z = items.reduce(function (s, x) { return s + x[1]; }, 0);
         return { name: name, N: N, T: T, nt: nt, V: V, items: items, zone: z, gap: nt - 1, cyc: z + nt - 1 };
       }
-      var P = st('외주부', Np, pIt, Vcol + Vbm + Vsl, uTin ? dcK() : 1), C = st('코어', Nc, cIt, Vw + Vcs);
+      var P = st('외주부', Np, pIt, Vcol + Vbm + Vsl, uTin ? dcK() : 1), C = st('코어', Nc, cIt, Vw + Vcs, cTin ? dcKc() : 1);
       var gov = (dcFlow ? P.zone >= C.zone : P.cyc >= C.cyc) ? P : C;
       return { n: n, h: h, Au: Au, Ac: Ac, nCol: nCol, nBm: nBm, lifts: lifts, lead: lead, P: P, C: C, gov: gov.name, wd: dcFlow ? gov.zone : gov.cyc, tail: dcFlow ? Math.max(P.gap, C.gap) : 0, flow: dcFlow };
     }
@@ -1660,7 +1668,7 @@ details.ss[open] > summary::after { content: "접기"; }
   }
 
   /* ── 실적 사례 (검증 세트) — 현장명은 표기하지 않음 */
-  /* adv.uTeams (지상 형틀팀) = 엔진 기본 규칙 값 그대로 — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정 */
+  /* adv.uTeams (지상 외주부팀) · cTeams (코어 형틀팀) · pitN (PIT Zone 수) = 엔진 기본 규칙 값 그대로 — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정 */
   var REFS = [
     { key: 'refA', name: '사례 A', loc: '도심 업무시설', seq: 'TD', struct: 'SC', nB: 8, nUp: 31, total: 50.0, cmp: 50.0, frame: 9.5,
       actual: [['MOB + 흙막이', 4.5, ['mob', 'wall']], ['PRD', 2.8, ['prd']], ['지열', 2.6, ['geo']], ['1차 터파기', 0.5, ['exc1']], ['1F 슬래브', 1.6, ['f1']], ['지하 터파기', 16.1, ['exc']], ['기초', 1.4, ['found']], ['지상골조', 9.5, ['frame']], ['마감', 9.0, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -1668,7 +1676,7 @@ details.ss[open] > summary::after { content: "접기"; }
       inp: { name: '사례 A (역타 · 업무시설)', use: 'office', site: 4802, bldg: 2768.32, gfaUp: 60398.2, gfaDn: 30665.83, nB: 8, nUp: 31, nPH: 2,
         ground: 'CUSTOM', strata: [12, 9, 2, 8.6], gwl: 4.0, seq: 'TD', wall: 'CIP', support: 'SLAB', scw: false, found: 'MAT', geo: 110, struct: 'SC', pt: false, coreSys: 'ACS', lim: 17, lim2: 24,
         mob: 1.0, fin: 9.0, tc: 2.0, rExt: 0.702, rRC: 0.584, hours: 8, link: false,
-        adv: { H: 39.6, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, crew: 20, lag: 5, prdN: 54,
+        adv: { H: 39.6, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, cTeams: 1, pitN: 1, crew: 20, lag: 5, prdN: 54,
           hSpec: 'B1:7.6, B2:4.6, B3:3.7, B4:3.55, B5:3.55, B6:3.55, B7:3.55, B8:7.3, 1:4.25, 2:4.0, 3:8.25, 4-7:5.55, 8-28:4.65, 29:6.0, 30:7.75, 31:7.2, PH1:7.35, PH2:5.6' } } },
     { key: 'refB', name: '사례 B', loc: '도심 업무시설 (기존 건물 해체 후 신축)', seq: 'BU', struct: 'RC', nB: 2, nUp: 17, total: 51.5, cmp: 43.0, frame: 15.8,
       actual: [['MOB', 1.0, ['mob']], ['흙막이', 2.6, ['wall']], ['터파기 (지하해체 병행)', 5.9, ['exc']], ['지열', 2.3, ['geo']], ['기초', 1.6, ['found']], ['지하골조', 3.8, ['base']], ['지상골조', 15.8, ['frame']], ['마감', 8.0, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -1677,7 +1685,7 @@ details.ss[open] > summary::after { content: "접기"; }
       inp: { name: '사례 B (순타 · 업무시설)', use: 'office', site: 15840, bldg: 9277.72, gfaUp: 65120.01, gfaDn: 21637.22, nB: 2, nUp: 17, nPH: 1,
         ground: 'CUSTOM', strata: [6, 4, 4, 8], gwl: 8.0, seq: 'BU', wall: 'CIP', support: 'ANCHOR', scw: false, found: 'MAT', geo: 90, struct: 'RC', pt: false, coreSys: 'AUTO',
         mob: 1.0, fin: 8.0, tc: 2.0, rExt: 0.649, rRC: 0.597, hours: 8, link: false,
-        adv: { mat: 1.7, crew: 30, rebar: 0.10, fTeams: 3, uTeams: 3, lag: 0, exVoidA: 7700, exVoidD: 14.5,
+        adv: { mat: 1.7, crew: 30, rebar: 0.10, fTeams: 3, uTeams: 3, pitN: 3, lag: 0, exVoidA: 7700, exVoidD: 14.5,
           hSpec: 'B1:6.0, B2:8.6, 1:4.2, 2:4.8, 3-8:6.6, 9-16:4.8, 17:6.8, PH:6.3', zSpec: '1-8:11, 9-17:4' } } },
     { key: 'refC', name: '사례 C', loc: '데이터센터 (산업단지)', seq: 'BU', struct: 'COMP', nB: 1, nUp: 5, total: 29.0, cmp: 29.0, frame: 10.2,
       actual: [['MOB', 1.0, ['mob']], ['토공 (SCW · PHC · 굴착)', 5.5, ['scw', 'pile', 'exc']], ['기초 · 지하골조', 3.8, ['found', 'base']], ['지상골조', 10.2, ['frame']], ['마감', 6.5, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -1686,7 +1694,7 @@ details.ss[open] > summary::after { content: "접기"; }
       inp: { name: '사례 C (오픈컷 · 데이터센터)', use: 'dc', site: 47620, bldg: 20690.67, gfaUp: 75883.07, gfaDn: 4217.83, nB: 1, nUp: 5, nPH: 1,
         ground: 'CUSTOM', strata: [22, 4, 6, 6], gwl: 3.5, seq: 'BU', wall: 'NONE', support: 'OPEN', scw: true, found: 'PHC', geo: 0, struct: 'COMP', pt: false, coreSys: 'GANG',
         mob: 1.0, fin: 6.5, tc: 2.0, rExt: 0.702, rRC: 0.586, hours: 8, link: false,
-        adv: { H: 9.0, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, lag: 1, liftWD: 6, backfill: 12,
+        adv: { H: 9.0, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, cTeams: 3, pitN: 4, lag: 1, liftWD: 6, backfill: 12,
           hSpec: 'B1:6.7, 1:9.8, 2:5.5, 3:4.5, 4:5.5, 5:4.5, PH:7.5' } } }   /* '26.10.28 DC 층 사이클 적용 → 면적 Zone 보정값 zSpec '1-5:18' 삭제 (체적 Zone 사용) */
   ];
 
@@ -2763,15 +2771,17 @@ details.ss[open] > summary::after { content: "접기"; }
   function recompute() {
     clearTimeout(timer);
     readLib();
-    var inp = toInp(), R, team = { u: null, f: null };
+    var inp = toInp(), R, team = { u: null, c: null, f: null };
     inp.adv = inp.adv || {};
     try {
-      var ty0 = GE.compute(inp, LIB).frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z;
+      var R0 = GE.compute(inp, LIB), ty0 = R0.frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z, Zc = ty0.dc ? ty0.dc.C.N : ty0.core ? ty0.core.Z : 0;
+      var pz = pitUnderCore(R0); if (pz) inp.adv.pitZ = pz;
       team.u = sweepTeams(inp, 'uTeams', Math.max(1, Math.min(8, Zu)));
       if (!hasTeam('uTeams')) inp.adv.uTeams = team.u.opt;
+      if (Zc > 0) { team.c = sweepTeams(inp, 'cTeams', Math.max(1, Math.min(8, Zc))); if (!hasTeam('cTeams')) inp.adv.cTeams = team.c.opt; }
       team.f = sweepTeams(inp, 'fTeams', 8);
       if (!hasTeam('fTeams')) inp.adv.fTeams = team.f.opt;
-    } catch (e) { team = { u: null, f: null }; }
+    } catch (e) { team = { u: null, c: null, f: null }; }
     try { R = GE.compute(inp, LIB); } catch (e) { $('#warns').innerHTML = '<li>계산 오류 : ' + esc(e.message) + '</li>'; return; }
     R.team = team;
     try { R.sens = GE.sensitivity(inp, LIB); } catch (e) { R.sens = { lo: R.total, hi: R.total }; }
@@ -2864,69 +2874,77 @@ details.ss[open] > summary::after { content: "접기"; }
   }
 
   /* ───────── Master Schedule (C.P = 빨강 · C.P 연결선 · 개월 축 · 마일스톤) */
+  /* Master Schedule : 연차 머리 · 가는 눈금, 행 왼쪽 = 대공종 색 띠, C.P = 코발트 막대 (앞 병행 = 빗금), Non-C.P = 옅은 막대.
+     C.P 연결선 · 마일스톤 (점선 + 아래 알약 라벨). 행 전체가 말풍선 걸림 영역 */
   function gantt(R, Wc) {
     var W = Math.max(680, Math.floor(Wc)), nar = Wc < 760;
     var acts = GK.ganttActs(R), n = acts.length, st = R.inp.start;
-    var LW = nar ? 132 : 206, PR = 54, top = 60, rh = nar ? 31 : 35, bh = nar ? 13 : 15;
+    var LW = nar ? 136 : 214, PR = 58, top = 54, rh = nar ? 30 : 33, bh = nar ? 11 : 12;
     var Mmax = Math.ceil(R.total + 0.4), span = W - LW - PR, X = function (m) { return LW + m / Mmax * span; };
-    var rowsH = n * rh, bg = '', s = '', fg = '';
-    var defs = '<defs>' + pat('o7g-pre', 6, '<path d="M-1 7L7 -1" stroke="var(--cp)" stroke-width="1.1" opacity=".38"/>', '#EEF3FC') + '</defs>';
+    var rowsH = n * rh, bg = '', s = '', fg = '', xEnd = W - PR + 34;
+    var defs = '<defs>' + pat('o7g-pre', 5, '<path d="M-1 6L6 -1" stroke="var(--cp)" stroke-width=".9" opacity=".45"/>', '#EEF3FC') + '</defs>';
+    /* 연차 : 위쪽 얇은 칸 + 짝수 연차 옅은 바탕 */
     for (var yr = 0; yr * 12 < Mmax; yr++) {
       var ya = X(yr * 12), yb = X(Math.min(Mmax, yr * 12 + 12));
-      if (yr % 2 === 1) bg += Rc(ya, top - 6, yb - ya, rowsH + 6, 'var(--band)', ' rx="6"');
-      if (yb - ya > 40) bg += T(ya + 8, top - 38, (yr + 1) + '년차', { fs: 12.5, w: 700, c: 'var(--ink-2)' });
+      if (yr % 2 === 1) bg += Rc(ya, top - 4, yb - ya, rowsH + 4, '#F6F8FB');
+      bg += Rc(ya + 1, top - 44, yb - ya - 2, 18, yr % 2 ? '#EEF2F8' : '#F5F7FA', ' rx="5"');
+      if (yb - ya > 36) bg += T(ya + 9, top - 31, (yr + 1) + '년차', { fs: 11.5, w: 600, c: 'var(--ink-2)' });
     }
     var pxM = span / Mmax, step = pxM > 26 ? 3 : pxM > 13 ? 6 : 12;
     for (var m = 0; m <= Mmax; m++) {
       var x = X(m), maj = m % step === 0;
-      if (pxM > 7 || maj) bg += Ln(x, top - (maj ? 9 : 3), x, top + rowsH, maj ? 'var(--rule)' : 'var(--rule-2)', maj ? 1 : 0.7);
-      if (maj) bg += T(x, top - 15, st ? GK.yy(GK.addM(st, m)) : 'M+' + m, { a: 'middle', fs: 11.5, c: 'var(--ink-3)', cls: 'n' });
+      if (pxM > 7 || maj) bg += Ln(x, top - (maj ? 5 : 2), x, top + rowsH, maj ? '#E3E8EF' : '#EEF1F5', maj ? 0.8 : 0.6);
+      if (maj) bg += T(x, top - 10, st ? GK.yy(GK.addM(st, m)) : 'M+' + m, { a: 'middle', fs: 10.5, c: 'var(--ink-3)', cls: 'n' });
     }
     var cpMap = {}, cpS = {}, rowOf = {};
     R.cpLine.forEach(function (c, i) { cpMap[c.id] = c; cpS[c.id] = i ? R.cpLine[i - 1].e : 0; });
     gInfo = [];
+    var prevG = null;
     acts.forEach(function (a, i) {
       rowOf[a.id] = i;
-      var y = top + i * rh, mid = y + rh / 2, cp = !!(a.cp && cpMap[a.id]), x0 = X(a.s), x1 = Math.max(X(a.e), x0 + 2);
-      bg += Ln(0, y + rh, W - PR + 34, y + rh, 'var(--rule-2)', 1);
-      var nm = GK.shortName(a, R), fs = nar ? 12.5 : 14;
-      while (fs > 10.5 && tw(nm, fs) > LW - 24) fs -= 0.5;
-      s += T(LW - 14, mid + fs * 0.36, nm, { a: 'end', fs: fs, w: cp ? 600 : 400, c: cp ? 'var(--ink)' : 'var(--ink-3)' });
-      if (cp) s += Rc(0, mid - 8, 3, 16, 'var(--cp)', ' rx="1.5"');
+      var y = top + i * rh, mid = y + rh / 2, cp = !!(a.cp && cpMap[a.id]), x0 = X(a.s), x1 = Math.max(X(a.e), x0 + 2), gk = GRP[a.id] || '골조';
+      /* 대공종이 바뀌는 행 위는 조금 진한 선 */
+      bg += Ln(0, y, xEnd, y, gk !== prevG && i ? '#DCE3EC' : '#EEF1F5', gk !== prevG && i ? 0.9 : 0.6); prevG = gk;
+      var nm = GK.shortName(a, R), fs = nar ? 12 : 13.5;
+      while (fs > 10.5 && tw(nm, fs) > LW - 34) fs -= 0.5;
+      gInfo.push({ a: a, cp: cp, pre: 0, d: 0, post: 0 });
       var cs = cp ? Math.max(a.s, Math.min(a.e, cpS[a.id])) : a.s, xc = X(cs), d = cp ? cpMap[a.id].d : a.e - a.s;
-      /* 말풍선 (마우스 오버 · 탭) : 공종 · 기간 · C.P 구성 · 산출 근거 — 행 전체가 걸림 영역 */
-      gInfo.push({ a: a, cp: cp, pre: cp ? cs - a.s : 0, d: cp ? d : 0, post: cp ? Math.max(0, a.e - cs - d) : a.e - a.s });
-      s += '<g class="ga" data-a="' + i + '">' + Rc(0, y, W - PR + 34, rh, 'transparent', ' class="hit"');
+      gInfo[i] = { a: a, cp: cp, pre: cp ? cs - a.s : 0, d: cp ? d : 0, post: cp ? Math.max(0, a.e - cs - d) : a.e - a.s };
+      s += '<g class="ga" data-a="' + i + '">' + Rc(0, y, xEnd, rh, 'transparent', ' class="hit"');
+      s += Rc(0, mid - 7, 3, 14, GCOL[gk][0], ' rx="1.5"' + (cp ? '' : ' opacity=".55"'));
+      s += T(14, mid + fs * 0.36, nm, { fs: fs, w: cp ? 600 : 400, c: cp ? 'var(--ink)' : 'var(--ink-3)' });
       if (cp) {
-        if (cs > a.s + 0.01) s += Rc(x0, mid - bh / 2, xc - x0, bh, 'url(#o7g-pre)', ' rx="4" stroke="var(--cp)" stroke-opacity=".5" stroke-width=".9" stroke-dasharray="3 2"');
-        if (x1 - xc > 0.6) s += Rc(xc, mid - bh / 2, x1 - xc, bh, 'var(--cp)', ' rx="4"');
-        if (d >= 0.05) s += (x1 - xc > 38) ? T(xc + (x1 - xc) / 2, mid + 4.2, m1(d), { a: 'middle', fs: 12, w: 600, c: '#fff', cls: 'n' }) : T(x1 + 6, mid + 4.2, m1(d), { fs: 12, w: 600, c: 'var(--cp-deep)', cls: 'n' });
+        if (cs > a.s + 0.01) s += Rc(x0, mid - bh / 2, xc - x0, bh, 'url(#o7g-pre)', ' rx="3" stroke="var(--cp)" stroke-opacity=".35" stroke-width=".7"');
+        if (x1 - xc > 0.6) s += Rc(xc, mid - bh / 2, x1 - xc, bh, 'var(--cp)', ' rx="3"');
+        if (d >= 0.05) s += (x1 - xc > 36) ? T(xc + (x1 - xc) / 2, mid + 3.8, m1(d), { a: 'middle', fs: 11, w: 600, c: '#fff', cls: 'n' }) : T(x1 + 6, mid + 3.8, m1(d), { fs: 11, w: 600, c: 'var(--cp-deep)', cls: 'n' });
       } else {
-        s += Rc(x0, mid - bh / 2, x1 - x0, bh, 'var(--slate-2)', ' rx="4"');
-        s += (x1 - x0 > 38) ? T((x0 + x1) / 2, mid + 4.2, m1(d), { a: 'middle', fs: 11.5, c: 'var(--ink-2)', cls: 'n' }) : T(x1 + 6, mid + 4.2, m1(d), { fs: 11.5, c: 'var(--ink-3)', cls: 'n' });
+        s += Rc(x0, mid - bh / 2 + 1.5, x1 - x0, bh - 3, '#D3DBE6', ' rx="2.5"');
+        s += T(x1 + 6, mid + 3.8, m1(d), { fs: 10.5, c: 'var(--ink-3)', cls: 'n' });
       }
       s += '</g>';
     });
-    /* C.P 연결선 : 한 C.P 공종이 끝나는 지점에서 다음 C.P 공종으로 */
+    bg += Ln(0, top + rowsH, xEnd, top + rowsH, '#DCE3EC', 0.9);
+    /* C.P 연결선 : 한 C.P 공종 끝 → 다음 C.P 공종 */
     var parts = R.cpLine.filter(function (c) { return c.d > 0.005 && rowOf[c.id] != null; });
     parts.forEach(function (c, i) {
       if (i === parts.length - 1) return;
       var nx = parts[i + 1], ra = rowOf[c.id], rb = rowOf[nx.id], xe = X(c.e), ya = top + ra * rh + rh / 2, yb = top + rb * rh + rh / 2, dn = rb > ra ? 1 : -1;
       var y0 = ya + dn * bh / 2, y1 = yb - dn * bh / 2, ns = X(Math.max(c.e, nx.e - nx.d));
-      fg += '<path d="M' + r1(xe) + ' ' + r1(y0) + 'V' + r1(y1) + (Math.abs(ns - xe) > 1 ? 'H' + r1(ns) : '') + '" fill="none" stroke="var(--cp-deep)" stroke-width="1.4"/>';
-      fg += '<circle cx="' + r1(xe) + '" cy="' + r1(y0) + '" r="2.4" fill="#fff" stroke="var(--cp-deep)" stroke-width="1.3"/>';
+      fg += '<path d="M' + r1(xe) + ' ' + r1(y0) + 'V' + r1(y1) + (Math.abs(ns - xe) > 1 ? 'H' + r1(ns) : '') + '" fill="none" stroke="var(--cp-deep)" stroke-width="1" stroke-opacity=".7"/>';
+      fg += '<circle cx="' + r1(xe) + '" cy="' + r1(y0) + '" r="2" fill="#fff" stroke="var(--cp-deep)" stroke-width="1"/>';
     });
+    /* 마일스톤 : 점선 + 아래 알약 라벨 (겹치면 두 줄) */
     var ms = GK.milestones(R), yb0 = top + rowsH, lev = [-1e9, -1e9];
     ms.forEach(function (mm, i) {
       var x = X(mm.m), end = mm.k === '준공', col = end ? 'var(--cp)' : 'var(--navy)';
-      fg += Ln(x, top - 4, x, yb0 + 8, col, 1, '3 3', ' opacity=".6"');
-      fg += '<path d="M' + r1(x) + ' ' + r1(yb0 + 6) + 'l6.5 6.5-6.5 6.5-6.5-6.5z" fill="' + col + '"/>';
-      var lab = mm.k + ' ' + (st ? GK.ym(GK.addM(st, mm.m)) : 'M+' + m1(mm.m)), w = tw(lab, 12.5), last = i === ms.length - 1;
-      var L0 = last ? x - w : x - w / 2, lv = L0 < lev[0] + 10 ? (L0 < lev[1] + 10 ? 0 : 1) : 0;
-      lev[lv] = last ? x : x + w / 2;
-      fg += T(x, yb0 + 38 + lv * 17, lab, { a: last ? 'end' : 'middle', fs: 12.5, w: 600, c: end ? 'var(--cp-deep)' : 'var(--ink-2)' });
+      fg += Ln(x, top - 2, x, yb0 + 6, col, 0.8, '2 3', ' opacity=".55"');
+      fg += '<path d="M' + r1(x) + ' ' + r1(yb0 + 4) + 'l5 5-5 5-5-5z" fill="' + col + '"/>';
+      var lab = mm.k + ' ' + (st ? GK.ym(GK.addM(st, mm.m)) : 'M+' + m1(mm.m)), w = tw(lab, 11.5) + 18, last = i === ms.length - 1;
+      var L0 = last ? x - w + 9 : x - w / 2, lv = L0 < lev[0] + 8 ? (L0 < lev[1] + 8 ? 0 : 1) : 0, yl = yb0 + 22 + lv * 24;
+      lev[lv] = L0 + w;
+      fg += Rc(L0, yl, w, 20, end ? 'var(--cp)' : '#fff', ' rx="10"' + (end ? '' : ' stroke="#CBD5E3" stroke-width=".8"')) + T(L0 + w / 2, yl + 14, lab, { a: 'middle', fs: 11.5, w: 600, c: end ? '#fff' : 'var(--ink-2)' });
     });
-    var H = top + rowsH + 70;
+    var H = top + rowsH + 76;
     return svgEl(W, H, defs + bg + s + fg, 'Master Schedule 바차트 · 총 ' + m1(R.total) + '개월');
   }
   function renderGantt(R) {
@@ -2935,7 +2953,8 @@ details.ss[open] > summary::after { content: "접기"; }
     var parts = GK.cpParts(R);
     $('#cpf').innerHTML = '<span class="k">C.P 산식</span>' + parts.map(function (p) { return '<span class="t">' + esc(p.label) + '<b>' + m1(p.d) + '</b></span>'; }).join('<span class="op">+</span>') + '<span class="op">=</span><span class="sum">' + m2(R.total) + '개월</span>';
     $('#g-lg').innerHTML = '<span><i style="background:var(--cp)"></i>C.P</span><span><i style="background:repeating-linear-gradient(-45deg,#C8D7F3 0 3px,#EEF3FC 3px 6px);box-shadow:inset 0 0 0 1px rgba(31,86,201,.45)"></i>병행</span><span><i style="background:var(--slate-2)"></i>Non-C.P</span>' +
-      '<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="var(--navy)"/></svg>마일스톤</span>';
+      '<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="var(--navy)"/></svg>마일스톤</span>' +
+      '<span class="lg-ph">' + ['준비', '토목', '골조', '마감'].map(function (k) { return '<i style="background:' + GCOL[k][0] + ';width:4px;height:12px;border-radius:2px"></i>' + k; }).join('') + '</span>';
   }
 
   /* Master Schedule 말풍선 : 공종 · 기간 · C.P 구성 (앞 병행 · C.P · 뒤) · 산출 근거 */
@@ -3210,7 +3229,7 @@ details.ss[open] > summary::after { content: "접기"; }
     }
     /* 지상층 (입면) */
     /* 코어 띠 : 평면 (조닝 지상 판) 에서 옮긴 코어 위치를 긴 변 방향으로 그대로 — 옥탑은 코어 위에 */
-    var up = '', elL = '', cg = hasCore ? coreGeom(R) : null, coreX0 = 0, coreW = 0;
+    var up = '', elL = '', cg = coreGeom(R), coreX0 = 0, coreW = 0;
     if (cg) { coreW = Math.max(6, cg.cw / cg.L * (tR - tL)); coreX0 = tL + cg.x0 / cg.L * (tR - tL); }
     else if (hasCore) { coreW = Math.max(8, (tR - tL) * 0.2); coreX0 = cx - coreW / 2; }
     rows.forEach(function (r, gi) {
@@ -3388,7 +3407,7 @@ details.ss[open] > summary::after { content: "접기"; }
     var sl = ty.slab, per = sl.per, zs = sl.wd > 0 ? Math.min(sl.wd, per * fr.dS * (sl.lk || 1) * (sl.hf || 1)) / per : 0, lanes = [], segs = [];
     for (var i = 0; i < per; i++) segs.push({ s: i * zs, d: zs, lab: i + 1 });
     var tot = sl.wd;
-    lanes.push({ name: '바닥', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd,
+    lanes.push({ name: ty.core ? '외주부' : '외주부 · 코어 일체', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd,
       rows: [cyRow('팀당 ' + per + ' Zone', segs, m1(sl.wd), { ghost: sl.wd > per * zs + 0.05 ? { s: per * zs, d: sl.wd - per * zs, lab: '최소' } : null, tip: 'Zone ' + r2(zs) + 'WD × ' + per })] });
     if (ty.core) {
       var c = ty.core, nc = c.per * c.lifts, zc = c.wd / Math.max(1, nc), sc = [];
@@ -3423,12 +3442,24 @@ details.ss[open] > summary::after { content: "접기"; }
      위치 (S.adv.coreX · coreY = 0~1, 남는 폭 안의 비율) 는 조닝 판에서 드래그 — 공기 계산에는 쓰지 않는 배치 가정 */
   function coreGeom(R) {
     var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
-    if (!(Au > 0) || !(ty.dc || ty.core)) return null;
-    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio; if (!(Ac > 0)) return null;
+    if (!(Au > 0)) return null;
+    /* RC (코어 별도 경로 없음) 도 코어 벽체는 있으므로 같은 비율의 '일체 타설' 코어로 배치 · PIT 위치에만 쓴다 */
+    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio, integ = !(ty.dc || ty.core); if (!(Ac > 0)) return null;
     var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)), cw = Ac / cd;
     if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); }
     var A = S.adv || {}, px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
-    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac };
+    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac, integ: integ };
+  }
+  /* PIT : 지상 코어 아래 (평면 비율 위치를 기초 평면에 그대로) 의 기초 Zone — 수는 S.adv.pitN (사례 보정값), 없으면 2개.
+     부분 지하는 깊은 구간 Zone 안에서만. 지하층 없으면 PIT 없음 */
+  function pitUnderCore(R) {
+    var f = R.found, b = R.basic, cg = coreGeom(R);
+    if (!cg || b.nB === 0 || !(f.nZ > 0)) return null;
+    var Af = f.Af > 0 ? f.Af : R.geo.bldg, Lf = Math.sqrt(Af * 1.6), Bf = Math.sqrt(Af / 1.6), n = S.adv && S.adv.pitN > 0 ? Math.round(S.adv.pitN) : 2;
+    var tx = (cg.x0 + cg.cw / 2) / cg.L * Lf, ty = (cg.y0 + cg.cd / 2) / cg.B * Bf;
+    var cells = zgridPlan(0, 0, Lf, Bf, f.nZ, function (i) { return { i: i }; }).filter(function (c) { return !(f.nDeep > 0 && f.nDeep < f.nZ) || c.i < f.nDeep; });
+    cells.forEach(function (c) { c.d = Math.hypot((c.X0 + c.X1) / 2 - tx, (c.Y0 + c.Y1) / 2 - ty); });
+    return cells.sort(function (a, c) { return a.d - c.d; }).slice(0, Math.max(1, Math.min(n, cells.length))).map(function (c) { return c.i; });
   }
   function coreWhere(cg) {
     var e = 0.04, edge = cg.px < e || cg.px > 1 - e || cg.py < e || cg.py > 1 - e;
@@ -3460,7 +3491,7 @@ details.ss[open] > summary::after { content: "접기"; }
   /* 팀 배정 : 이어진 Zone 묶음 = 한 팀. 숫자 = 팀 안 타설 순서, 팀마다 1 Zone 이면 Zone 순서 (모두 '1' 이 되지 않게) */
   function zteams(N, T) { var per = Math.ceil(N / Math.max(1, T)); return function (i) { var t = Math.floor(i / per); return { team: t, ord: per > 1 ? i - t * per + 1 : i + 1 }; }; }
   function isoPlate(o, s, FW, idx) {
-    var C = 0.8660254, pad = 14, tz = 9, hc = o.core ? 20 : 0, Lp = o.Lp, Bp = o.Bp;
+    var C = 0.8660254, pad = 14, tz = o.tz || 9, hc = o.core ? (o.core.integ ? 9 : 20) : 0, Lp = o.Lp, Bp = o.Bp;
     var topY = pad + hc + 6, hTop = (Lp + Bp) * 0.5 * s, H = Math.ceil(topY + hTop + tz + 34);
     var cx = FW / 2, ox = cx - (Lp - Bp) / 2 * C * s, oy = topY;
     function P(X, Y, Z) { return [ox + (X - Y) * C * s, oy + (X + Y) * 0.5 * s - (Z || 0)]; }
@@ -3493,6 +3524,8 @@ details.ss[open] > summary::after { content: "접기"; }
       if (o.core.drag) { var cm = P(k0, j0, hc); v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="var(--navy)"/><path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>'; }
       v += '</g>';
     }
+    /* 판 두께 표기 (기초 매트) : 오른쪽 앞 모서리 옆 */
+    if (o.tLab) { var pq = P(Lr, Br), qx = pq[0] - 6; v += Ln(qx, pq[1] + 1, qx, pq[1] + tz, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + 1, qx + 3, pq[1] + 1, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + tz, qx + 3, pq[1] + tz, 'var(--navy)', 0.9) + T(qx - 6, pq[1] + tz / 2 + 4, o.tLab, { a: 'end', fs: 11.5, w: 600, c: 'var(--navy)', cls: 'n', halo: true }); }
     /* 변 치수 (앞 두 변) */
     var mx = (pl[0] + pb[0]) / 2 - 7, my = (pl[1] + pb[1]) / 2 + tz + 12, nx = (pb[0] + pr[0]) / 2 + 7, ny = (pb[1] + pr[1]) / 2 + tz + 12;
     if (Lr * s > 40) v += T(mx, my, '≈ ' + r1(Lr) + ' m', { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', cls: 'n', tr: 'rotate(30 ' + r1(mx) + ' ' + r1(my) + ')' });
@@ -3521,31 +3554,29 @@ details.ss[open] > summary::after { content: "접기"; }
     var dF = dim(Af), dB = dim(Ab), dU = dim(Au);
     var FW = Math.min(480, cols ? Math.floor(W / 3) - 38 : nar ? W : W - 160 - 14);
     var Lmax = Math.max(dF.L, dB.L, dU.L, 1), s = (FW - 28) / ((Lmax + Lmax / AR) * 0.8660254);
-    var maxT = 1, out = '';
+    var maxT = 1, steel = b.struct === 'SC' || b.struct === 'COMP';
     function row(lv, title, area, d, lines, svgHtml, cy) {
       return '<div class="iso-row"><div class="iso-lab"><span class="lv">' + esc(lv) + '</span><h3>' + esc(title) + '</h3>' +
         '<div class="ar"><b>' + fmt(area) + '</b> ㎡<span>≈ ' + r1(d.L) + ' × ' + r1(d.B) + ' m</span></div><ul>' + lines.filter(Boolean).map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' +
         '<div class="iso-fig">' + svgHtml + '</div><div class="iso-cy">' + cyHTML(cy) + '</div></div>';
     }
-    /* 기준층 */
-    var ty = fr.typ, NP, TP, NC = 0, TC = 0, Ac = 0;
-    if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; Ac = ty.dc.Ac; }
-    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; Ac = Au * LIB.frame.core.ratio; } }
-    maxT = Math.max(maxT, TP);
-    if (Au > 0) {
-      var cg = NC ? coreGeom(R) : null, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null;
-      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, where: coreWhere(cg), cells: zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) } : null;
-      out += row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상 기준층', Au, dU, [
-        (ty.dc ? '외주부 <b>' : '바닥 <b>') + NP + '</b> Zone',
-        teamCtl('uTeams', '형틀팀', TP, R.team && R.team.u),
-        NC ? '코어 <b>' + NC + '</b> Zone · <b>' + TC + '</b>팀' : '',
-        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
-      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
-    } else out += '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
+    /* 기초 : 판 두께 = 매트 두께 (세로 ×4), PIT = 지상 코어 아래 Zone (굵은 테두리) */
+    var oF = '', oB = '', oU = '';
+    maxT = Math.max(maxT, f.teams);
+    if (Af > 0) {
+      var Z = f.sim.Z.slice().sort(function (a, c) { return a.pour - c.pour; }), rank = {}, byI = {};
+      Z.forEach(function (z, i) { rank[z.i] = i + 1; byI[z.i] = z; });
+      var cellsF = zgridPlan(0, 0, dF.L, dF.B, f.nZ, function (i) { var z = byI[i] || { team: 1 }; return { fill: TEAMC[(z.team - 1) % 8], op: z.slope ? 0.22 : 0.58, stroke: z.pit ? 'var(--cp)' : '#fff', sw: z.pit ? 2.4 : 1.2, t: rank[i] || '' }; });
+      var tzF = Math.max(7, Math.min(28, g.tMat * s * 4));
+      oF = row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
+        '<b>' + f.nZ + '</b> Zone · 매트 <b>' + r1(g.tMat) + '</b>m',
+        teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
+        f.nPit ? 'PIT <b>' + f.nPit + '</b> Zone · 코어 아래' : ''
+      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, tz: tzF, tLab: 't=' + r1(g.tMat) + 'm', aria: '기초 조닝 평면 (아이소메트릭) · 매트 ' + r1(g.tMat) + 'm' }, s, FW, 2), cyFound(R));
+    } else oF = '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
     /* 지하골조 */
     var bs = R.base;
-    if (!bs || b.nB === 0) out += '<div class="iso-none">지하층 없음 · 기초 위에서 바로 지상골조</div>';
+    if (!bs || b.nB === 0) oB = '<div class="iso-none">지하층 없음 · 기초 위에서 바로 지상골조</div>';
     else if (Ab > 0) {
       var NZ, NT, sub;
       if (bs.td) { NZ = Math.max(2, Math.min(4, Math.round(g.Adeep / LIB.td.f1ZoneA))); NT = NZ; sub = ['역타 슬래브 <b>' + NZ + '</b> Zone 순환']; }
@@ -3555,26 +3586,30 @@ details.ss[open] > summary::after { content: "접기"; }
       var tb = zteams(NZ, NT), ghost = Ab < Af * 0.97;
       var Ldb = ghost ? dF : dB;
       var cellsB = zgridPlan(0, 0, dB.L, dB.B, NZ, function (i) { var q = tb(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      out += row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
-    } else out += '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
-    /* 기초 */
-    maxT = Math.max(maxT, f.teams);
-    if (Af > 0) {
-      var Z = f.sim.Z.slice().sort(function (a, c) { return a.pour - c.pour; }), rank = {}, byI = {};
-      Z.forEach(function (z, i) { rank[z.i] = i + 1; byI[z.i] = z; });
-      var cellsF = zgridPlan(0, 0, dF.L, dF.B, f.nZ, function (i) { var z = byI[i] || { team: 1 }; return { fill: TEAMC[(z.team - 1) % 8], op: z.slope ? 0.22 : 0.58, stroke: z.pit ? 'var(--cp)' : '#fff', sw: z.pit ? 2.2 : 1.2, t: rank[i] || '' }; });
-      out += row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
-        '<b>' + f.nZ + '</b> Zone',
-        teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
-        '매트 <b>' + r1(g.tMat) + '</b>m · Zone ' + fmt(f.vZ) + '㎥'
-      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, aria: '기초 조닝 평면 (아이소메트릭)' }, s, FW, 2), cyFound(R));
-    } else out += '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
+      oB = row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
+    } else oB = '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
+    /* 지상골조 (기준층) : 외주부 (RC = 형틀팀 · 철골 = 철골팀) 와 코어 (RC 코어 = 형틀팀) 를 따로. RC 는 코어 일체 타설 */
+    var ty = fr.typ, NP, TP, NC = 0, TC = 0;
+    if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; }
+    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; } }
+    if (Au > 0) {
+      var cg = coreGeom(R), tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = steel ? '철골팀' : '형틀팀';
+      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: 'var(--t1)', op: 0.36 + 0.2 * (q.team % 3), t: q.ord }; });
+      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, integ: cg.integ, where: coreWhere(cg), cells: NC ? zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) : [] } : null;
+      oU = row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상골조', Au, dU, [
+        '<i class="dot" style="background:var(--t1)"></i>외주부 <b>' + NP + '</b> Zone',
+        teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
+        NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
+        NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
+        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
+      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
+    } else oU = '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
     var lg = ''; for (var t = 0; t < Math.min(maxT, 8); t++) lg += '<span><i style="background:' + TEAMC[t] + ';opacity:.7"></i>' + (t + 1) + '팀</span>';
     lg += '<span><i style="background:#fff;box-shadow:inset 0 0 0 2px var(--cp)"></i>PIT Zone</span>';
     if (f.nSlopeZ) lg += '<span><i style="background:var(--t1);opacity:.25"></i>경사띠</span>';
-    if (NC) lg += '<span><i style="background:#838FA1"></i>코어</span>';
+    lg += '<span><i style="background:var(--t1);opacity:.6"></i>외주부</span><span><i style="background:var(--navy);opacity:.7"></i>코어</span>';
     lg += '<span>숫자 = 타설 순서</span>';
-    return { html: '<div class="iso' + (nar ? ' nar' : cols ? ' cols' : '') + '">' + out + '</div>', legend: lg };
+    return { html: '<div class="iso' + (nar ? ' nar' : cols ? ' cols' : '') + '">' + oF + oB + oU + '</div>', legend: lg };
   }
   function renderZone(R) { var box = $('#zone'), z = zoning(R, box.clientWidth || 520); box.innerHTML = z.html; $('#z-lg').innerHTML = z.legend; widths.zone = box.clientWidth; }
 

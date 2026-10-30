@@ -105,15 +105,17 @@
   function recompute() {
     clearTimeout(timer);
     readLib();
-    var inp = toInp(), R, team = { u: null, f: null };
+    var inp = toInp(), R, team = { u: null, c: null, f: null };
     inp.adv = inp.adv || {};
     try {
-      var ty0 = GE.compute(inp, LIB).frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z;
+      var R0 = GE.compute(inp, LIB), ty0 = R0.frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z, Zc = ty0.dc ? ty0.dc.C.N : ty0.core ? ty0.core.Z : 0;
+      var pz = pitUnderCore(R0); if (pz) inp.adv.pitZ = pz;
       team.u = sweepTeams(inp, 'uTeams', Math.max(1, Math.min(8, Zu)));
       if (!hasTeam('uTeams')) inp.adv.uTeams = team.u.opt;
+      if (Zc > 0) { team.c = sweepTeams(inp, 'cTeams', Math.max(1, Math.min(8, Zc))); if (!hasTeam('cTeams')) inp.adv.cTeams = team.c.opt; }
       team.f = sweepTeams(inp, 'fTeams', 8);
       if (!hasTeam('fTeams')) inp.adv.fTeams = team.f.opt;
-    } catch (e) { team = { u: null, f: null }; }
+    } catch (e) { team = { u: null, c: null, f: null }; }
     try { R = GE.compute(inp, LIB); } catch (e) { $('#warns').innerHTML = '<li>계산 오류 : ' + esc(e.message) + '</li>'; return; }
     R.team = team;
     try { R.sens = GE.sensitivity(inp, LIB); } catch (e) { R.sens = { lo: R.total, hi: R.total }; }
@@ -206,69 +208,77 @@
   }
 
   /* ───────── Master Schedule (C.P = 빨강 · C.P 연결선 · 개월 축 · 마일스톤) */
+  /* Master Schedule : 연차 머리 · 가는 눈금, 행 왼쪽 = 대공종 색 띠, C.P = 코발트 막대 (앞 병행 = 빗금), Non-C.P = 옅은 막대.
+     C.P 연결선 · 마일스톤 (점선 + 아래 알약 라벨). 행 전체가 말풍선 걸림 영역 */
   function gantt(R, Wc) {
     var W = Math.max(680, Math.floor(Wc)), nar = Wc < 760;
     var acts = GK.ganttActs(R), n = acts.length, st = R.inp.start;
-    var LW = nar ? 132 : 206, PR = 54, top = 60, rh = nar ? 31 : 35, bh = nar ? 13 : 15;
+    var LW = nar ? 136 : 214, PR = 58, top = 54, rh = nar ? 30 : 33, bh = nar ? 11 : 12;
     var Mmax = Math.ceil(R.total + 0.4), span = W - LW - PR, X = function (m) { return LW + m / Mmax * span; };
-    var rowsH = n * rh, bg = '', s = '', fg = '';
-    var defs = '<defs>' + pat('o7g-pre', 6, '<path d="M-1 7L7 -1" stroke="var(--cp)" stroke-width="1.1" opacity=".38"/>', '#EEF3FC') + '</defs>';
+    var rowsH = n * rh, bg = '', s = '', fg = '', xEnd = W - PR + 34;
+    var defs = '<defs>' + pat('o7g-pre', 5, '<path d="M-1 6L6 -1" stroke="var(--cp)" stroke-width=".9" opacity=".45"/>', '#EEF3FC') + '</defs>';
+    /* 연차 : 위쪽 얇은 칸 + 짝수 연차 옅은 바탕 */
     for (var yr = 0; yr * 12 < Mmax; yr++) {
       var ya = X(yr * 12), yb = X(Math.min(Mmax, yr * 12 + 12));
-      if (yr % 2 === 1) bg += Rc(ya, top - 6, yb - ya, rowsH + 6, 'var(--band)', ' rx="6"');
-      if (yb - ya > 40) bg += T(ya + 8, top - 38, (yr + 1) + '년차', { fs: 12.5, w: 700, c: 'var(--ink-2)' });
+      if (yr % 2 === 1) bg += Rc(ya, top - 4, yb - ya, rowsH + 4, '#F6F8FB');
+      bg += Rc(ya + 1, top - 44, yb - ya - 2, 18, yr % 2 ? '#EEF2F8' : '#F5F7FA', ' rx="5"');
+      if (yb - ya > 36) bg += T(ya + 9, top - 31, (yr + 1) + '년차', { fs: 11.5, w: 600, c: 'var(--ink-2)' });
     }
     var pxM = span / Mmax, step = pxM > 26 ? 3 : pxM > 13 ? 6 : 12;
     for (var m = 0; m <= Mmax; m++) {
       var x = X(m), maj = m % step === 0;
-      if (pxM > 7 || maj) bg += Ln(x, top - (maj ? 9 : 3), x, top + rowsH, maj ? 'var(--rule)' : 'var(--rule-2)', maj ? 1 : 0.7);
-      if (maj) bg += T(x, top - 15, st ? GK.yy(GK.addM(st, m)) : 'M+' + m, { a: 'middle', fs: 11.5, c: 'var(--ink-3)', cls: 'n' });
+      if (pxM > 7 || maj) bg += Ln(x, top - (maj ? 5 : 2), x, top + rowsH, maj ? '#E3E8EF' : '#EEF1F5', maj ? 0.8 : 0.6);
+      if (maj) bg += T(x, top - 10, st ? GK.yy(GK.addM(st, m)) : 'M+' + m, { a: 'middle', fs: 10.5, c: 'var(--ink-3)', cls: 'n' });
     }
     var cpMap = {}, cpS = {}, rowOf = {};
     R.cpLine.forEach(function (c, i) { cpMap[c.id] = c; cpS[c.id] = i ? R.cpLine[i - 1].e : 0; });
     gInfo = [];
+    var prevG = null;
     acts.forEach(function (a, i) {
       rowOf[a.id] = i;
-      var y = top + i * rh, mid = y + rh / 2, cp = !!(a.cp && cpMap[a.id]), x0 = X(a.s), x1 = Math.max(X(a.e), x0 + 2);
-      bg += Ln(0, y + rh, W - PR + 34, y + rh, 'var(--rule-2)', 1);
-      var nm = GK.shortName(a, R), fs = nar ? 12.5 : 14;
-      while (fs > 10.5 && tw(nm, fs) > LW - 24) fs -= 0.5;
-      s += T(LW - 14, mid + fs * 0.36, nm, { a: 'end', fs: fs, w: cp ? 600 : 400, c: cp ? 'var(--ink)' : 'var(--ink-3)' });
-      if (cp) s += Rc(0, mid - 8, 3, 16, 'var(--cp)', ' rx="1.5"');
+      var y = top + i * rh, mid = y + rh / 2, cp = !!(a.cp && cpMap[a.id]), x0 = X(a.s), x1 = Math.max(X(a.e), x0 + 2), gk = GRP[a.id] || '골조';
+      /* 대공종이 바뀌는 행 위는 조금 진한 선 */
+      bg += Ln(0, y, xEnd, y, gk !== prevG && i ? '#DCE3EC' : '#EEF1F5', gk !== prevG && i ? 0.9 : 0.6); prevG = gk;
+      var nm = GK.shortName(a, R), fs = nar ? 12 : 13.5;
+      while (fs > 10.5 && tw(nm, fs) > LW - 34) fs -= 0.5;
+      gInfo.push({ a: a, cp: cp, pre: 0, d: 0, post: 0 });
       var cs = cp ? Math.max(a.s, Math.min(a.e, cpS[a.id])) : a.s, xc = X(cs), d = cp ? cpMap[a.id].d : a.e - a.s;
-      /* 말풍선 (마우스 오버 · 탭) : 공종 · 기간 · C.P 구성 · 산출 근거 — 행 전체가 걸림 영역 */
-      gInfo.push({ a: a, cp: cp, pre: cp ? cs - a.s : 0, d: cp ? d : 0, post: cp ? Math.max(0, a.e - cs - d) : a.e - a.s });
-      s += '<g class="ga" data-a="' + i + '">' + Rc(0, y, W - PR + 34, rh, 'transparent', ' class="hit"');
+      gInfo[i] = { a: a, cp: cp, pre: cp ? cs - a.s : 0, d: cp ? d : 0, post: cp ? Math.max(0, a.e - cs - d) : a.e - a.s };
+      s += '<g class="ga" data-a="' + i + '">' + Rc(0, y, xEnd, rh, 'transparent', ' class="hit"');
+      s += Rc(0, mid - 7, 3, 14, GCOL[gk][0], ' rx="1.5"' + (cp ? '' : ' opacity=".55"'));
+      s += T(14, mid + fs * 0.36, nm, { fs: fs, w: cp ? 600 : 400, c: cp ? 'var(--ink)' : 'var(--ink-3)' });
       if (cp) {
-        if (cs > a.s + 0.01) s += Rc(x0, mid - bh / 2, xc - x0, bh, 'url(#o7g-pre)', ' rx="4" stroke="var(--cp)" stroke-opacity=".5" stroke-width=".9" stroke-dasharray="3 2"');
-        if (x1 - xc > 0.6) s += Rc(xc, mid - bh / 2, x1 - xc, bh, 'var(--cp)', ' rx="4"');
-        if (d >= 0.05) s += (x1 - xc > 38) ? T(xc + (x1 - xc) / 2, mid + 4.2, m1(d), { a: 'middle', fs: 12, w: 600, c: '#fff', cls: 'n' }) : T(x1 + 6, mid + 4.2, m1(d), { fs: 12, w: 600, c: 'var(--cp-deep)', cls: 'n' });
+        if (cs > a.s + 0.01) s += Rc(x0, mid - bh / 2, xc - x0, bh, 'url(#o7g-pre)', ' rx="3" stroke="var(--cp)" stroke-opacity=".35" stroke-width=".7"');
+        if (x1 - xc > 0.6) s += Rc(xc, mid - bh / 2, x1 - xc, bh, 'var(--cp)', ' rx="3"');
+        if (d >= 0.05) s += (x1 - xc > 36) ? T(xc + (x1 - xc) / 2, mid + 3.8, m1(d), { a: 'middle', fs: 11, w: 600, c: '#fff', cls: 'n' }) : T(x1 + 6, mid + 3.8, m1(d), { fs: 11, w: 600, c: 'var(--cp-deep)', cls: 'n' });
       } else {
-        s += Rc(x0, mid - bh / 2, x1 - x0, bh, 'var(--slate-2)', ' rx="4"');
-        s += (x1 - x0 > 38) ? T((x0 + x1) / 2, mid + 4.2, m1(d), { a: 'middle', fs: 11.5, c: 'var(--ink-2)', cls: 'n' }) : T(x1 + 6, mid + 4.2, m1(d), { fs: 11.5, c: 'var(--ink-3)', cls: 'n' });
+        s += Rc(x0, mid - bh / 2 + 1.5, x1 - x0, bh - 3, '#D3DBE6', ' rx="2.5"');
+        s += T(x1 + 6, mid + 3.8, m1(d), { fs: 10.5, c: 'var(--ink-3)', cls: 'n' });
       }
       s += '</g>';
     });
-    /* C.P 연결선 : 한 C.P 공종이 끝나는 지점에서 다음 C.P 공종으로 */
+    bg += Ln(0, top + rowsH, xEnd, top + rowsH, '#DCE3EC', 0.9);
+    /* C.P 연결선 : 한 C.P 공종 끝 → 다음 C.P 공종 */
     var parts = R.cpLine.filter(function (c) { return c.d > 0.005 && rowOf[c.id] != null; });
     parts.forEach(function (c, i) {
       if (i === parts.length - 1) return;
       var nx = parts[i + 1], ra = rowOf[c.id], rb = rowOf[nx.id], xe = X(c.e), ya = top + ra * rh + rh / 2, yb = top + rb * rh + rh / 2, dn = rb > ra ? 1 : -1;
       var y0 = ya + dn * bh / 2, y1 = yb - dn * bh / 2, ns = X(Math.max(c.e, nx.e - nx.d));
-      fg += '<path d="M' + r1(xe) + ' ' + r1(y0) + 'V' + r1(y1) + (Math.abs(ns - xe) > 1 ? 'H' + r1(ns) : '') + '" fill="none" stroke="var(--cp-deep)" stroke-width="1.4"/>';
-      fg += '<circle cx="' + r1(xe) + '" cy="' + r1(y0) + '" r="2.4" fill="#fff" stroke="var(--cp-deep)" stroke-width="1.3"/>';
+      fg += '<path d="M' + r1(xe) + ' ' + r1(y0) + 'V' + r1(y1) + (Math.abs(ns - xe) > 1 ? 'H' + r1(ns) : '') + '" fill="none" stroke="var(--cp-deep)" stroke-width="1" stroke-opacity=".7"/>';
+      fg += '<circle cx="' + r1(xe) + '" cy="' + r1(y0) + '" r="2" fill="#fff" stroke="var(--cp-deep)" stroke-width="1"/>';
     });
+    /* 마일스톤 : 점선 + 아래 알약 라벨 (겹치면 두 줄) */
     var ms = GK.milestones(R), yb0 = top + rowsH, lev = [-1e9, -1e9];
     ms.forEach(function (mm, i) {
       var x = X(mm.m), end = mm.k === '준공', col = end ? 'var(--cp)' : 'var(--navy)';
-      fg += Ln(x, top - 4, x, yb0 + 8, col, 1, '3 3', ' opacity=".6"');
-      fg += '<path d="M' + r1(x) + ' ' + r1(yb0 + 6) + 'l6.5 6.5-6.5 6.5-6.5-6.5z" fill="' + col + '"/>';
-      var lab = mm.k + ' ' + (st ? GK.ym(GK.addM(st, mm.m)) : 'M+' + m1(mm.m)), w = tw(lab, 12.5), last = i === ms.length - 1;
-      var L0 = last ? x - w : x - w / 2, lv = L0 < lev[0] + 10 ? (L0 < lev[1] + 10 ? 0 : 1) : 0;
-      lev[lv] = last ? x : x + w / 2;
-      fg += T(x, yb0 + 38 + lv * 17, lab, { a: last ? 'end' : 'middle', fs: 12.5, w: 600, c: end ? 'var(--cp-deep)' : 'var(--ink-2)' });
+      fg += Ln(x, top - 2, x, yb0 + 6, col, 0.8, '2 3', ' opacity=".55"');
+      fg += '<path d="M' + r1(x) + ' ' + r1(yb0 + 4) + 'l5 5-5 5-5-5z" fill="' + col + '"/>';
+      var lab = mm.k + ' ' + (st ? GK.ym(GK.addM(st, mm.m)) : 'M+' + m1(mm.m)), w = tw(lab, 11.5) + 18, last = i === ms.length - 1;
+      var L0 = last ? x - w + 9 : x - w / 2, lv = L0 < lev[0] + 8 ? (L0 < lev[1] + 8 ? 0 : 1) : 0, yl = yb0 + 22 + lv * 24;
+      lev[lv] = L0 + w;
+      fg += Rc(L0, yl, w, 20, end ? 'var(--cp)' : '#fff', ' rx="10"' + (end ? '' : ' stroke="#CBD5E3" stroke-width=".8"')) + T(L0 + w / 2, yl + 14, lab, { a: 'middle', fs: 11.5, w: 600, c: end ? '#fff' : 'var(--ink-2)' });
     });
-    var H = top + rowsH + 70;
+    var H = top + rowsH + 76;
     return svgEl(W, H, defs + bg + s + fg, 'Master Schedule 바차트 · 총 ' + m1(R.total) + '개월');
   }
   function renderGantt(R) {
@@ -277,7 +287,8 @@
     var parts = GK.cpParts(R);
     $('#cpf').innerHTML = '<span class="k">C.P 산식</span>' + parts.map(function (p) { return '<span class="t">' + esc(p.label) + '<b>' + m1(p.d) + '</b></span>'; }).join('<span class="op">+</span>') + '<span class="op">=</span><span class="sum">' + m2(R.total) + '개월</span>';
     $('#g-lg').innerHTML = '<span><i style="background:var(--cp)"></i>C.P</span><span><i style="background:repeating-linear-gradient(-45deg,#C8D7F3 0 3px,#EEF3FC 3px 6px);box-shadow:inset 0 0 0 1px rgba(31,86,201,.45)"></i>병행</span><span><i style="background:var(--slate-2)"></i>Non-C.P</span>' +
-      '<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="var(--navy)"/></svg>마일스톤</span>';
+      '<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="var(--navy)"/></svg>마일스톤</span>' +
+      '<span class="lg-ph">' + ['준비', '토목', '골조', '마감'].map(function (k) { return '<i style="background:' + GCOL[k][0] + ';width:4px;height:12px;border-radius:2px"></i>' + k; }).join('') + '</span>';
   }
 
   /* Master Schedule 말풍선 : 공종 · 기간 · C.P 구성 (앞 병행 · C.P · 뒤) · 산출 근거 */
@@ -552,7 +563,7 @@
     }
     /* 지상층 (입면) */
     /* 코어 띠 : 평면 (조닝 지상 판) 에서 옮긴 코어 위치를 긴 변 방향으로 그대로 — 옥탑은 코어 위에 */
-    var up = '', elL = '', cg = hasCore ? coreGeom(R) : null, coreX0 = 0, coreW = 0;
+    var up = '', elL = '', cg = coreGeom(R), coreX0 = 0, coreW = 0;
     if (cg) { coreW = Math.max(6, cg.cw / cg.L * (tR - tL)); coreX0 = tL + cg.x0 / cg.L * (tR - tL); }
     else if (hasCore) { coreW = Math.max(8, (tR - tL) * 0.2); coreX0 = cx - coreW / 2; }
     rows.forEach(function (r, gi) {
@@ -730,7 +741,7 @@
     var sl = ty.slab, per = sl.per, zs = sl.wd > 0 ? Math.min(sl.wd, per * fr.dS * (sl.lk || 1) * (sl.hf || 1)) / per : 0, lanes = [], segs = [];
     for (var i = 0; i < per; i++) segs.push({ s: i * zs, d: zs, lab: i + 1 });
     var tot = sl.wd;
-    lanes.push({ name: '바닥', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd,
+    lanes.push({ name: ty.core ? '외주부' : '외주부 · 코어 일체', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd,
       rows: [cyRow('팀당 ' + per + ' Zone', segs, m1(sl.wd), { ghost: sl.wd > per * zs + 0.05 ? { s: per * zs, d: sl.wd - per * zs, lab: '최소' } : null, tip: 'Zone ' + r2(zs) + 'WD × ' + per })] });
     if (ty.core) {
       var c = ty.core, nc = c.per * c.lifts, zc = c.wd / Math.max(1, nc), sc = [];
@@ -765,12 +776,24 @@
      위치 (S.adv.coreX · coreY = 0~1, 남는 폭 안의 비율) 는 조닝 판에서 드래그 — 공기 계산에는 쓰지 않는 배치 가정 */
   function coreGeom(R) {
     var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
-    if (!(Au > 0) || !(ty.dc || ty.core)) return null;
-    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio; if (!(Ac > 0)) return null;
+    if (!(Au > 0)) return null;
+    /* RC (코어 별도 경로 없음) 도 코어 벽체는 있으므로 같은 비율의 '일체 타설' 코어로 배치 · PIT 위치에만 쓴다 */
+    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio, integ = !(ty.dc || ty.core); if (!(Ac > 0)) return null;
     var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)), cw = Ac / cd;
     if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); }
     var A = S.adv || {}, px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
-    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac };
+    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac, integ: integ };
+  }
+  /* PIT : 지상 코어 아래 (평면 비율 위치를 기초 평면에 그대로) 의 기초 Zone — 수는 S.adv.pitN (사례 보정값), 없으면 2개.
+     부분 지하는 깊은 구간 Zone 안에서만. 지하층 없으면 PIT 없음 */
+  function pitUnderCore(R) {
+    var f = R.found, b = R.basic, cg = coreGeom(R);
+    if (!cg || b.nB === 0 || !(f.nZ > 0)) return null;
+    var Af = f.Af > 0 ? f.Af : R.geo.bldg, Lf = Math.sqrt(Af * 1.6), Bf = Math.sqrt(Af / 1.6), n = S.adv && S.adv.pitN > 0 ? Math.round(S.adv.pitN) : 2;
+    var tx = (cg.x0 + cg.cw / 2) / cg.L * Lf, ty = (cg.y0 + cg.cd / 2) / cg.B * Bf;
+    var cells = zgridPlan(0, 0, Lf, Bf, f.nZ, function (i) { return { i: i }; }).filter(function (c) { return !(f.nDeep > 0 && f.nDeep < f.nZ) || c.i < f.nDeep; });
+    cells.forEach(function (c) { c.d = Math.hypot((c.X0 + c.X1) / 2 - tx, (c.Y0 + c.Y1) / 2 - ty); });
+    return cells.sort(function (a, c) { return a.d - c.d; }).slice(0, Math.max(1, Math.min(n, cells.length))).map(function (c) { return c.i; });
   }
   function coreWhere(cg) {
     var e = 0.04, edge = cg.px < e || cg.px > 1 - e || cg.py < e || cg.py > 1 - e;
@@ -802,7 +825,7 @@
   /* 팀 배정 : 이어진 Zone 묶음 = 한 팀. 숫자 = 팀 안 타설 순서, 팀마다 1 Zone 이면 Zone 순서 (모두 '1' 이 되지 않게) */
   function zteams(N, T) { var per = Math.ceil(N / Math.max(1, T)); return function (i) { var t = Math.floor(i / per); return { team: t, ord: per > 1 ? i - t * per + 1 : i + 1 }; }; }
   function isoPlate(o, s, FW, idx) {
-    var C = 0.8660254, pad = 14, tz = 9, hc = o.core ? 20 : 0, Lp = o.Lp, Bp = o.Bp;
+    var C = 0.8660254, pad = 14, tz = o.tz || 9, hc = o.core ? (o.core.integ ? 9 : 20) : 0, Lp = o.Lp, Bp = o.Bp;
     var topY = pad + hc + 6, hTop = (Lp + Bp) * 0.5 * s, H = Math.ceil(topY + hTop + tz + 34);
     var cx = FW / 2, ox = cx - (Lp - Bp) / 2 * C * s, oy = topY;
     function P(X, Y, Z) { return [ox + (X - Y) * C * s, oy + (X + Y) * 0.5 * s - (Z || 0)]; }
@@ -835,6 +858,8 @@
       if (o.core.drag) { var cm = P(k0, j0, hc); v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="var(--navy)"/><path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>'; }
       v += '</g>';
     }
+    /* 판 두께 표기 (기초 매트) : 오른쪽 앞 모서리 옆 */
+    if (o.tLab) { var pq = P(Lr, Br), qx = pq[0] - 6; v += Ln(qx, pq[1] + 1, qx, pq[1] + tz, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + 1, qx + 3, pq[1] + 1, 'var(--navy)', 0.9) + Ln(qx - 3, pq[1] + tz, qx + 3, pq[1] + tz, 'var(--navy)', 0.9) + T(qx - 6, pq[1] + tz / 2 + 4, o.tLab, { a: 'end', fs: 11.5, w: 600, c: 'var(--navy)', cls: 'n', halo: true }); }
     /* 변 치수 (앞 두 변) */
     var mx = (pl[0] + pb[0]) / 2 - 7, my = (pl[1] + pb[1]) / 2 + tz + 12, nx = (pb[0] + pr[0]) / 2 + 7, ny = (pb[1] + pr[1]) / 2 + tz + 12;
     if (Lr * s > 40) v += T(mx, my, '≈ ' + r1(Lr) + ' m', { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', cls: 'n', tr: 'rotate(30 ' + r1(mx) + ' ' + r1(my) + ')' });
@@ -863,31 +888,29 @@
     var dF = dim(Af), dB = dim(Ab), dU = dim(Au);
     var FW = Math.min(480, cols ? Math.floor(W / 3) - 38 : nar ? W : W - 160 - 14);
     var Lmax = Math.max(dF.L, dB.L, dU.L, 1), s = (FW - 28) / ((Lmax + Lmax / AR) * 0.8660254);
-    var maxT = 1, out = '';
+    var maxT = 1, steel = b.struct === 'SC' || b.struct === 'COMP';
     function row(lv, title, area, d, lines, svgHtml, cy) {
       return '<div class="iso-row"><div class="iso-lab"><span class="lv">' + esc(lv) + '</span><h3>' + esc(title) + '</h3>' +
         '<div class="ar"><b>' + fmt(area) + '</b> ㎡<span>≈ ' + r1(d.L) + ' × ' + r1(d.B) + ' m</span></div><ul>' + lines.filter(Boolean).map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' +
         '<div class="iso-fig">' + svgHtml + '</div><div class="iso-cy">' + cyHTML(cy) + '</div></div>';
     }
-    /* 기준층 */
-    var ty = fr.typ, NP, TP, NC = 0, TC = 0, Ac = 0;
-    if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; Ac = ty.dc.Ac; }
-    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; Ac = Au * LIB.frame.core.ratio; } }
-    maxT = Math.max(maxT, TP);
-    if (Au > 0) {
-      var cg = NC ? coreGeom(R) : null, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null;
-      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, where: coreWhere(cg), cells: zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) } : null;
-      out += row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상 기준층', Au, dU, [
-        (ty.dc ? '외주부 <b>' : '바닥 <b>') + NP + '</b> Zone',
-        teamCtl('uTeams', '형틀팀', TP, R.team && R.team.u),
-        NC ? '코어 <b>' + NC + '</b> Zone · <b>' + TC + '</b>팀' : '',
-        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
-      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
-    } else out += '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
+    /* 기초 : 판 두께 = 매트 두께 (세로 ×4), PIT = 지상 코어 아래 Zone (굵은 테두리) */
+    var oF = '', oB = '', oU = '';
+    maxT = Math.max(maxT, f.teams);
+    if (Af > 0) {
+      var Z = f.sim.Z.slice().sort(function (a, c) { return a.pour - c.pour; }), rank = {}, byI = {};
+      Z.forEach(function (z, i) { rank[z.i] = i + 1; byI[z.i] = z; });
+      var cellsF = zgridPlan(0, 0, dF.L, dF.B, f.nZ, function (i) { var z = byI[i] || { team: 1 }; return { fill: TEAMC[(z.team - 1) % 8], op: z.slope ? 0.22 : 0.58, stroke: z.pit ? 'var(--cp)' : '#fff', sw: z.pit ? 2.4 : 1.2, t: rank[i] || '' }; });
+      var tzF = Math.max(7, Math.min(28, g.tMat * s * 4));
+      oF = row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
+        '<b>' + f.nZ + '</b> Zone · 매트 <b>' + r1(g.tMat) + '</b>m',
+        teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
+        f.nPit ? 'PIT <b>' + f.nPit + '</b> Zone · 코어 아래' : ''
+      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, tz: tzF, tLab: 't=' + r1(g.tMat) + 'm', aria: '기초 조닝 평면 (아이소메트릭) · 매트 ' + r1(g.tMat) + 'm' }, s, FW, 2), cyFound(R));
+    } else oF = '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
     /* 지하골조 */
     var bs = R.base;
-    if (!bs || b.nB === 0) out += '<div class="iso-none">지하층 없음 · 기초 위에서 바로 지상골조</div>';
+    if (!bs || b.nB === 0) oB = '<div class="iso-none">지하층 없음 · 기초 위에서 바로 지상골조</div>';
     else if (Ab > 0) {
       var NZ, NT, sub;
       if (bs.td) { NZ = Math.max(2, Math.min(4, Math.round(g.Adeep / LIB.td.f1ZoneA))); NT = NZ; sub = ['역타 슬래브 <b>' + NZ + '</b> Zone 순환']; }
@@ -897,26 +920,30 @@
       var tb = zteams(NZ, NT), ghost = Ab < Af * 0.97;
       var Ldb = ghost ? dF : dB;
       var cellsB = zgridPlan(0, 0, dB.L, dB.B, NZ, function (i) { var q = tb(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      out += row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
-    } else out += '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
-    /* 기초 */
-    maxT = Math.max(maxT, f.teams);
-    if (Af > 0) {
-      var Z = f.sim.Z.slice().sort(function (a, c) { return a.pour - c.pour; }), rank = {}, byI = {};
-      Z.forEach(function (z, i) { rank[z.i] = i + 1; byI[z.i] = z; });
-      var cellsF = zgridPlan(0, 0, dF.L, dF.B, f.nZ, function (i) { var z = byI[i] || { team: 1 }; return { fill: TEAMC[(z.team - 1) % 8], op: z.slope ? 0.22 : 0.58, stroke: z.pit ? 'var(--cp)' : '#fff', sw: z.pit ? 2.2 : 1.2, t: rank[i] || '' }; });
-      out += row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
-        '<b>' + f.nZ + '</b> Zone',
-        teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
-        '매트 <b>' + r1(g.tMat) + '</b>m · Zone ' + fmt(f.vZ) + '㎥'
-      ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, aria: '기초 조닝 평면 (아이소메트릭)' }, s, FW, 2), cyFound(R));
-    } else out += '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
+      oB = row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
+    } else oB = '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
+    /* 지상골조 (기준층) : 외주부 (RC = 형틀팀 · 철골 = 철골팀) 와 코어 (RC 코어 = 형틀팀) 를 따로. RC 는 코어 일체 타설 */
+    var ty = fr.typ, NP, TP, NC = 0, TC = 0;
+    if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; }
+    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; } }
+    if (Au > 0) {
+      var cg = coreGeom(R), tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = steel ? '철골팀' : '형틀팀';
+      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: 'var(--t1)', op: 0.36 + 0.2 * (q.team % 3), t: q.ord }; });
+      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, integ: cg.integ, where: coreWhere(cg), cells: NC ? zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) : [] } : null;
+      oU = row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상골조', Au, dU, [
+        '<i class="dot" style="background:var(--t1)"></i>외주부 <b>' + NP + '</b> Zone',
+        teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
+        NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
+        NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
+        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
+      ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
+    } else oU = '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
     var lg = ''; for (var t = 0; t < Math.min(maxT, 8); t++) lg += '<span><i style="background:' + TEAMC[t] + ';opacity:.7"></i>' + (t + 1) + '팀</span>';
     lg += '<span><i style="background:#fff;box-shadow:inset 0 0 0 2px var(--cp)"></i>PIT Zone</span>';
     if (f.nSlopeZ) lg += '<span><i style="background:var(--t1);opacity:.25"></i>경사띠</span>';
-    if (NC) lg += '<span><i style="background:#838FA1"></i>코어</span>';
+    lg += '<span><i style="background:var(--t1);opacity:.6"></i>외주부</span><span><i style="background:var(--navy);opacity:.7"></i>코어</span>';
     lg += '<span>숫자 = 타설 순서</span>';
-    return { html: '<div class="iso' + (nar ? ' nar' : cols ? ' cols' : '') + '">' + out + '</div>', legend: lg };
+    return { html: '<div class="iso' + (nar ? ' nar' : cols ? ' cols' : '') + '">' + oF + oB + oU + '</div>', legend: lg };
   }
   function renderZone(R) { var box = $('#zone'), z = zoning(R, box.clientWidth || 520); box.innerHTML = z.html; $('#z-lg').innerHTML = z.legend; widths.zone = box.clientWidth; }
 

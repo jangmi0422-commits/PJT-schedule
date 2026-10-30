@@ -164,13 +164,12 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .t-quick { display: flex; flex-direction: column; }
 .quick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .qb { display: flex; flex-direction: column; }
-.qlinks { margin-top: auto; padding-top: 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; border-top: 1px solid var(--rule-2); margin-bottom: -4px; }
 .t-quick .quick { margin-bottom: 16px; }
 /* 층수 : V5 퀵산정처럼 큰 숫자 + 드래그 막대 */
 .floors { display: flex; flex-direction: column; gap: 8px; }
 .sl { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) 28px 28px; align-items: baseline; column-gap: 6px; user-select: none; -webkit-user-select: none; }
 .sl .lb { font-size: 13.5px; color: var(--ink-3); }
-.sl output { font-family: var(--f-disp); font-size: 28px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 1.2em; text-align: right; }
+.sl output { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 600; letter-spacing: -.035em; line-height: 1.05; color: var(--ink); min-width: 1.2em; text-align: right; }
 .sl .su { font-size: 12.5px; color: var(--ink-3); }
 .sl .su.auto { color: var(--cp-deep); }
 .sl .pm { align-self: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; }
@@ -207,6 +206,8 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .lg span { display: inline-flex; align-items: center; gap: 7px; }
 .lg i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; flex: none; }
 .lg svg { flex: none; display: block; }
+.lg .lg-ph { margin-left: auto; gap: 6px; }
+.lg .lg-ph i + i, .lg .lg-ph i { margin-left: 8px; }
 
 /* Master Schedule */
 .chart { width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
@@ -342,17 +343,21 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .core-h.drag:hover .core-grip, .core-h.drag:focus-visible .core-grip { opacity: 1; }
 body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none; }
 .core-at { color: var(--ink-3); }
+.iso-lab ul .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; opacity: .75; vertical-align: 0; }
+.iso-lab ul li .tm { margin-left: 14px; }
 .core-at b { font-family: var(--f-ui) !important; font-weight: 600; color: var(--cp-deep) !important; }
 .iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
 
 /* 주요 판단 */
 /* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
+.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); }
+.sec-kf h3 { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
 .kf7 { display: flex; flex-direction: column; gap: 12px; }
 .kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--cp-line); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
 .kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
-.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
+.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; word-break: keep-all; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
 .kc .kw { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kf-lo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; }
 .kf-lo > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; padding: 6px 0; border-bottom: 1px solid var(--rule-2); cursor: help; }
@@ -450,14 +455,13 @@ details.ss[open] > summary::after { content: "접기"; }
   .t-ms { grid-column: 6 / span 4; grid-row: span 2; }
   .t-quick { grid-column: 10 / span 3; grid-row: span 2; }
   /* 단면 · 조닝 · 주요 판단은 전체 폭 — 단면은 도면 | 칩 · 주석 · 범례, 조닝은 세 판 가로 (판 아래 사이클) */
-  .t-sec { display: grid; grid-template-columns: minmax(0, 860px) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; grid-template-areas: "h h" "d c" "d n" "d l"; column-gap: 40px; align-content: start; }
+  .t-sec { display: grid; grid-template-columns: minmax(0, 860px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; grid-template-areas: "h h" "d c" "d n" "d l" "d k"; column-gap: 40px; align-content: start; }
+  .t-sec > .sec-kf { grid-area: k; align-self: start; }
   .t-sec > .th { grid-area: h; }
   .t-sec > #s-chips { grid-area: c; align-self: start; }
   .t-sec > #section { grid-area: d; }
   .t-sec > #s-notes { grid-area: n; align-self: start; grid-template-columns: minmax(0, 1fr); }
   .t-sec > #s-lg { grid-area: l; align-self: start; }
-  .kf-hi { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .kf-lo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 820px) {
   .wgs.two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 40px; }
@@ -559,7 +563,6 @@ details.ss[open] > summary::after { content: "접기"; }
           <option value="RC">RC</option><option value="SRC">SRC</option><option value="SC">철골 + RC 코어</option><option value="COMP">강합성 + RC 코어</option></select></div>
       </div>
       </div></div>
-      <div class="qlinks"><button class="link" type="button" data-open="in-site">면적 입력</button><button class="link" type="button" data-goto="sec-sec">층고 → 단면</button><button class="link" type="button" data-open="in-wall">공법 전체</button></div>
     </section>
 
     <section class="tile t-gantt" id="sec-gantt" aria-labelledby="g-t">
@@ -576,17 +579,13 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="chart" id="section"></div>
       <ol class="kn" id="s-notes" aria-label="단면 주석"></ol>
       <div class="lg" id="s-lg"></div>
+      <div class="sec-kf" id="sec-kf"><h3 id="k-t">주요 가정사항 및 조건</h3><div class="kf7" id="kf"></div></div>
     </section>
 
     <section class="tile t-zone" id="sec-zone" aria-labelledby="z-t">
       <header class="th"><h2 id="z-t"><span class="idx">03</span>조닝 계획</h2></header>
       <div class="chart" id="zone"></div>
       <div class="lg" id="z-lg"></div>
-    </section>
-
-    <section class="tile t-kf" id="sec-kf" aria-labelledby="k-t">
-      <header class="th"><h2 id="k-t"><span class="idx">04</span>주요 판단</h2></header>
-      <div class="kf7" id="kf"></div>
     </section>
 
     <section class="tile t-warn" id="sec-warn" aria-labelledby="w-t">

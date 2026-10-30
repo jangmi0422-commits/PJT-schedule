@@ -387,7 +387,9 @@
     var Vf = Af * teq, zoneV = clamp(num(A.zoneV, fl.zoneV), 300, 2000);
     var nZ = Math.max(1, Math.ceil(Vf / zoneV - 1e-9)), vZ = Vf / nZ;
     var nDeep = nB > 0 ? Math.min(nZ, Math.ceil((Adeep / 1.08) * teq / zoneV - 1e-9)) : 0;
-    var nPit = nB > 0 ? Math.min(Math.max(1, Math.round(nZ * fl.pitRatio)), nDeep > 0 ? nDeep : nZ) : 0;
+    /* PIT Zone : 입력 (adv.pitZ = Zone 번호 목록, 0부터 — 화면이 지상 코어 아래 Zone 으로 채움) 이 있으면 그 Zone, 없으면 Zone 수 × pitRatio 를 고르게 */
+    var pitIn = Array.isArray(A.pitZ) ? A.pitZ.map(function (v) { return Math.round(+v); }).filter(function (v, k, a) { return v >= 0 && v < nZ && a.indexOf(v) === k; }) : [];
+    var nPit = pitIn.length ? pitIn.length : nB > 0 ? Math.min(num(A.pitN, 0) > 0 ? Math.round(num(A.pitN, 0)) : Math.max(1, Math.round(nZ * fl.pitRatio)), nDeep > 0 ? nDeep : nZ) : 0;
     var rebR = num(A.rebar, 0) > 0 ? clamp(num(A.rebar, 0), 0.03, 0.4) : fl.rebar, lagF = A.lag != null && A.lag !== '' ? clamp(num(A.lag, fl.lag), 0, 60) : fl.lag;
     /* 준비 (영구배수 · 버림 · 먹) · 마무리 (형틀 · 검측 · 타설) · PIT 추가는 작업량 → 작업시간 비례. 팀 시차는 계획값 (고정) */
     var prepW = fl.prep / hF, tailW = fl.tail / hF, pitW = fl.pitAdd / hF;
@@ -395,7 +397,7 @@
     var teamsF = num(A.fTeams, 0) > 0 ? clamp(Math.round(num(A.fTeams, 0)), 1, 10) : clamp(Math.ceil(Vf / fl.teamV), 1, fl.maxTeams);
     var nSlopeZ = open && partial ? Math.min(nZ - nDeep, Math.ceil(slopeA * teq / zoneV)) : 0;
     function sim(avail) {
-      var pit = {}; for (var j = 0; j < nPit; j++) pit[Math.min(nZ - 1, Math.floor((j + 0.5) * (nDeep > 0 ? nDeep : nZ) / nPit))] = true;
+      var pit = {}; if (pitIn.length) pitIn.forEach(function (v) { pit[v] = true; }); else for (var j = 0; j < nPit; j++) pit[Math.min(nZ - 1, Math.floor((j + 0.5) * (nDeep > 0 ? nDeep : nZ) / nPit))] = true;
       var free = []; for (var q = 0; q < teamsF; q++) free.push(q * lagF);
       var pours = {}, Z = [], order = []; for (var i = 0; i < nZ; i++) order.push(i);
       order.sort(function (a, b) { return avail[a] - avail[b] || a - b; });
@@ -503,9 +505,11 @@
       var lf = h >= FR.split ? 1 + Math.floor(h / FR.split) : 1, lk = 1 - FR.vShare + FR.vShare * lf, hf1 = hfac(h / lf);
       return { Z: Zx, T: Tx, per: per, hf: hf1, lifts: lf, lk: lk, wd: Math.max(minT, per * dS * lk * hf1) };
     }
+    /* 코어 형틀팀 수 (adv.cTeams) : 코어 Zone 수는 층마다 같으므로 입력이 있으면 그 값 (1 ~ Zone 수) */
+    var cTin = num(A.cTeams, 0) > 0 ? Math.round(num(A.cTeams, 0)) : 0;
     function coreT(h) {
       var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(2, Math.round(Atyp * FR.core.ratio / FR.core.zoneA));
-      var Tc = Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
+      var Tc = cTin ? clamp(cTin, 1, Zc) : Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
       return { Z: Zc, T: Tc, per: per, lifts: lifts, hf: hfac(hl), wd: lifts * per * dC * hfac(hl) };
     }
     /* DC 층 사이클 (순타 · 용도 데이터센터 기본, 상세 조정 'DC 층 사이클' 로 켜고 끔)
@@ -519,6 +523,11 @@
     function dcK() {
       if (dcKv == null) { dcKv = 1; var t0 = dcFloor(typN0, hUp[typN0 - 1], Atyp); dcKv = uTin / Math.ceil(t0.P.N / L.dc.zpt - 1e-9); }
       return dcKv;
+    }
+    var dcKcv = null;
+    function dcKc() {
+      if (dcKcv == null) { dcKcv = 1; var t0 = dcFloor(typN0, hUp[typN0 - 1], Atyp); dcKcv = cTin / Math.ceil(t0.C.N / L.dc.zpt - 1e-9); }
+      return dcKcv;
     }
     function dcFloor(n, h, Au) {
       var Ac = num(A.coreA, 0) > 0 ? Math.min(num(A.coreA, 0), Au * 0.6) : Au * FR.core.ratio;
@@ -556,7 +565,7 @@
         var T0 = Math.ceil(N / DCL.zpt - 1e-9), T = k && k !== 1 ? clamp(Math.round(T0 * k), 1, N) : T0, nt = Math.ceil(N / T - 1e-9), z = items.reduce(function (s, x) { return s + x[1]; }, 0);
         return { name: name, N: N, T: T, nt: nt, V: V, items: items, zone: z, gap: nt - 1, cyc: z + nt - 1 };
       }
-      var P = st('외주부', Np, pIt, Vcol + Vbm + Vsl, uTin ? dcK() : 1), C = st('코어', Nc, cIt, Vw + Vcs);
+      var P = st('외주부', Np, pIt, Vcol + Vbm + Vsl, uTin ? dcK() : 1), C = st('코어', Nc, cIt, Vw + Vcs, cTin ? dcKc() : 1);
       var gov = (dcFlow ? P.zone >= C.zone : P.cyc >= C.cyc) ? P : C;
       return { n: n, h: h, Au: Au, Ac: Ac, nCol: nCol, nBm: nBm, lifts: lifts, lead: lead, P: P, C: C, gov: gov.name, wd: dcFlow ? gov.zone : gov.cyc, tail: dcFlow ? Math.max(P.gap, C.gap) : 0, flow: dcFlow };
     }
@@ -801,7 +810,7 @@
   }
 
   /* ── 실적 사례 (검증 세트) — 현장명은 표기하지 않음 */
-  /* adv.uTeams (지상 형틀팀) = 엔진 기본 규칙 값 그대로 — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정 */
+  /* adv.uTeams (지상 외주부팀) · cTeams (코어 형틀팀) · pitN (PIT Zone 수) = 엔진 기본 규칙 값 그대로 — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정 */
   var REFS = [
     { key: 'refA', name: '사례 A', loc: '도심 업무시설', seq: 'TD', struct: 'SC', nB: 8, nUp: 31, total: 50.0, cmp: 50.0, frame: 9.5,
       actual: [['MOB + 흙막이', 4.5, ['mob', 'wall']], ['PRD', 2.8, ['prd']], ['지열', 2.6, ['geo']], ['1차 터파기', 0.5, ['exc1']], ['1F 슬래브', 1.6, ['f1']], ['지하 터파기', 16.1, ['exc']], ['기초', 1.4, ['found']], ['지상골조', 9.5, ['frame']], ['마감', 9.0, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -809,7 +818,7 @@
       inp: { name: '사례 A (역타 · 업무시설)', use: 'office', site: 4802, bldg: 2768.32, gfaUp: 60398.2, gfaDn: 30665.83, nB: 8, nUp: 31, nPH: 2,
         ground: 'CUSTOM', strata: [12, 9, 2, 8.6], gwl: 4.0, seq: 'TD', wall: 'CIP', support: 'SLAB', scw: false, found: 'MAT', geo: 110, struct: 'SC', pt: false, coreSys: 'ACS', lim: 17, lim2: 24,
         mob: 1.0, fin: 9.0, tc: 2.0, rExt: 0.702, rRC: 0.584, hours: 8, link: false,
-        adv: { H: 39.6, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, crew: 20, lag: 5, prdN: 54,
+        adv: { H: 39.6, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, cTeams: 1, pitN: 1, crew: 20, lag: 5, prdN: 54,
           hSpec: 'B1:7.6, B2:4.6, B3:3.7, B4:3.55, B5:3.55, B6:3.55, B7:3.55, B8:7.3, 1:4.25, 2:4.0, 3:8.25, 4-7:5.55, 8-28:4.65, 29:6.0, 30:7.75, 31:7.2, PH1:7.35, PH2:5.6' } } },
     { key: 'refB', name: '사례 B', loc: '도심 업무시설 (기존 건물 해체 후 신축)', seq: 'BU', struct: 'RC', nB: 2, nUp: 17, total: 51.5, cmp: 43.0, frame: 15.8,
       actual: [['MOB', 1.0, ['mob']], ['흙막이', 2.6, ['wall']], ['터파기 (지하해체 병행)', 5.9, ['exc']], ['지열', 2.3, ['geo']], ['기초', 1.6, ['found']], ['지하골조', 3.8, ['base']], ['지상골조', 15.8, ['frame']], ['마감', 8.0, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -818,7 +827,7 @@
       inp: { name: '사례 B (순타 · 업무시설)', use: 'office', site: 15840, bldg: 9277.72, gfaUp: 65120.01, gfaDn: 21637.22, nB: 2, nUp: 17, nPH: 1,
         ground: 'CUSTOM', strata: [6, 4, 4, 8], gwl: 8.0, seq: 'BU', wall: 'CIP', support: 'ANCHOR', scw: false, found: 'MAT', geo: 90, struct: 'RC', pt: false, coreSys: 'AUTO',
         mob: 1.0, fin: 8.0, tc: 2.0, rExt: 0.649, rRC: 0.597, hours: 8, link: false,
-        adv: { mat: 1.7, crew: 30, rebar: 0.10, fTeams: 3, uTeams: 3, lag: 0, exVoidA: 7700, exVoidD: 14.5,
+        adv: { mat: 1.7, crew: 30, rebar: 0.10, fTeams: 3, uTeams: 3, pitN: 3, lag: 0, exVoidA: 7700, exVoidD: 14.5,
           hSpec: 'B1:6.0, B2:8.6, 1:4.2, 2:4.8, 3-8:6.6, 9-16:4.8, 17:6.8, PH:6.3', zSpec: '1-8:11, 9-17:4' } } },
     { key: 'refC', name: '사례 C', loc: '데이터센터 (산업단지)', seq: 'BU', struct: 'COMP', nB: 1, nUp: 5, total: 29.0, cmp: 29.0, frame: 10.2,
       actual: [['MOB', 1.0, ['mob']], ['토공 (SCW · PHC · 굴착)', 5.5, ['scw', 'pile', 'exc']], ['기초 · 지하골조', 3.8, ['found', 'base']], ['지상골조', 10.2, ['frame']], ['마감', 6.5, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -827,7 +836,7 @@
       inp: { name: '사례 C (오픈컷 · 데이터센터)', use: 'dc', site: 47620, bldg: 20690.67, gfaUp: 75883.07, gfaDn: 4217.83, nB: 1, nUp: 5, nPH: 1,
         ground: 'CUSTOM', strata: [22, 4, 6, 6], gwl: 3.5, seq: 'BU', wall: 'NONE', support: 'OPEN', scw: true, found: 'PHC', geo: 0, struct: 'COMP', pt: false, coreSys: 'GANG',
         mob: 1.0, fin: 6.5, tc: 2.0, rExt: 0.702, rRC: 0.586, hours: 8, link: false,
-        adv: { H: 9.0, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, lag: 1, liftWD: 6, backfill: 12,
+        adv: { H: 9.0, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, cTeams: 3, pitN: 4, lag: 1, liftWD: 6, backfill: 12,
           hSpec: 'B1:6.7, 1:9.8, 2:5.5, 3:4.5, 4:5.5, 5:4.5, PH:7.5' } } }   /* '26.10.28 DC 층 사이클 적용 → 면적 Zone 보정값 zSpec '1-5:18' 삭제 (체적 Zone 사용) */
   ];
 
