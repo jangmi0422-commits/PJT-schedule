@@ -14,12 +14,13 @@
   --bg: #F2F3F0; --tile: #FFFFFF; --sheet: #FFFFFF; --sheet-2: #F7F8F8; --band: #F3F4F6;
   --ink: #141820; --ink-2: #434A57; --ink-3: #636B78; --rule: #E1E4E8; --rule-2: #ECEEF1;
   --navy: #1E3A62; --accent: #2D5FAE; --accent-soft: #E9EFF8; --steel: #5A6A82;
-  --cp: #D1382C; --cp-ink: #FFFFFF; --cp-soft: #FBE9E6; --cp-deep: #A52A20;
+  /* 블루톤 : C.P = 진한 코발트, 나머지는 같은 계열의 명도 차이로 */
+  --cp: #1F56C9; --cp-ink: #FFFFFF; --cp-soft: #E7EEFB; --cp-deep: #173F94; --cp-line: #B9CBEE;
   --ok: #2E7A5A; --ok-soft: #E4F1EA; --warn: #8E651B; --warn-soft: #F7F0E1;
   --slate: #98A0AC; --slate-2: #CBD1D9; --slate-3: #E8EBEE;
-  --soil: #EEE4CE; --wsoil: #E2D2AF; --wrock: #CDB78E; --srock: #B6BBC1; --hrock: #8E959E; --gwl: #2A7DC0;
-  --t1: #3C6CB4; --t2: #2C9083; --t3: #D19A3B; --t4: #6B7A94; --t5: #87AB6C; --t6: #5BB2D9;
-  --g-prep: #C9CED6; --g-civ: #C9A66C; --g-frame: #2F4D7A; --g-fin: #2C9083;
+  --soil: #EAEEF4; --wsoil: #DCE3ED; --wrock: #CCD6E3; --srock: #B8C4D4; --hrock: #9DABBF; --gwl: #3B8FD0;
+  --t1: #3566C2; --t2: #34A0C4; --t3: #8D9EE6; --t4: #1E3A62; --t5: #6FB6E8; --t6: #6A7C9E;
+  --g-prep: #CDD3DC; --g-civ: #9DB6DC; --g-frame: #1E3A62; --g-fin: #3F86C8;
   --f-ui: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
   --f-num: "Inter Tight", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   /* 메인 공기 : V5 퀵산정과 같은 두꺼운 표시 글꼴 · 라벨은 코딩 글꼴 */
@@ -161,15 +162,23 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .qb { display: flex; flex-direction: column; }
 .qlinks { margin-top: auto; padding-top: 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; border-top: 1px solid var(--rule-2); margin-bottom: -4px; }
 .t-quick .quick { margin-bottom: 16px; }
-.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.step > label { display: block; font-size: 13.5px; color: var(--ink-3); margin-bottom: 6px; }
-.stp { display: grid; grid-template-columns: 22px minmax(0, 1fr) 22px; align-items: center; background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: 12px; height: 46px; padding: 0 3px; }
-.stp button { width: 22px; height: 38px; border: 0; background: transparent; border-radius: 9px; color: var(--ink-2); font-size: 18px; line-height: 1; }
-.stp button:hover { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 32, .12); }
-.stp input { width: 100%; min-width: 0; border: 0; background: transparent; text-align: center; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); padding: 0; -moz-appearance: textfield; }
-.stp input::-webkit-outer-spin-button, .stp input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.stp input::placeholder { color: var(--ink-3); font-size: 14px; font-weight: 500; }
-.stp:focus-within { border-color: var(--accent); background: #fff; }
+/* 층수 : V5 퀵산정처럼 큰 숫자 + 드래그 막대 */
+.floors { display: flex; flex-direction: column; gap: 8px; }
+.sl { display: grid; grid-template-columns: 40px auto minmax(0, 1fr) 28px 28px; align-items: baseline; column-gap: 6px; user-select: none; -webkit-user-select: none; }
+.sl .lb { font-size: 13.5px; color: var(--ink-3); }
+.sl output { font-family: var(--f-disp); font-size: 28px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 1.2em; text-align: right; }
+.sl .su { font-size: 12.5px; color: var(--ink-3); }
+.sl .su.auto { color: var(--cp-deep); }
+.sl .pm { align-self: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; }
+.sl .pm:hover { border-color: var(--cp); color: var(--cp); }
+.sl input[type="range"] { grid-column: 1 / -1; width: 100%; height: 22px; margin: 2px 0 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: grab; touch-action: none; }
+.sl input[type="range"]:active { cursor: grabbing; }
+.sl input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--cp) 0 var(--p, 50%), var(--slate-3) var(--p, 50%) 100%); }
+.sl input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--slate-3); }
+.sl input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--cp); }
+.sl input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: #fff; border: 2px solid var(--cp); box-shadow: 0 1px 4px rgba(16, 40, 90, .25); }
+.sl input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--cp); box-shadow: 0 1px 4px rgba(16, 40, 90, .25); }
+.sl input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .qrow { margin-top: 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; }
 .qrow > label, .qf > label, .qlab { font-size: 13.5px; color: var(--ink-3); }
 .qgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 12px; }
@@ -215,7 +224,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .gtip .gt-nm { color: var(--ink-3); margin-top: 1px; }
 .gtip .gt-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--band); margin: 8px 0 5px; }
 .gtip .gt-bar i { display: block; height: 100%; }
-.gtip .gt-bar i.pre { background: repeating-linear-gradient(-45deg, #F2C9C3 0 3px, #FCEFED 3px 6px); }
+.gtip .gt-bar i.pre { background: repeating-linear-gradient(-45deg, #C8D7F3 0 3px, #EEF3FC 3px 6px); }
 .gtip .gt-bar i.cp { background: var(--cp); }
 .gtip .gt-bar i.non { background: var(--slate-2); }
 .gtip .gt-seg { display: flex; flex-wrap: wrap; gap: 0 6px; color: var(--ink-2); }
@@ -247,7 +256,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .fhl .fl small { display: block; font-family: var(--f-ui); font-weight: 400; font-size: 12.5px; color: var(--ink-3); }
 .fhl .fr.bl .fl { color: var(--ink-2); }
 .fhl .fp { justify-self: center; font-size: 12.5px; font-weight: 500; color: var(--ink-2); background: var(--band); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
-.fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px #EFB3AC; }
+.fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px var(--cp-line); }
 .fhl .fe { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
 .fh.fh-l { position: static; width: 100%; height: 34px; font-size: 16px; }
 .kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 22px; }
@@ -311,13 +320,32 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .cy-g.sub .cy-t i span { color: var(--ink-2); }
 .cy-t em { position: absolute; top: 0; left: calc(var(--e) * (100% - 44px) + 5px); font-style: normal; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 17px; white-space: nowrap; }
 .cy-t em small { font-size: 10.5px; font-weight: 500; color: var(--cp-deep); margin-left: 4px; }
+/* 팀수 조절 (조닝 판) */
+.tm { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tm-k { color: var(--ink-3); margin-right: 2px; }
+.tm-b { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-size: 14px; line-height: 1; display: inline-grid; place-items: center; cursor: pointer; padding: 0; }
+.tm-b:hover:not(:disabled) { border-color: var(--cp); color: var(--cp); }
+.tm-b:disabled { opacity: .35; cursor: default; }
+.tm-v { font-family: var(--f-disp); font-weight: 400 !important; font-size: 19px; color: var(--ink); min-width: 14px; text-align: center; line-height: 1; }
+.tm-u { color: var(--ink-3); margin-right: 4px; }
+.tm-o { font-size: 11.5px; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--cp-line); background: var(--cp-soft); color: var(--cp-deep); cursor: pointer; font-family: var(--f-ui); white-space: nowrap; }
+.tm-o:hover { background: var(--cp); color: #fff; border-color: var(--cp); }
+.tm-o.on { cursor: default; background: transparent; border-color: var(--rule); color: var(--ink-3); }
+/* 지상 코어 블록 : 드래그로 위치 이동 */
+.core-h.drag { cursor: grab; touch-action: none; outline: none; }
+.core-h.drag:hover .core-top, .core-h.drag:focus-visible .core-top { stroke: var(--cp); stroke-width: 1.8; }
+.core-h.drag .core-grip { opacity: .82; transition: opacity .15s; }
+.core-h.drag:hover .core-grip, .core-h.drag:focus-visible .core-grip { opacity: 1; }
+body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none; }
+.core-at { color: var(--ink-3); }
+.core-at b { font-family: var(--f-ui) !important; font-weight: 600; color: var(--cp-deep) !important; }
 .iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
 
 /* 주요 판단 */
 /* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
 .kf7 { display: flex; flex-direction: column; gap: 12px; }
 .kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px #F1CBC6; padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--cp-line); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
 .kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
 .kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
@@ -466,7 +494,7 @@ details.ss[open] > summary::after { content: "접기"; }
   <div class="top-in">
     <div class="brand">
       <span class="glyph" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 15.6 3.5 11.4 12 7.2l8.5 4.2z" fill="#E3E8F0"/><path d="M12 12.4 3.5 8.2 12 4l8.5 4.2z" fill="#9FB3D2"/><path d="M12 9.2 6.4 6.4 12 3.6l5.6 2.8z" fill="#1E3A62"/><path d="M3.5 14.6 12 18.8l8.5-4.2" fill="none" stroke="#D1382C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 15.6 3.5 11.4 12 7.2l8.5 4.2z" fill="#E3E8F0"/><path d="M12 12.4 3.5 8.2 12 4l8.5 4.2z" fill="#9FB3D2"/><path d="M12 9.2 6.4 6.4 12 3.6l5.6 2.8z" fill="#1E3A62"/><path d="M3.5 14.6 12 18.8l8.5-4.2" fill="none" stroke="#3F86C8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
       <div class="brand-t"><b>공기산정 에이전트</b><span id="pj">-</span></div>
     </div>
@@ -490,7 +518,7 @@ details.ss[open] > summary::after { content: "접기"; }
         <path d="M128 146 52 108l76-38 76 38z" fill="#F4F6F9" stroke="#E2E7EE"/><path d="M52 108v8l76 38 76-38v-8" stroke="#E2E7EE"/>
         <path d="M128 112 70 83l58-29 58 29z" fill="#EEF2F8" stroke="#D9E1EC"/><path d="M70 83v7l58 29 58-29v-7" stroke="#D9E1EC"/>
         <path d="M128 80 88 60l40-20 40 20z" fill="#E6ECF5" stroke="#CDD8E8"/><path d="M88 60v6l40 20 40-20v-6" stroke="#CDD8E8"/>
-        <path d="M128 40v-22" stroke="#F0B7B0" stroke-width="1.5" stroke-dasharray="3 3"/></g></svg>
+        <path d="M128 40v-22" stroke="#B9CBEE" stroke-width="1.5" stroke-dasharray="3 3"/></g></svg>
       <div class="eyebrow">적정 공사기간</div>
       <div class="big"><b id="h-total">-</b><small>개월</small></div>
       <div class="exact" id="h-exact"></div>
@@ -508,10 +536,10 @@ details.ss[open] > summary::after { content: "접기"; }
     <section class="tile t-quick" aria-labelledby="q1-t">
       <header class="th sm"><h2 id="q1-t">빠른 입력</h2></header>
       <div class="quick"><div class="qa">
-      <div class="steps">
-        <div class="step"><label for="q-nB">지하</label><div class="stp"><button type="button" data-step="nB" data-d="-1" aria-label="지하 층수 줄이기">−</button><input id="q-nB" data-k="nB" data-type="int" type="number" min="0" max="12" step="1" inputmode="numeric"><button type="button" data-step="nB" data-d="1" aria-label="지하 층수 늘리기">+</button></div></div>
-        <div class="step"><label for="q-nUp">지상</label><div class="stp"><button type="button" data-step="nUp" data-d="-1" aria-label="지상 층수 줄이기">−</button><input id="q-nUp" data-k="nUp" data-type="int" type="number" min="1" max="120" step="1" inputmode="numeric"><button type="button" data-step="nUp" data-d="1" aria-label="지상 층수 늘리기">+</button></div></div>
-        <div class="step"><label for="q-nPH">옥탑</label><div class="stp"><button type="button" data-step="nPH" data-d="-1" aria-label="옥탑 층수 줄이기">−</button><input id="q-nPH" data-k="nPH" data-type="int" type="number" min="0" max="4" step="1" inputmode="numeric" placeholder="자동"><button type="button" data-step="nPH" data-d="1" aria-label="옥탑 층수 늘리기">+</button></div></div>
+      <div class="floors">
+        <div class="sl"><label class="lb" for="r-nB">지하</label><output id="o-nB" for="r-nB">-</output><span class="su">층</span><button class="pm" type="button" data-step="nB" data-d="-1" aria-label="지하 층수 줄이기">−</button><button class="pm" type="button" data-step="nB" data-d="1" aria-label="지하 층수 늘리기">+</button><input id="r-nB" type="range" min="0" max="12" step="1" data-k="nB" data-type="int" aria-label="지하 층수 (드래그)"></div>
+        <div class="sl"><label class="lb" for="r-nUp">지상</label><output id="o-nUp" for="r-nUp">-</output><span class="su">층</span><button class="pm" type="button" data-step="nUp" data-d="-1" aria-label="지상 층수 줄이기">−</button><button class="pm" type="button" data-step="nUp" data-d="1" aria-label="지상 층수 늘리기">+</button><input id="r-nUp" type="range" min="1" max="120" step="1" data-k="nUp" data-type="int" aria-label="지상 층수 (드래그)"></div>
+        <div class="sl ph"><span class="lb">옥탑</span><output id="o-nPH">-</output><span class="su" id="o-nPH-u">층</span><button class="pm" type="button" data-step="nPH" data-d="-1" aria-label="옥탑 층수 줄이기">−</button><button class="pm" type="button" data-step="nPH" data-d="1" aria-label="옥탑 층수 늘리기">+</button></div>
       </div>
       <div class="qrow"><label for="q-use">용도</label><select class="sel" id="q-use" data-k="use">
         <option value="office">업무시설</option><option value="dc">데이터센터</option><option value="residential">공동주택</option><option value="mixed">주상복합</option><option value="other">기타</option></select></div>

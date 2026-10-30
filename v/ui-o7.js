@@ -62,7 +62,7 @@
     if (k === 'cov') { if (S.site > 0 && S.cov > 0) S.bldg = r2(S.site * S.cov / 100); }
     if (k === 'bldg') S.cov = null;
     if (current) markPreset('');
-    GK.fill(document, S); syncUI(); schedule();
+    GK.fill(document, S); syncUI(); syncFloors(); schedule();
   }
 
   /* ───────── 기준 라이브러리 (생산성) 표 — V1 과 같은 항목 */
@@ -92,11 +92,30 @@
 
   /* ───────── 계산 */
   function schedule() { clearTimeout(timer); timer = setTimeout(recompute, 120); }
+  /* 팀수 (기초 철근팀 fTeams · 지상 형틀팀 uTeams) : 비워 두면 최적값으로 계산 — 최적 = 최단 공기와 차이 OPT_TOL 개월 이내인 가장 적은 팀수.
+     사용자가 ± 로 정하면 그 값 (S.adv 에 저장). 사례 A · B · C 는 실적 팀수가 들어 있어 재현값 그대로 */
+  var OPT_TOL = 0.2;
+  function hasTeam(k) { var v = S.adv && S.adv[k]; return v != null && v !== '' && +v > 0; }
+  function sweepTeams(inp, key, max) {
+    var tt = [], best = Infinity;
+    for (var n = 1; n <= max; n++) { var c = GK.clone(inp), t = Infinity; c.adv = c.adv || {}; c.adv[key] = n; try { t = GE.compute(c, LIB).total; } catch (e) {} tt.push(t); if (t < best) best = t; }
+    for (var i = 0; i < tt.length; i++) if (tt[i] <= best + OPT_TOL) return { opt: i + 1, totals: tt, max: max };
+    return { opt: 1, totals: tt, max: max };
+  }
   function recompute() {
     clearTimeout(timer);
     readLib();
-    var inp = toInp(), R;
+    var inp = toInp(), R, team = { u: null, f: null };
+    inp.adv = inp.adv || {};
+    try {
+      var ty0 = GE.compute(inp, LIB).frame.typ, Zu = ty0.dc ? ty0.dc.P.N : ty0.slab.Z;
+      team.u = sweepTeams(inp, 'uTeams', Math.max(1, Math.min(8, Zu)));
+      if (!hasTeam('uTeams')) inp.adv.uTeams = team.u.opt;
+      team.f = sweepTeams(inp, 'fTeams', 8);
+      if (!hasTeam('fTeams')) inp.adv.fTeams = team.f.opt;
+    } catch (e) { team = { u: null, f: null }; }
     try { R = GE.compute(inp, LIB); } catch (e) { $('#warns').innerHTML = '<li>계산 오류 : ' + esc(e.message) + '</li>'; return; }
+    R.team = team;
     try { R.sens = GE.sensitivity(inp, LIB); } catch (e) { R.sens = { lo: R.total, hi: R.total }; }
     lastR = R;
     if (S.seq === 'TD' && R.tdBase && R.tdBase.off !== (S.tdBase || 0)) S.tdBase = R.tdBase.off;
@@ -107,7 +126,14 @@
     var steps = [renderHead, renderHero, renderMs, renderGantt, renderSection, renderZone, renderKf, renderWarns, renderHints];
     steps.forEach(function (fn) { try { fn(R); } catch (e) { if (window.console) console.error(e); } });
     widths.ms = $('#ms-flow').clientWidth;
-    GK.fill(document, S);
+    GK.fill(document, S); syncFloors();
+  }
+  /* 층수 숫자 · 막대 채움 (드래그 중에도 바로) — 옥탑을 비워 두면 자동값 */
+  function syncFloors() {
+    ['nB', 'nUp'].forEach(function (k) { var r = $('#r-' + k), o = $('#o-' + k); if (!r || !o) return; var v = S[k] != null && S[k] !== '' ? S[k] : r.value; o.textContent = v; r.style.setProperty('--p', ((+r.value - +r.min) / Math.max(1, +r.max - +r.min) * 100).toFixed(1) + '%'); });
+    var auto = S.nPH == null || S.nPH === '', o = $('#o-nPH'), u = $('#o-nPH-u');
+    if (o) o.textContent = auto ? (lastR ? lastR.basic.nPH : '-') : S.nPH;
+    if (u) { u.textContent = auto ? '층 · 자동' : '층'; u.classList.toggle('auto', auto); }
   }
 
   /* ───────── 머리 · 히어로 · 마일스톤 */
@@ -186,7 +212,7 @@
     var LW = nar ? 132 : 206, PR = 54, top = 60, rh = nar ? 31 : 35, bh = nar ? 13 : 15;
     var Mmax = Math.ceil(R.total + 0.4), span = W - LW - PR, X = function (m) { return LW + m / Mmax * span; };
     var rowsH = n * rh, bg = '', s = '', fg = '';
-    var defs = '<defs>' + pat('o7g-pre', 6, '<path d="M-1 7L7 -1" stroke="var(--cp)" stroke-width="1.1" opacity=".38"/>', '#FCEDEA') + '</defs>';
+    var defs = '<defs>' + pat('o7g-pre', 6, '<path d="M-1 7L7 -1" stroke="var(--cp)" stroke-width="1.1" opacity=".38"/>', '#EEF3FC') + '</defs>';
     for (var yr = 0; yr * 12 < Mmax; yr++) {
       var ya = X(yr * 12), yb = X(Math.min(Mmax, yr * 12 + 12));
       if (yr % 2 === 1) bg += Rc(ya, top - 6, yb - ya, rowsH + 6, 'var(--band)', ' rx="6"');
@@ -250,7 +276,7 @@
     $('#g-sub').textContent = '막대에 커서 → 산출 근거';
     var parts = GK.cpParts(R);
     $('#cpf').innerHTML = '<span class="k">C.P 산식</span>' + parts.map(function (p) { return '<span class="t">' + esc(p.label) + '<b>' + m1(p.d) + '</b></span>'; }).join('<span class="op">+</span>') + '<span class="op">=</span><span class="sum">' + m2(R.total) + '개월</span>';
-    $('#g-lg').innerHTML = '<span><i style="background:var(--cp)"></i>C.P</span><span><i style="background:repeating-linear-gradient(-45deg,#F6D9D5 0 3px,#FCEFED 3px 6px);box-shadow:inset 0 0 0 1px rgba(209,56,44,.45)"></i>병행</span><span><i style="background:var(--slate-2)"></i>Non-C.P</span>' +
+    $('#g-lg').innerHTML = '<span><i style="background:var(--cp)"></i>C.P</span><span><i style="background:repeating-linear-gradient(-45deg,#C8D7F3 0 3px,#EEF3FC 3px 6px);box-shadow:inset 0 0 0 1px rgba(31,86,201,.45)"></i>병행</span><span><i style="background:var(--slate-2)"></i>Non-C.P</span>' +
       '<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="var(--navy)"/></svg>마일스톤</span>';
   }
 
@@ -279,6 +305,34 @@
     tip.style.left = Math.round(x) + 'px'; tip.style.top = Math.round(y) + 'px';
   }
   function hideTip() { var tip = $('#gtip'); if (tip) tip.hidden = true; tipOn = -1; $$('#gantt .ga.on').forEach(function (el) { el.classList.remove('on'); }); }
+  /* 코어 드래그 : 화면 이동량 → 아이소 역변환 → 평면 이동량 (가장자리 · 가운데 근처는 붙음) */
+  function bindCoreDrag() {
+    var box = $('#zone'), drag = null, raf = 0, C = 0.8660254;
+    function snap(v) { [0, 0.5, 1].forEach(function (t) { if (Math.abs(v - t) < 0.035) v = t; }); return Math.max(0, Math.min(1, v)); }
+    function redraw(keepFocus) {
+      if (raf) return;
+      raf = requestAnimationFrame(function () { raf = 0; if (!lastR) return; renderZone(lastR); renderSection(lastR); if (keepFocus) { var h = $('#zone .core-h.drag'); if (h) h.focus({ preventScroll: true }); } });
+    }
+    function setPos(px, py) { S.adv = S.adv || {}; S.adv.coreX = +px.toFixed(3); S.adv.coreY = +py.toFixed(3); }
+    box.addEventListener('pointerdown', function (e) {
+      var h = e.target.closest && e.target.closest('.core-h.drag'), sv = h && h.closest('svg[data-iso]'); if (!sv || !lastR) return;
+      var d = sv.getAttribute('data-iso').split(',').map(Number), cg = coreGeom(lastR), rc = sv.getBoundingClientRect();
+      drag = { x: e.clientX, y: e.clientY, k: (+sv.getAttribute('width') || rc.width) / Math.max(1, rc.width), s: d[0], fx: Math.max(1e-6, d[3] - d[1]), fy: Math.max(1e-6, d[4] - d[2]), x0: cg.x0, y0: cg.y0 };
+      document.body.classList.add('dragging'); e.preventDefault();
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var dx = (e.clientX - drag.x) * drag.k, dy = (e.clientY - drag.y) * drag.k, a = dx / (C * drag.s), b = 2 * dy / drag.s;
+      setPos(snap((drag.x0 + (a + b) / 2) / drag.fx), snap((drag.y0 + (b - a) / 2) / drag.fy)); redraw(false);
+    });
+    document.addEventListener('pointerup', function () { if (!drag) return; drag = null; document.body.classList.remove('dragging'); ST.save({ inp: S, preset: current }); });
+    box.addEventListener('keydown', function (e) {
+      var h = e.target.closest && e.target.closest('.core-h.drag'); if (!h || !lastR) return;
+      var st = e.shiftKey ? 0.25 : 0.05, cg = coreGeom(lastR), px = cg.px, py = cg.py;
+      if (e.key === 'ArrowLeft') px -= st; else if (e.key === 'ArrowRight') px += st; else if (e.key === 'ArrowUp') py -= st; else if (e.key === 'ArrowDown') py += st; else return;
+      e.preventDefault(); setPos(Math.max(0, Math.min(1, px)), Math.max(0, Math.min(1, py))); redraw(true); ST.save({ inp: S, preset: current });
+    });
+  }
   function bindTip() {
     var box = $('#gantt'), pin = false;
     box.addEventListener('pointermove', function (e) { if (e.pointerType !== 'mouse') return; var ga = e.target.closest && e.target.closest('.ga'); if (ga) { pin = false; showTip(+ga.getAttribute('data-a'), e.clientX, e.clientY); } else if (!pin) hideTip(); });
@@ -346,17 +400,18 @@
     rev.forEach(function (r) { r.elB = el; el += r.gr.h * r.gr.cnt; r.elT = el; });
     var elTop = el; dd = 0; rows.forEach(function (r) { if (r.bl) { r.dT = dd; dd += r.gr.h * r.gr.cnt; r.dB = dd; } });
     var s = '', id = 'o7s', notes = [], gwlLab = '', logYs = [];
-    function note(t, c, x, yy) { notes.push({ t: t, c: c, x: x, y: yy }); }
+    function note(t, c, x, yy) { notes.push({ t: t, c: 'var(--navy)', x: x, y: yy }); }
     s += '<defs>' +
-      pat(id + '-soil', 7, '<circle cx="2" cy="2" r=".75" fill="#9C8456" opacity=".5"/><circle cx="5.5" cy="5.2" r=".6" fill="#9C8456" opacity=".42"/>') +
-      pat(id + '-wsoil', 9, '<circle cx="2" cy="3" r=".8" fill="#8F7344" opacity=".45"/><path d="M5 7h2.6" stroke="#8F7344" stroke-width=".8" opacity=".5"/>') +
-      pat(id + '-wrock', 10, '<path d="M1 8l3.2-3.2M6 9.5l3-3" stroke="#836A42" stroke-width=".9" opacity=".5"/>') +
-      pat(id + '-srock', 8, '<path d="M-1 9L9 -1" stroke="#646B73" stroke-width=".8" opacity=".5"/>') +
-      pat(id + '-hrock', 8, '<path d="M-1 9L9 -1M-1 -1l10 10" stroke="#4A5058" stroke-width=".75" opacity=".5"/>') +
-      pat(id + '-conc', 5, '<path d="M-1 6L6 -1" stroke="#7D8594" stroke-width=".8"/>', '#E4E7EC') +
-      pat(id + '-mat', 11, '<circle cx="2.5" cy="3" r=".95" fill="#8A929F"/><circle cx="7.5" cy="8" r=".75" fill="#8A929F"/><path d="M7 2.4l1.6 1.1M2 8.4l1.2-.8" stroke="#8A929F" stroke-width=".7"/>', '#DCE0E6') +
-      pat(id + '-glass', 9, '<path d="M0.5 0V9" stroke="#D4DCE7" stroke-width="1"/>', '#F3F6FA') +
-      pat(id + '-fill', 7, '<path d="M-1 8L8 -1" stroke="#B19867" stroke-width=".7" opacity=".55"/>', '#F3ECDD') +
+      pat(id + '-soil', 8, '<circle cx="2" cy="2" r=".6" fill="#7F90AA" opacity=".38"/><circle cx="6" cy="5.8" r=".5" fill="#7F90AA" opacity=".3"/>') +
+      pat(id + '-wsoil', 9, '<circle cx="2" cy="3" r=".6" fill="#71839E" opacity=".38"/><path d="M5 7h2.4" stroke="#71839E" stroke-width=".6" opacity=".4"/>') +
+      pat(id + '-wrock', 10, '<path d="M1 8l3-3M6 9.5l2.8-2.8" stroke="#647691" stroke-width=".7" opacity=".42"/>') +
+      pat(id + '-srock', 8, '<path d="M-1 9L9 -1" stroke="#5B6C86" stroke-width=".6" opacity=".4"/>') +
+      pat(id + '-hrock', 8, '<path d="M-1 9L9 -1M-1 -1l10 10" stroke="#4E5E78" stroke-width=".55" opacity=".42"/>') +
+      pat(id + '-conc', 5, '<path d="M-1 6L6 -1" stroke="#95A4BA" stroke-width=".6"/>', '#E9EEF5') +
+      pat(id + '-mat', 10, '<circle cx="2.5" cy="3" r=".7" fill="#8394AE"/><circle cx="7.2" cy="7.6" r=".55" fill="#8394AE"/>', '#E3E9F1') +
+      pat(id + '-glass', 8, '<path d="M0.5 0V8" stroke="#E2E8F1" stroke-width=".8"/>', '#FAFBFD') +
+      pat(id + '-fill', 7, '<path d="M-1 8L8 -1" stroke="#A3B2C8" stroke-width=".6" opacity=".6"/>', '#F1F4F9') +
+      '<linearGradient id="' + id + '-sky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#F3F6FB"/><stop offset="1" stop-color="#FCFDFE"/></linearGradient>' +
       '<linearGradient id="' + id + '-fd" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".05" stop-color="#fff"/><stop offset=".95" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
       '<mask id="' + id + '-mk"><rect x="' + r1(X0 - 8) + '" y="0" width="' + r1(X1 - X0 + 16) + '" height="' + Ht + '" fill="url(#' + id + '-fd)"/></mask>' +
       '</defs>';
@@ -365,21 +420,21 @@
     for (var i = 0; i < 5; i++) {
       var za = g.z[i], zc = Math.min(g.z[i + 1], maxD); if (!(zc > za)) continue;
       var ya = yd(za), yc = yd(zc);
-      strata += Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'var(--' + LKS[i] + ')', ' opacity=".6"') + Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'url(#' + id + '-' + LKS[i] + ')');
-      log += Rc(LC - 14, ya, 10, yc - ya, 'var(--' + LKS[i] + ')') + Rc(LC - 14, ya, 10, yc - ya, 'url(#' + id + '-' + LKS[i] + ')');
+      strata += Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'var(--' + LKS[i] + ')', ' opacity=".9"') + Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'url(#' + id + '-' + LKS[i] + ')');
+      log += Rc(LC - 14, ya, 10, yc - ya, 'var(--' + LKS[i] + ')') + Rc(LC - 14, ya, 10, yc - ya, 'url(#' + id + '-' + LKS[i] + ')') + (i ? Ln(X0 - 8, ya, X1 + 8, ya, '#FFFFFF', 0.8, null, ' opacity=".7"') : '');
       if (yc - ya >= 14) logYs.push({ y: ya + 13, p: 1, s: T(LC - 19, ya + 13, LNM[i], { a: 'end', fs: nar ? 10.5 : 12, w: 500, c: 'var(--ink-2)' }) });
       if (!nar && yc - ya >= 30 && isFinite(g.z[i + 1]) && g.z[i + 1] <= maxD) logYs.push({ y: yc - 5, p: 0, s: T(LC - 19, yc - 5, '−' + r1(g.z[i + 1]), { a: 'end', fs: 11, c: 'var(--ink-3)', cls: 'n' }) });
     }
-    s += '<g mask="url(#' + id + '-mk)">' + strata + '</g>';
-    log += Rc(LC - 14.5, yGL, 11, yBot - yGL, 'none', ' stroke="var(--ink-3)" stroke-width=".8"');
+    s += '<g mask="url(#' + id + '-mk)">' + Rc(X0 - 8, top, X1 - X0 + 16, yGL - top, 'url(#' + id + '-sky)') + strata + '</g>';
+    log += Rc(LC - 14.5, yGL, 11, yBot - yGL, 'none', ' stroke="#8C9AB0" stroke-width=".7" rx="1.5"');
     log += T(LC - 9, yGL - 7, R.ground.assumed ? '지층 · 가정' : '지층', { a: 'middle', fs: 11, w: 600, c: R.ground.assumed ? 'var(--warn)' : 'var(--ink-3)' });
     /* 굴착 (비운 공간) · 오픈컷 사면 · 되메우기 */
     if (b.nB > 0) {
       var pit = open ? 'M' + r1(eL - sl) + ' ' + r1(yGL) + 'L' + r1(eL) + ' ' + r1(yH) + 'L' + r1(eR) + ' ' + r1(yH) + 'L' + r1(eR + sl) + ' ' + r1(yGL) + 'Z' : 'M' + r1(eL) + ' ' + r1(yGL) + 'H' + r1(eR) + 'V' + r1(yH) + 'H' + r1(eL) + 'Z';
-      s += '<path d="' + pit + '" fill="#FBFBFA"/>';
+      s += '<path d="' + pit + '" fill="#FFFFFF"/>';
       if (open) {
         s += Pg([[eL - sl, yGL], [eL, yH], [bL, yH], [bL, yGL]], ' fill="url(#' + id + '-fill)"') + Pg([[bR, yGL], [bR, yH], [eR, yH], [eR + sl, yGL]], ' fill="url(#' + id + '-fill)"');
-        s += '<path d="M' + r1(eL - sl) + ' ' + r1(yGL) + 'L' + r1(eL) + ' ' + r1(yH) + 'M' + r1(eR) + ' ' + r1(yH) + 'L' + r1(eR + sl) + ' ' + r1(yGL) + '" stroke="var(--ink-2)" stroke-width="1.6" fill="none"/>';
+        s += '<path d="M' + r1(eL - sl) + ' ' + r1(yGL) + 'L' + r1(eL) + ' ' + r1(yH) + 'M' + r1(eR) + ' ' + r1(yH) + 'L' + r1(eR + sl) + ' ' + r1(yGL) + '" stroke="#3B4E6C" stroke-width="1.2" fill="none"/>';
         note('오픈컷 1:' + LIB.exc.slope + ' · 사면 폭 ' + r1(g.slopeW) + 'm · 외벽 · 방수 후 되메우기', 'var(--ink)', eL - sl / 2 - 11, (yGL + yH) / 2);
       }
     }
@@ -411,21 +466,21 @@
     if (b.nB > 0 && !open) {
       /* 벽체 (CIP 등) = 굵은 막대, 그 아래 엄지말뚝 (H형강) 근입부 = 점선 윤곽 + 가는 강재 */
       var Dw = wi ? wi.main : Hx + 3, Dt = wi && wi.thumb > Dw + 0.05 ? wi.thumb : 0, Dtip = Dt || Dw, yW = yd(Dw), yTip = yd(Dtip);
-      s += Rc(eL - ww, yGL - 6, ww, yW - yGL + 6, 'var(--ink-2)', ' rx="1"') + Rc(eR, yGL - 6, ww, yW - yGL + 6, 'var(--ink-2)', ' rx="1"');
+      s += Rc(eL - ww, yGL - 6, ww, yW - yGL + 6, '#3B4E6C', ' rx="1"') + Rc(eR, yGL - 6, ww, yW - yGL + 6, '#3B4E6C', ' rx="1"');
       if (Dt) {
         [eL - ww, eR].forEach(function (xw) {
           var hw = Math.max(1.6, ww * 0.42), xc = xw + ww / 2;
-          s += Rc(xw, yW, ww, yTip - yW, '#fff', ' stroke="var(--ink-2)" stroke-width=".9" stroke-dasharray="3 2.5"');
+          s += Rc(xw, yW, ww, yTip - yW, '#fff', ' stroke="#3B4E6C" stroke-width=".7" stroke-dasharray="3 2.5"');
           s += Rc(xc - hw / 2, yW - 1, hw, yTip - yW + 1, 'var(--steel)') + Ln(xw - 1, yTip, xw + ww + 1, yTip, 'var(--steel)', 1.6);
         });
-        s += Ln(eL - ww - 3, yW, eL + 3, yW, 'var(--ink)', 1.2) + Ln(eR - 3, yW, eR + ww + 3, yW, 'var(--ink)', 1.2);
+        s += Ln(eL - ww - 3, yW, eL + 3, yW, 'var(--navy)', 1) + Ln(eR - 3, yW, eR + ww + 3, yW, 'var(--navy)', 1);
       }
       var emb = Dtip - Hx, rk = Dtip > g.rockTop + 0.01 ? '암반' : (Dtip > g.wrockTop + 0.01 ? '풍화암' : '');
       /* 근입 치수 (오른쪽 벽 바깥) */
       if (emb > 0.05 && yTip - yH >= 7) {
         var xd = eR + ww + (anc ? 7 : 9);
-        s += Ln(xd, yH, xd, yTip, 'var(--ink-2)', 1) + Ln(xd - 3, yH, xd + 3, yH, 'var(--ink-2)', 1) + Ln(xd - 3, yTip, xd + 3, yTip, 'var(--ink-2)', 1);
-        s += T(xd + 6, (yH + yTip) / 2 + 4, '근입 ' + r1(emb) + 'm' + (rk && !nar ? ' (' + rk + ')' : ''), { fs: nar ? 10.5 : 11.5, w: 600, c: 'var(--ink)', halo: true });
+        s += Ln(xd, yH, xd, yTip, '#7C8BA3', .8) + Ln(xd - 3, yH, xd + 3, yH, '#7C8BA3', .8) + Ln(xd - 3, yTip, xd + 3, yTip, '#7C8BA3', .8);
+        s += T(xd + 6, (yH + yTip) / 2 + 4, '근입 ' + r1(emb) + 'm' + (rk && !nar ? ' (' + rk + ')' : ''), { fs: nar ? 10.5 : 11, w: 500, c: 'var(--ink-2)', halo: true });
       }
       note('흙막이 ' + (GE.WALL_N[b.wall] || b.wall) + ' L≈' + r1(Dw) + 'm' + (wi && wi.n ? ' (' + wi.n + ')' : '') + (Dt ? ' + 엄지말뚝 L≈' + r1(Dt) + 'm' + (wi.nT ? ' (' + wi.nT + ')' : '') : '') +
         (emb > 0.05 ? ' · 굴착 아래 근입 ' + r1(emb) + 'm' + (rk ? ' (' + rk + ')' : '') : ' · 근입 없음 (확인)') + (R.wall ? ' · ' + R.wall.sets + '조' : ''), 'var(--ink)', eL - ww / 2, Math.max(yGL + 30, yW - 14));
@@ -433,9 +488,9 @@
         var spA = LIB.support.ANCHOR.sp, dy = aPx * 0.36;
         for (var q = 0; q < nsup; q++) {
           var yq = yd(Math.min(Hx - 0.5, 1.5 + q * spA));
-          s += Ln(eL - ww, yq, eL - ww - aPx, yq + dy, 'var(--cp)', 1.2) + Ln(eL - ww - aPx * 0.5, yq + dy * 0.5, eL - ww - aPx, yq + dy, 'var(--cp)', 3.2, null, ' stroke-linecap="round" opacity=".85"');
-          s += Ln(eR + ww, yq, eR + ww + aPx, yq + dy, 'var(--cp)', 1.2) + Ln(eR + ww + aPx * 0.5, yq + dy * 0.5, eR + ww + aPx, yq + dy, 'var(--cp)', 3.2, null, ' stroke-linecap="round" opacity=".85"');
-          s += Rc(eL - ww - 2.5, yq - 2, 3, 4, 'var(--cp)') + Rc(eR + ww - 0.5, yq - 2, 3, 4, 'var(--cp)');
+          s += Ln(eL - ww, yq, eL - ww - aPx, yq + dy, 'var(--accent)', .9) + Ln(eL - ww - aPx * 0.5, yq + dy * 0.5, eL - ww - aPx, yq + dy, 'var(--accent)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
+          s += Ln(eR + ww, yq, eR + ww + aPx, yq + dy, 'var(--accent)', .9) + Ln(eR + ww + aPx * 0.5, yq + dy * 0.5, eR + ww + aPx, yq + dy, 'var(--accent)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
+          s += Rc(eL - ww - 2.5, yq - 1.5, 3, 3, 'var(--accent)') + Rc(eR + ww - 0.5, yq - 1.5, 3, 3, 'var(--accent)');
         }
         note('어스앵커 ' + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spA + 'm' + (R.exc.anchor ? ' · 총 ' + fmt(R.exc.anchor.total) + '본 (' + R.exc.anchor.sets + '조)' : ''), 'var(--cp-deep)', Math.max(X0, eL - ww - aPx - 10), yd(1.5) + dy + 4);
       }
@@ -450,75 +505,79 @@
     rows.forEach(function (r) {
       if (!r.bl) return;
       var x0 = bL, x1 = bR, wt = nar ? 3.5 : 5, gr = r.gr;
-      s += Rc(x0, r.y0, x1 - x0, r.hp, '#F3F4F6') + Rc(x0, r.y0, wt, r.hp, 'url(#' + id + '-conc)') + Rc(x1 - wt, r.y0, wt, r.hp, 'url(#' + id + '-conc)');
-      if (!R.PRD) { var nCl = Math.max(2, Math.min(9, Math.round((x1 - x0) / 46))); for (var cl = 1; cl < nCl; cl++) { var xcl = x0 + (x1 - x0) * cl / nCl; s += Rc(xcl - 1.5, r.y0, 3, r.hp, '#DCE1E8'); } }
-      s += Ln(x0, r.y0, x0, r.y1, 'var(--ink-2)', 0.9) + Ln(x1, r.y0, x1, r.y1, 'var(--ink-2)', 0.9) + Ln(x0 - 1, r.y0, x1 + 1, r.y0, 'var(--ink)', 2.2);
-      if (gr.n > 1) for (var j = 1; j < gr.n; j++) { var yj = r.y0 + r.hp * j / gr.n; s += Ln(x0 - 3, yj, x0 + wt + 3, yj, 'var(--cp)', 1.6) + Ln(x1 - wt - 3, yj, x1 + 3, yj, 'var(--cp)', 1.6); }
-      if (x1 - x0 > 70) s += T(x0 + wt + 6, r.y1 - 6, '−' + r1(r.dB), { fs: 11, c: 'var(--ink-3)', cls: 'n', halo: '#F3F4F6' });
+      s += Rc(x0, r.y0, x1 - x0, r.hp, '#F7F9FC') + Rc(x0, r.y0, wt, r.hp, 'url(#' + id + '-conc)') + Rc(x1 - wt, r.y0, wt, r.hp, 'url(#' + id + '-conc)');
+      if (!R.PRD) { var nCl = Math.max(2, Math.min(9, Math.round((x1 - x0) / 46))); for (var cl = 1; cl < nCl; cl++) { var xcl = x0 + (x1 - x0) * cl / nCl; s += Rc(xcl - 1, r.y0, 2, r.hp, '#E4EAF2'); } }
+      s += Ln(x0, r.y0, x0, r.y1, '#8C9AB0', 0.7) + Ln(x1, r.y0, x1, r.y1, '#8C9AB0', 0.7) + Ln(x0 - 1, r.y0, x1 + 1, r.y0, 'var(--navy)', 1.4);
+      if (gr.n > 1) for (var j = 1; j < gr.n; j++) { var yj = r.y0 + r.hp * j / gr.n; s += Ln(x0 - 3, yj, x0 + wt + 3, yj, 'var(--cp)', 1.3) + Ln(x1 - wt - 3, yj, x1 + 3, yj, 'var(--cp)', 1.3); }
+      if (x1 - x0 > 70) s += T(x0 + wt + 6, r.y1 - 6, '−' + r1(r.dB), { fs: 10.5, c: 'var(--ink-3)', cls: 'n', halo: '#F7F9FC' });
     });
     /* 가설 지보 (지하층 위에 겹쳐) : 스트럿 · 레이커 · 역타 PRD */
     if (b.nB > 0 && !open && nsup > 0 && (b.sup === 'STRUT' || b.sup === 'RAKER')) {
       var spS = LIB.support[b.sup].sp;
       for (var q2 = 0; q2 < nsup; q2++) {
         var yq2 = yd(Math.min(Hx - 0.5, 1.5 + q2 * spS));
-        if (b.sup === 'STRUT') s += Ln(eL, yq2, eR, yq2, 'var(--cp)', 1.7, '9 3', ' opacity=".85"') + Rc(eL, yq2 - 3, 6, 6, 'var(--cp)') + Rc(eR - 6, yq2 - 3, 6, 6, 'var(--cp)');
-        else { var run = Math.min((yH - yq2) * 0.9, (eR - eL) * 0.3); s += Ln(eL, yq2, eL + run, yH, 'var(--cp)', 1.8, null, ' opacity=".85"') + Ln(eR, yq2, eR - run, yH, 'var(--cp)', 1.8, null, ' opacity=".85"'); }
+        if (b.sup === 'STRUT') s += Ln(eL, yq2, eR, yq2, 'var(--accent)', 1.3, '9 3', ' opacity=".8"') + Rc(eL, yq2 - 2.5, 5, 5, 'var(--accent)') + Rc(eR - 5, yq2 - 2.5, 5, 5, 'var(--accent)');
+        else { var run = Math.min((yH - yq2) * 0.9, (eR - eL) * 0.3); s += Ln(eL, yq2, eL + run, yH, 'var(--accent)', 1.4, null, ' opacity=".8"') + Ln(eR, yq2, eR - run, yH, 'var(--accent)', 1.4, null, ' opacity=".8"'); }
       }
       note((b.sup === 'STRUT' ? '스트럿 (버팀보) ' : '레이커 ') + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spS + 'm', 'var(--cp-deep)', b.sup === 'STRUT' ? cx : eL + 16, yd(1.5) + (b.sup === 'STRUT' ? 0 : 14));
     }
     if (TD && b.nB > 0) note('역타 : 지하 슬래브가 지보 · 기준층 ' + R.tdBase.name + ' 슬래브 선타설 → 아래로 굴착 · 슬래브 반복', 'var(--cp-deep)', bL + (bR - bL) / Math.max(3, Math.min(7, Math.round((bR - bL) / 34))), yGL + 17);
     if (R.PRD && b.nB > 0) {
       var nC = Math.max(3, Math.min(7, Math.round((bR - bL) / 34))), yP = yd(prdL), xp0 = 0;
-      for (var c = 0; c < nC; c++) { var xp = bL + (bR - bL) * (c + 0.5) / nC; if (!c) xp0 = xp; s += Ln(xp, yGL, xp, yP, '#6E7A8D', 2, null, ' opacity=".75"') + Rc(xp - 3, yP - 1, 6, 4, '#6E7A8D'); }
+      for (var c = 0; c < nC; c++) { var xp = bL + (bR - bL) * (c + 0.5) / nC; if (!c) xp0 = xp; s += Ln(xp, yGL, xp, yP, '#7C8BA3', 1.5, null, ' opacity=".7"') + Rc(xp - 2.5, yP - 1, 5, 3, '#7C8BA3'); }
       note('PRD · SPS 기둥 ' + R.PRD.n + '공 · L≈' + r1(R.PRD.L) + 'm (굴착 전 선시공)', 'var(--steel)', xp0 - 12, yP + 4);
     }
     /* 기초 매트 · 얕은 기초 · 파일 */
     var mL = partial ? bL : fL, mR = partial ? bR : fR, yMt = yd(matTop), yMb = yd(matBot);
     if (!partial && b.nB > 0) { mL = Math.max(fL, eL); mR = Math.min(fR, eR); }
-    s += Rc(mL, yMt, mR - mL, Math.max(3, yMb - yMt), 'url(#' + id + '-mat)', ' stroke="var(--ink-2)" stroke-width=".9"');
+    s += Rc(mL, yMt, mR - mL, Math.max(3, yMb - yMt), 'url(#' + id + '-mat)', ' stroke="var(--navy)" stroke-width=".8"');
     var matLab = '매트 t=' + r1(g.tMat) + 'm';
-    if (yMb - yMt >= 15 && mR - mL > tw(matLab, 11.5) + 12) s += T((mL + mR) / 2, (yMt + yMb) / 2 + 4, matLab, { a: 'middle', fs: 11.5, w: 700, c: 'var(--ink)', halo: '#DCE0E6' });
+    if (yMb - yMt >= 15 && mR - mL > tw(matLab, 11.5) + 12) s += T((mL + mR) / 2, (yMt + yMb) / 2 + 4, matLab, { a: 'middle', fs: 11, w: 600, c: 'var(--navy)', halo: '#E3E9F1' });
     else note('기초 매트 t=' + r1(g.tMat) + 'm', 'var(--ink)', mL + Math.min(34, (mR - mL) * 0.18), (yMt + yMb) / 2);
     var yShB = 0;
-    if (partial) { yShB = yd(g.Hs); s += Rc(bR, yGL + 1, fR - bR, Math.max(3, yShB - yGL - 1), 'url(#' + id + '-mat)', ' stroke="var(--ink-2)" stroke-width=".9"'); note('얕은 기초 (지하 없는 구간) · GL−' + r1(g.Hs) + 'm', 'var(--ink)', bR + (fR - bR) * 0.5, (yGL + yShB) / 2); }
+    if (partial) { yShB = yd(g.Hs); s += Rc(bR, yGL + 1, fR - bR, Math.max(3, yShB - yGL - 1), 'url(#' + id + '-mat)', ' stroke="var(--navy)" stroke-width=".8"'); note('얕은 기초 (지하 없는 구간) · GL−' + r1(g.Hs) + 'm', 'var(--ink)', bR + (fR - bR) * 0.5, (yGL + yShB) / 2); }
     if (pile) {
-      var piles = function (a, bnd, yA) { var np = Math.max(4, Math.min(18, Math.round((bnd - a) / 13))), o = ''; for (var p = 0; p < np; p++) { var xq = a + 6 + (bnd - a - 12) * (np > 1 ? p / (np - 1) : 0.5); o += Ln(xq, yA, xq, yd(pTip), '#7E8796', 1.1) + Ln(xq - 2, yd(pTip) - 3, xq, yd(pTip), '#7E8796', 1) + Ln(xq + 2, yd(pTip) - 3, xq, yd(pTip), '#7E8796', 1); } return o; };
+      var piles = function (a, bnd, yA) { var np = Math.max(4, Math.min(18, Math.round((bnd - a) / 13))), o = ''; for (var p = 0; p < np; p++) { var xq = a + 6 + (bnd - a - 12) * (np > 1 ? p / (np - 1) : 0.5); o += Ln(xq, yA, xq, yd(pTip), '#8C9AB0', .8) + Ln(xq - 1.8, yd(pTip) - 3, xq, yd(pTip), '#8C9AB0', .8) + Ln(xq + 1.8, yd(pTip) - 3, xq, yd(pTip), '#8C9AB0', .8); } return o; };
       s += piles(mL, mR, yMb); if (partial) s += piles(bR + 4, fR, yShB);
       if (pTr) { var yt = yd(pTip) - 10; s += '<path d="M' + r1(mL) + ' ' + r1(yt) + 'h' + r1((partial ? fR : mR) - mL) + '" stroke="#fff" stroke-width="6"/><path d="M' + r1(mL) + ' ' + r1(yt - 3) + 'h' + r1((partial ? fR : mR) - mL) + 'M' + r1(mL) + ' ' + r1(yt + 3) + 'h' + r1((partial ? fR : mR) - mL) + '" stroke="var(--ink-3)" stroke-width=".8"/>'; }
-      s += T((mL + (partial ? fR : mR)) / 2, yd(pTip) + 17, (R.fType === 'PHC' ? 'PHC 파일 ' : '현장타설말뚝 ') + fmt(pile.n) + '본' + (pRock ? ' · 지지층 풍화암 GL−' + r1(g.wrockTop) + 'm' : ''), { a: 'middle', fs: 12, w: 600, c: 'var(--ink)', halo: true });
+      s += T((mL + (partial ? fR : mR)) / 2, yd(pTip) + 17, (R.fType === 'PHC' ? 'PHC 파일 ' : '현장타설말뚝 ') + fmt(pile.n) + '본' + (pRock ? ' · 지지층 풍화암 GL−' + r1(g.wrockTop) + 'm' : ''), { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', halo: true });
     }
     /* 굴착선 */
     if (b.nB > 0) {
-      s += Ln(eL - 10, yH, eR + 10, yH, 'var(--cp)', 1.5, '6 3');
-      s += T(partial ? (eL + eR) / 2 : cx, yH + 17, '굴착 GL−' + r1(Hx) + 'm', { a: 'middle', fs: 12.5, w: 700, c: 'var(--cp-deep)', halo: true });
+      s += Ln(eL - 10, yH, eR + 10, yH, 'var(--cp)', 1.1, '5 3');
+      s += T(partial ? (eL + eR) / 2 : cx, yH + 16, '굴착 GL−' + r1(Hx) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--cp-deep)', halo: true });
     } else {
-      s += Ln(fL - 6, yd(matBot), fR + 6, yd(matBot), 'var(--cp)', 1.3, '6 3');
-      s += T(cx, yd(matBot) + 17, '지하층 없음 · 기초 터파기 GL−' + r1(Hx || matBot) + 'm', { a: 'middle', fs: 12, w: 700, c: 'var(--cp-deep)', halo: true });
+      s += Ln(fL - 6, yd(matBot), fR + 6, yd(matBot), 'var(--cp)', 1.1, '5 3');
+      s += T(cx, yd(matBot) + 16, '터파기 GL−' + r1(Hx || matBot) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--cp-deep)', halo: true });
     }
     /* 지상층 (입면) */
-    var up = '', elL = '';
+    /* 코어 띠 : 평면 (조닝 지상 판) 에서 옮긴 코어 위치를 긴 변 방향으로 그대로 — 옥탑은 코어 위에 */
+    var up = '', elL = '', cg = hasCore ? coreGeom(R) : null, coreX0 = 0, coreW = 0;
+    if (cg) { coreW = Math.max(6, cg.cw / cg.L * (tR - tL)); coreX0 = tL + cg.x0 / cg.L * (tR - tL); }
+    else if (hasCore) { coreW = Math.max(8, (tR - tL) * 0.2); coreX0 = cx - coreW / 2; }
     rows.forEach(function (r, gi) {
       if (r.bl) return;
       var gr = r.gr, isPH = gr.kind === 'ph', w = isPH ? Math.max(26, (tR - tL) * 0.36) : (gr.kind === 'b' ? bR - bL : tR - tL), x = cx - w / 2;
+      if (isPH && coreW) x = Math.max(tL, Math.min(tR - w, coreX0 + coreW / 2 - w / 2));
       r.xr = x + w;
       up += Rc(x, r.y0, w, r.hp, 'url(#' + id + '-glass)');
-      var cw = hasCore ? Math.max(8, Math.min(w, (tR - tL) * 0.2)) : 0;
-      if (cw) up += Rc(cx - cw / 2, r.y0, cw, r.hp, '#E2E7EE') + Ln(cx - cw / 2, r.y0, cx - cw / 2, r.y1, '#A9B4C3', 0.8) + Ln(cx + cw / 2, r.y0, cx + cw / 2, r.y1, '#A9B4C3', 0.8);
+      var ca = coreW ? Math.max(x, coreX0) : 0, cb = coreW ? Math.min(x + w, coreX0 + coreW) : 0;
+      if (cb > ca) up += Rc(ca, r.y0, cb - ca, r.hp, '#E3EAF5') + Ln(ca, r.y0, ca, r.y1, '#A4B6D1', 0.7) + Ln(cb, r.y0, cb, r.y1, '#A4B6D1', 0.7);
       var segN = gr.cnt > 1 ? Math.min(gr.cnt, 6) : 1;
-      for (var j = 1; j < segN; j++) { var yj = r.y0 + r.hp * j / segN; up += Ln(x, yj, x + w, yj, '#97A3B4', 0.9); }
+      for (var j = 1; j < segN; j++) { var yj = r.y0 + r.hp * j / segN; up += Ln(x, yj, x + w, yj, '#C6D1E0', 0.6); }
       if (gr.n > 1) {
-        var coreOnly = /^코어/.test(gr.p || '');
+        var coreOnly = /^코어/.test(gr.p || '') && cb > ca;
         for (var sg = 0; sg < segN; sg++) for (var jj = 1; jj < gr.n; jj++) {
           var yk = r.y0 + r.hp * (sg + jj / gr.n) / segN;
-          up += coreOnly ? Ln(cx - cw / 2, yk, cx + cw / 2, yk, 'var(--cp)', 1.7, '4 2.5') : Ln(x + 1, yk, x + w - 1, yk, 'var(--cp)', 1.5, '6 3.5');
+          up += coreOnly ? Ln(ca, yk, cb, yk, 'var(--cp)', 1.2, '4 2.5') : Ln(x + 1, yk, x + w - 1, yk, 'var(--cp)', 1.1, '5 3');
         }
       }
-      up += Ln(x, r.y0, x, r.y1, 'var(--ink-2)', 1.2) + Ln(x + w, r.y0, x + w, r.y1, 'var(--ink-2)', 1.2);
-      up += Ln(x - 1.5, r.y0, x + w + 1.5, r.y0, 'var(--ink)', gi === 0 ? 2.8 : 2.2) + Ln(x - 1.5, r.y1, x + w + 1.5, r.y1, 'var(--ink)', 2.2);
+      up += Ln(x, r.y0, x, r.y1, 'var(--navy)', 1) + Ln(x + w, r.y0, x + w, r.y1, 'var(--navy)', 1);
+      up += Ln(x - 1.5, r.y0, x + w + 1.5, r.y0, 'var(--navy)', gi === 0 ? 1.8 : 1.3) + Ln(x - 1.5, r.y1, x + w + 1.5, r.y1, 'var(--navy)', 1.3);
       if (gr.cnt > 1) {
-        var ym = (r.y0 + r.y1) / 2, lab = '× ' + gr.cnt + '개층', lw = tw(lab, 11.5) + 18;
-        up += '<path d="M' + r1(x - 5) + ' ' + r1(ym - 7) + 'l5 3.5-5 3.5 5 3.5M' + r1(x + w + 5) + ' ' + r1(ym - 7) + 'l-5 3.5 5 3.5-5 3.5" fill="none" stroke="var(--ink-2)" stroke-width="1.1"/>';
-        if (w > lw + 8) up += Rc(cx - lw / 2, ym - 10, lw, 20, '#fff', ' rx="10" stroke="#C3CCD8"') + T(cx, ym + 4.2, lab, { a: 'middle', fs: 11.5, w: 600, c: 'var(--ink-2)', cls: 'n' });
+        var ym = (r.y0 + r.y1) / 2, lab = '× ' + gr.cnt + '개층', lw = tw(lab, 11) + 16, lx0 = x + w / 2;
+        up += '<path d="M' + r1(x - 5) + ' ' + r1(ym - 6) + 'l4 3-4 3 4 3M' + r1(x + w + 5) + ' ' + r1(ym - 6) + 'l-4 3 4 3-4 3" fill="none" stroke="#8C9AB0" stroke-width=".9"/>';
+        if (w > lw + 8) up += Rc(lx0 - lw / 2, ym - 9, lw, 18, '#fff', ' rx="9" stroke="#C9D4E3" stroke-width=".8"') + T(lx0, ym + 3.8, lab, { a: 'middle', fs: 11, w: 600, c: 'var(--ink-2)', cls: 'n' });
       }
       var lx = Math.min(x, tL);
       if (lx - X0 >= 34) {
@@ -529,26 +588,26 @@
     });
     s += up + elL + gwlLab;
     /* GL · 지표 기호 */
-    s += Ln(X0 - 8, yGL, X1 + 8, yGL, 'var(--ink)', 1.7);
+    s += Ln(X0 - 8, yGL, X1 + 8, yGL, 'var(--navy)', 1.3);
     var gh = '', gEndL = b.nB > 0 ? (open ? eL - sl - (R.scw ? 9 : 0) : eL - ww) - 3 : fL - 4, gStartR = b.nB > 0 ? (open ? (partial ? Math.max(fR, eR + sl) : eR + sl) + (R.scw ? 9 : 0) : eR + ww) + 3 : fR + 4;
     for (var hx = X0; hx < gEndL - 4; hx += 8) gh += 'M' + r1(hx + 5) + ' ' + r1(yGL + 1) + 'l-5 6';
     for (hx = gStartR; hx < X1; hx += 8) gh += 'M' + r1(hx + 5) + ' ' + r1(yGL + 1) + 'l-5 6';
-    s += '<path d="' + gh + '" stroke="var(--ink-2)" stroke-width="1" fill="none"/>';
+    s += '<path d="' + gh + '" stroke="#8C9AB0" stroke-width=".8" fill="none"/>';
     s += T(LC - 4, yGL - 22, 'GL ±0', { a: 'end', fs: 12, w: 700, c: 'var(--ink)' });
     s += log + logYs.map(function (L) { return L.s; }).join('');
     /* 왼쪽 치수선 (넓은 화면) */
     function dimV(x, ya, yb, col, lab) {
-      var o = Ln(x, ya, x, yb, col, 1) + Ln(x - 4, ya + 4, x + 4, ya - 4, col, 1.5) + Ln(x - 4, yb + 4, x + 4, yb - 4, col, 1.5) + Ln(x - 6, ya, x + 10, ya, col, 0.7) + Ln(x - 6, yb, x + 10, yb, col, 0.7);
-      var my = (ya + yb) / 2; return o + T(x - 7, my, lab, { a: 'middle', fs: 12, w: 700, c: col, cls: 'n', tr: 'rotate(-90 ' + r1(x - 7) + ' ' + r1(my) + ')' });
+      var o = Ln(x, ya, x, yb, col, .8) + Ln(x - 3.5, ya + 3.5, x + 3.5, ya - 3.5, col, 1.2) + Ln(x - 3.5, yb + 3.5, x + 3.5, yb - 3.5, col, 1.2) + Ln(x - 5, ya, x + 9, ya, col, 0.6) + Ln(x - 5, yb, x + 9, yb, col, 0.6);
+      var my = (ya + yb) / 2; return o + T(x - 7, my, lab, { a: 'middle', fs: 11.5, w: 600, c: col, cls: 'n', tr: 'rotate(-90 ' + r1(x - 7) + ' ' + r1(my) + ')' });
     }
     if (!nar) {
-      s += dimV(22, rows[0].y0, yGL, 'var(--ink-2)', '높이 ' + r1(elTop) + 'm');
+      s += dimV(22, rows[0].y0, yGL, '#6B7B95', '높이 ' + r1(elTop) + 'm');
       if (b.nB > 0 && yH - yGL > 60) s += dimV(22, yGL, yH, 'var(--cp-deep)', '굴착 ' + r1(Hx) + 'm');
     }
     /* 주석 번호 (도면 키노트) */
     notes.forEach(function (n, i) {
       var nx = Math.max(10, Math.min(W - RW - 10, n.x)), ny = Math.max(10, Math.min(Ht - 10, n.y));
-      s += '<circle cx="' + r1(nx) + '" cy="' + r1(ny) + '" r="9" fill="' + n.c + '" stroke="#fff" stroke-width="2"/>' + T(nx, ny + 4, String(i + 1), { a: 'middle', fs: 11, w: 700, c: '#fff', cls: 'n' });
+      s += '<circle cx="' + r1(nx) + '" cy="' + r1(ny) + '" r="8" fill="' + n.c + '" stroke="#fff" stroke-width="1.6"/>' + T(nx, ny + 3.6, String(i + 1), { a: 'middle', fs: 10, w: 700, c: '#fff', cls: 'n' });
     });
     /* 오른쪽 : 층 · 층고 칸 · 타설 */
     var RX = W - RW, cLab = RX + (nar ? 4 : 8), cIn = RX + 92, wIn = 64, cP = RX + 166, wP = 66, html = '', lst = '';
@@ -563,7 +622,7 @@
       var lab = gr.label, fs = nar ? 12 : 14, labW = nar ? RW - 6 : cIn - cLab - 6;
       while (fs > 9.5 && tw(lab, fs) > labW) fs -= 0.5;
       var two = gr.cnt > 1 && !nar && r.hp >= 46;
-      s += T(cLab, ym + fs * 0.36 + (two ? -6 : 0), lab, { fs: fs, w: 700, c: 'var(--ink)', cls: 'n' });
+      s += T(cLab, ym + fs * 0.36 + (two ? -6 : 0), lab, { fs: fs, w: 600, c: 'var(--navy)', cls: 'n' });
       if (two) s += T(cLab, ym + 13, gr.cnt + '개층', { fs: 11.5, c: 'var(--ink-3)' });
       var pTxt = gr.p || (r.bl && TD ? '역타' : (gr.n > 1 ? gr.n + '회' : '1회')), hot = gr.n > 1;
       var inp = '<input class="fh' + (nar ? ' fh-l' : '') + '" type="number" min="2" max="30" step="0.05" inputmode="decimal" data-g="' + gi + '" data-floor-h="' + esc(gr.label) + '" value="' + (+gr.h.toFixed(2)) + '" aria-label="' + esc(gr.label) + ' 층고 (m)" title="' + esc(gr.label) + ' 층고 — 바꾸면 바로 공기에 반영"';
@@ -572,7 +631,7 @@
         lst += '<div class="fr' + (hot ? ' hot' : '') + (r.bl ? ' bl' : '') + '"><span class="fl">' + esc(lab) + (gr.cnt > 1 ? '<small>' + gr.cnt + '개층</small>' : '') + '</span>' + inp + '><span class="fp">' + esc(pTxt.replace(' 타설', '')) + '</span><span class="fe">' + elT + '</span></div>';
         return;
       }
-      s += Rc(cP, ym - 11, wP, 22, hot ? 'var(--cp-soft)' : 'var(--band)', ' rx="11"' + (hot ? ' stroke="#EFB3AC"' : '')) + T(cP + wP / 2, ym + 4.3, pTxt, { a: 'middle', fs: 12, w: hot ? 700 : 500, c: hot ? 'var(--cp-deep)' : 'var(--ink-2)' });
+      s += Rc(cP, ym - 10, wP, 20, hot ? 'var(--cp-soft)' : 'var(--band)', ' rx="10"' + (hot ? ' stroke="var(--cp-line)" stroke-width=".8"' : '')) + T(cP + wP / 2, ym + 4, pTxt, { a: 'middle', fs: 11.5, w: hot ? 600 : 400, c: hot ? 'var(--cp-deep)' : 'var(--ink-3)' });
       html += inp + ' style="left:' + cIn + 'px;top:' + r1(ym - 13) + 'px;width:' + wIn + 'px">';
     });
     /* 아래 : 가로 축척 + 세로 과장 배율 (지하 · 단일 층 기준) */
@@ -581,9 +640,9 @@
     s += Rc(X0, ysb - 4, sm * hs / 2, 4, 'var(--ink-2)') + Rc(X0 + sm * hs / 2, ysb - 4, sm * hs / 2, 4, '#fff', ' stroke="var(--ink-2)" stroke-width=".8"');
     s += T(X0, ysb - 9, '0', { fs: 10.5, c: 'var(--ink-3)', cls: 'n', a: 'middle' }) + T(smx, ysb - 9, sm + 'm', { fs: 10.5, c: 'var(--ink-3)', cls: 'n', a: 'middle' });
     var vxT = '세로 ×' + r1(vx), vxW = tw(vxT, 11.5) + 16, vxX = smx + 14;
-    if (vx > 1.15) s += Rc(vxX, ysb - 13, vxW, 18, 'var(--warn-soft)', ' rx="9"') + T(vxX + vxW / 2, ysb, vxT, { a: 'middle', fs: 11.5, w: 700, c: 'var(--warn)', cls: 'n' });
+    if (vx > 1.15) s += Rc(vxX, ysb - 13, vxW, 18, 'var(--cp-soft)', ' rx="9"') + T(vxX + vxW / 2, ysb, vxT, { a: 'middle', fs: 11, w: 600, c: 'var(--cp-deep)', cls: 'n' });
     else vxW = -14;
-    if (vx <= 1.15) s += T(vxX + vxW + 8, ysb, '같은 축척', { fs: 11, c: 'var(--ink-3)' });
+    if (vx <= 1.15) s += T(smx + tw(sm + 'm', 10.5) / 2 + 10, ysb, '같은 축척', { fs: 11, c: 'var(--ink-3)' });
     var nh = notes.map(function (n, i) { return '<li><i style="background:' + n.c + '">' + (i + 1) + '</i><span>' + esc(n.t) + '</span></li>'; }).join('');
     if (lst) lst = '<div class="fhl" role="group" aria-label="층별 층고 (바꾸면 바로 다시 계산)"><div class="fr hd"><span>층</span><span>층고 (m)</span><span>타설</span><span>바닥 EL</span></div>' + lst + '</div>';
     return { html: '<div class="sec7" style="width:' + W + 'px;height:' + Ht + 'px">' + svgEl(W, Ht, s, '가정 단면도 · 지상 ' + b.nUp + '층 · 지하 ' + b.nB + '층') + html + '</div>' + lst, groups: G, elTop: elTop, notes: nh, Ht: Ht, vx: vx };
@@ -702,6 +761,35 @@
   }
 
   /* ───────── 조닝 : 아이소메트릭 적층 (기준층 · 지하골조 · 기초, 같은 축척) */
+  /* 지상 코어 : 면적 = 코어 비율 (DC 는 엔진 코어 면적), 모양은 깊이 ≤ 단변 0.6 의 직사각형.
+     위치 (S.adv.coreX · coreY = 0~1, 남는 폭 안의 비율) 는 조닝 판에서 드래그 — 공기 계산에는 쓰지 않는 배치 가정 */
+  function coreGeom(R) {
+    var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
+    if (!(Au > 0) || !(ty.dc || ty.core)) return null;
+    var Ac = ty.dc ? ty.dc.Ac : Au * LIB.frame.core.ratio; if (!(Ac > 0)) return null;
+    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), cd = Math.min(B * 0.6, Math.sqrt(Ac / 1.5)), cw = Ac / cd;
+    if (cw > L * 0.6) { cw = L * 0.6; cd = Math.min(B * 0.9, Ac / cw); }
+    var A = S.adv || {}, px = A.coreX != null && isFinite(A.coreX) ? Math.max(0, Math.min(1, +A.coreX)) : 0.5, py = A.coreY != null && isFinite(A.coreY) ? Math.max(0, Math.min(1, +A.coreY)) : 0.5;
+    return { L: L, B: B, cw: cw, cd: cd, px: px, py: py, x0: px * (L - cw), y0: py * (B - cd), Ac: Ac };
+  }
+  function coreWhere(cg) {
+    var e = 0.04, edge = cg.px < e || cg.px > 1 - e || cg.py < e || cg.py > 1 - e;
+    return (cg.px < 0.3 ? '좌측' : cg.px > 0.7 ? '우측' : '중앙') + ' · ' + (edge ? '외주부 면함' : '내부');
+  }
+  /* 바닥 Zone : 코어를 뺀 나머지 (코어 왼쪽 · 위 · 아래 · 오른쪽 띠) 에 면적 비례로 나눠 이어 번호 */
+  function slabCells(L, B, cg, N, cellOf) {
+    if (!cg) return zgridPlan(0, 0, L, B, N, cellOf);
+    var x0 = cg.x0, x1 = cg.x0 + cg.cw, y0 = cg.y0, y1 = cg.y0 + cg.cd;
+    var rs = [[0, 0, x0, B], [x0, 0, x1 - x0, y0], [x0, y1, x1 - x0, B - y1], [x1, 0, L - x1, B]].filter(function (r) { return r[2] > 0.5 && r[3] > 0.5; });
+    var tot = rs.reduce(function (a, r) { return a + r[2] * r[3]; }, 0), n = rs.map(function (r) { return Math.floor(N * r[2] * r[3] / tot); }), left = N - n.reduce(function (a, v) { return a + v; }, 0);
+    rs.map(function (r, i) { return { i: i, f: N * r[2] * r[3] / tot - n[i] }; }).sort(function (a, b) { return b.f - a.f; }).forEach(function (q) { if (left > 0) { n[q.i]++; left--; } });
+    var out = [], base = 0;
+    rs.forEach(function (r, i) {
+      if (n[i] > 0) { var b0 = base; out = out.concat(zgridPlan(r[0], r[1], r[2], r[3], n[i], function (j) { return cellOf(b0 + j); })); base += n[i]; }
+      else { var nb = cellOf(Math.max(0, base - 1)); nb.t = ''; nb.X0 = r[0]; nb.X1 = r[0] + r[2]; nb.Y0 = r[1]; nb.Y1 = r[1] + r[3]; out.push(nb); }
+    });
+    return out;
+  }
   function zgridPlan(X0, Y0, w, h, N, cellOf) {
     var out = []; if (!(N > 0) || !(w > 0) || !(h > 0)) return out;
     var rws = Math.max(1, Math.min(N, Math.round(Math.sqrt(N * h / Math.max(w, 1e-6))))), base = Math.floor(N / rws), extra = N % rws, ch = h / rws, i = 0;
@@ -738,17 +826,33 @@
     v += cells(o.cells, 0);
     v += Pg([p0, pr, pb, pl], ' fill="none" stroke="var(--ink)" stroke-width="1.3" stroke-linejoin="round"');
     if (o.core && o.core.cw > 0) {
-      var cw = o.core.cw;
-      v += Pg([P(0, Br, 0), P(cw, Br, 0), P(cw, Br, hc), P(0, Br, hc)], ' fill="#A3ADBC"') + Pg([P(cw, 0, 0), P(cw, Br, 0), P(cw, Br, hc), P(cw, 0, hc)], ' fill="#838FA1"');
-      v += Pg([P(0, 0, hc), P(cw, 0, hc), P(cw, Br, hc), P(0, Br, hc)], ' fill="#EEF1F5"');
+      var k0 = o.core.x0 || 0, k1 = k0 + o.core.cw, j0 = o.core.y0 || 0, j1 = j0 + (o.core.cd || Br);
+      v += '<g class="core-h' + (o.core.drag ? ' drag' : '') + '"' + (o.core.drag ? ' tabindex="0" role="slider" aria-label="코어 위치 (드래그 · 방향키)" aria-valuetext="' + esc(o.core.where || '') + '"' : '') + '>';
+      v += Pg([P(k0, j1, 0), P(k1, j1, 0), P(k1, j1, hc), P(k0, j1, hc)], ' fill="#9DB0CC"') + Pg([P(k1, j0, 0), P(k1, j1, 0), P(k1, j1, hc), P(k1, j0, hc)], ' fill="#7F95B8"');
+      v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' fill="#EEF2F8"');
       v += cells(o.core.cells, hc);
-      v += Pg([P(0, 0, hc), P(cw, 0, hc), P(cw, Br, hc), P(0, Br, hc)], ' fill="none" stroke="var(--ink)" stroke-width="1.1" stroke-linejoin="round"');
+      v += Pg([P(k0, j0, hc), P(k1, j0, hc), P(k1, j1, hc), P(k0, j1, hc)], ' class="core-top" fill="none" stroke="var(--navy)" stroke-width="1.1" stroke-linejoin="round"');
+      if (o.core.drag) { var cm = P(k0, j0, hc); v += '<g class="core-grip" transform="translate(' + r1(cm[0]) + ' ' + r1(cm[1] - 13) + ')"><rect x="-17" y="-8" width="34" height="16" rx="8" fill="var(--navy)"/><path d="M-9 0h18M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round"/></g>'; }
+      v += '</g>';
     }
     /* 변 치수 (앞 두 변) */
     var mx = (pl[0] + pb[0]) / 2 - 7, my = (pl[1] + pb[1]) / 2 + tz + 12, nx = (pb[0] + pr[0]) / 2 + 7, ny = (pb[1] + pr[1]) / 2 + tz + 12;
     if (Lr * s > 40) v += T(mx, my, '≈ ' + r1(Lr) + ' m', { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', cls: 'n', tr: 'rotate(30 ' + r1(mx) + ' ' + r1(my) + ')' });
     if (Br * s > 34) v += T(nx, ny, '≈ ' + r1(Br) + ' m', { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', cls: 'n', tr: 'rotate(-30 ' + r1(nx) + ' ' + r1(ny) + ')' });
-    return svgEl(FW, H, v, o.aria);
+    var svg = svgEl(FW, H, v, o.aria);
+    /* 드래그용 : 화면 → 평면 좌표 변환에 쓰는 값 */
+    return o.core && o.core.drag ? svg.replace('<svg ', '<svg data-iso="' + r2(s) + ',' + r2(o.core.cw) + ',' + r2(o.core.cd) + ',' + r2(Lr) + ',' + r2(Br) + '" ') : svg;
+  }
+  /* 팀수 조절 : − n팀 + · 최적이 아니면 '최적 n팀 · 공기' 버튼 */
+  function teamCtl(key, lab, cur, sw) {
+    var opt = sw ? sw.opt : cur, max = sw ? sw.max : 10;
+    return '<span class="tm" data-team="' + key + '" data-max="' + max + '"><span class="tm-k">' + esc(lab) + '</span>' +
+      '<button type="button" class="tm-b" data-tstep="-1" aria-label="' + esc(lab) + ' 줄이기"' + (cur <= 1 ? ' disabled' : '') + '>−</button><b class="tm-v">' + cur + '</b><span class="tm-u">팀</span>' +
+      '<button type="button" class="tm-b" data-tstep="1" aria-label="' + esc(lab) + ' 늘리기"' + (cur >= max ? ' disabled' : '') + '>+</button>' +
+      (!sw ? '' : cur === opt ? '<span class="tm-o on" title="최단 공기와 ' + OPT_TOL + '개월 이내인 가장 적은 팀수">최적</span>' :
+        '<button type="button" class="tm-o" data-topt="' + opt + '" title="최단 공기와 ' + OPT_TOL + '개월 이내인 가장 적은 팀수 — 누르면 적용 (공기 ' + m2(sw.totals[opt - 1]) + '개월)">최적 ' + opt + '팀 · ' + dM(sw.totals[opt - 1] - (lastR ? lastR.total : sw.totals[opt - 1])) + '</button>') + '</span>';
+  }
+  function dM(d) { return Math.abs(d) < 0.005 ? '공기 같음' : (d > 0 ? '+' : '−') + m2(Math.abs(d)) + '개월';
   }
   function zoning(R, Wc) {
     /* 배치 : 좁으면 (또는 옆 단면이 훨씬 높아 세로 여유가 있으면 big) 한 줄 머리 + 큰 판, 보통은 이름 왼쪽 · 판 오른쪽,
@@ -771,12 +875,14 @@
     else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; Ac = Au * LIB.frame.core.ratio; } }
     maxT = Math.max(maxT, TP);
     if (Au > 0) {
-      var cwU = NC ? Math.min(dU.L * 0.45, Math.max(dU.L * 0.06, Ac / Math.max(dU.B, 1e-6))) : 0, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null;
-      var cellsU = zgridPlan(cwU, 0, dU.L - cwU, dU.B, NP, function (i) { var q = tp(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
-      var coreU = NC ? { cw: cwU, cells: zgridPlan(0, 0, cwU, dU.B, NC, function (i) { var q = tc(i); return { fill: 'var(--ink-2)', op: 0.5 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(20,24,32,.6)', minSz: 15 }; }) } : null;
+      var cg = NC ? coreGeom(R) : null, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null;
+      var cellsU = slabCells(dU.L, dU.B, cg, NP, function (i) { var q = tp(i); return { fill: TEAMC[q.team % 8], op: 0.58, t: q.ord }; });
+      var coreU = cg ? { cw: cg.cw, cd: cg.cd, x0: cg.x0, y0: cg.y0, drag: true, where: coreWhere(cg), cells: zgridPlan(cg.x0, cg.y0, cg.cw, cg.cd, NC, function (i) { var q = tc(i); return { fill: 'var(--navy)', op: 0.42 + 0.2 * (q.team % 2), t: q.ord, tc: '#fff', halo: 'rgba(16,30,56,.55)', minSz: 15 }; }) } : null;
       out += row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상 기준층', Au, dU, [
-        (ty.dc ? '외주부 <b>' : '바닥 <b>') + NP + '</b> Zone · <b>' + TP + '</b>팀',
-        NC ? '코어 <b>' + NC + '</b> Zone · <b>' + TC + '</b>팀' : ''
+        (ty.dc ? '외주부 <b>' : '바닥 <b>') + NP + '</b> Zone',
+        teamCtl('uTeams', '형틀팀', TP, R.team && R.team.u),
+        NC ? '코어 <b>' + NC + '</b> Zone · <b>' + TC + '</b>팀' : '',
+        cg ? '<span class="core-at" title="코어 블록을 끌어서 옮기기">코어 위치 <b>' + coreWhere(cg) + '</b></span>' : ''
       ], isoPlate({ Lp: dU.L, Bp: dU.B, Lr: dU.L, Br: dU.B, cells: cellsU, core: coreU, aria: '지상 기준층 조닝 평면 (아이소메트릭)' }, s, FW, 0), cyTyp(R));
     } else out += '<div class="iso-none">지상 연면적 · 건축면적을 넣으면 기준층 평면이 그려집니다.</div>';
     /* 지하골조 */
@@ -800,7 +906,8 @@
       Z.forEach(function (z, i) { rank[z.i] = i + 1; byI[z.i] = z; });
       var cellsF = zgridPlan(0, 0, dF.L, dF.B, f.nZ, function (i) { var z = byI[i] || { team: 1 }; return { fill: TEAMC[(z.team - 1) % 8], op: z.slope ? 0.22 : 0.58, stroke: z.pit ? 'var(--cp)' : '#fff', sw: z.pit ? 2.2 : 1.2, t: rank[i] || '' }; });
       out += row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
-        '<b>' + f.nZ + '</b> Zone · 철근 <b>' + f.teams + '</b>팀',
+        '<b>' + f.nZ + '</b> Zone',
+        teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
         '매트 <b>' + r1(g.tMat) + '</b>m · Zone ' + fmt(f.vZ) + '㎥'
       ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, aria: '기초 조닝 평면 (아이소메트릭)' }, s, FW, 2), cyFound(R));
     } else out += '<div class="iso-none">건축면적을 넣으면 기초 평면이 그려집니다.</div>';
@@ -859,11 +966,10 @@
     set('H', ah.H ? '자동 ' + ah.H : ''); set('A', ah.A ? '자동 ' + ah.A : ''); set('P', ah.P ? '자동 ' + ah.P : '');
     set('found', '판정 ' + ah.found); set('core', ah.core);
     set('lim', b.seq === 'TD' ? (R.tags.lim === '기본' ? '자동 ' : '') + ah.lim : ''); set('lim2', b.seq === 'TD' ? '자동 ' + Math.max(fr.lim, LIB.td.limTot2 - b.nB) + 'F' : '');
-    set('Atyp', '자동 ' + ah.Atyp); set('coreZ', ah.coreZ ? '자동 ' + ah.coreZ : ''); set('mat', '자동 ' + ah.mat); set('fTeams', '자동 ' + ah.fTeams);
+    set('Atyp', '자동 ' + ah.Atyp); set('coreZ', ah.coreZ ? '자동 ' + ah.coreZ : ''); set('mat', '자동 ' + ah.mat); set('fTeams', lastR && lastR.team && lastR.team.f ? '최적 ' + lastR.team.f.opt : '자동 ' + ah.fTeams);
     set('prd', ah.prd ? '자동 ' + ah.prd : ''); set('pile', ah.pile ? '추정 ' + ah.pile : '');
     set('dc', fr.dc ? '적용 중' : '미적용'); set('coreA', td ? '자동 ' + fmt(td.Ac) : ''); set('colN', td ? '자동 ' + td.nCol : '');
     var cv = $('#in-cov'); if (cv && document.activeElement !== cv) cv.placeholder = ah.cov || '자동';
-    var ph = $('#q-nPH'); if (ph) ph.placeholder = '자동 ' + ah.nPH;
     for (var i = 0; i < 4; i++) $$('[data-dp="' + i + '"]').forEach(function (el) { el.textContent = 'GL−' + r1(g.z[i + 1]); });
     $$('[data-dp="4"]').forEach(function (el) { el.textContent = 'GL−' + r1(g.z[4]) + ' 이하'; });
     var gb = GK.groundBar(R); $('#gbar').innerHTML = gb.bar; $('#gcap').innerHTML = '<b>' + esc(gb.layers) + '</b><br>' + esc(gb.depth) + (gb.desc ? '<br>' + esc(gb.desc) : '');
@@ -903,6 +1009,12 @@
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var pb = t.closest('[data-p]'); if (pb) { loadPreset(pb.getAttribute('data-p')); return; }
+      var ts = t.closest('[data-tstep],[data-topt]');
+      if (ts) {
+        var tm = ts.closest('[data-team]'), key = tm.getAttribute('data-team'), cur = +tm.querySelector('.tm-v').textContent, mx = +tm.getAttribute('data-max') || 10;
+        var nv = ts.hasAttribute('data-topt') ? +ts.getAttribute('data-topt') : Math.max(1, Math.min(mx, cur + +ts.getAttribute('data-tstep')));
+        S.adv = S.adv || {}; S.adv[key] = nv; if (current) markPreset(''); GK.fill(document, S); recompute(); return;
+      }
       var gt = t.closest('[data-goto]');
       if (gt) {
         var tg = document.getElementById(gt.getAttribute('data-goto'));
@@ -918,7 +1030,7 @@
       }
       var op = t.closest('[data-open]'); if (op) { openSheet(op.getAttribute('data-open')); return; }
     });
-    bindTip();
+    bindTip(); bindCoreDrag();
     $('#open-sheet').addEventListener('click', function () { openSheet(); });
     $('#sheet-x').addEventListener('click', closeSheet);
     $('#sheet').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeSheet(); });
