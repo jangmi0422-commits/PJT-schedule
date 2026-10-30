@@ -144,6 +144,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .wchip.ok { color: var(--ok); background: var(--ok-soft); }
 
 /* 마일스톤 */
+/* @@A 머리 사례 단추 · 마일스톤 C.P 흐름 (이 줄 바로 아래에 추가) */
 .t-ms { display: flex; flex-direction: column; }
 .ms-list { display: flex; flex-direction: column; }
 .ms-flow { margin-top: auto; padding-top: 18px; }
@@ -210,6 +211,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .lg .lg-ph i + i, .lg .lg-ph i { margin-left: 8px; }
 
 /* Master Schedule */
+/* @@B Master Schedule 머리 행 (이 줄 바로 아래에 추가) */
 .chart { width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .chart svg { display: block; }
 .cpf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; margin-top: 16px; padding: 14px 16px; background: var(--sheet-2); border-radius: 14px; font-size: 14px; color: var(--ink-2); }
@@ -242,6 +244,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .cpf .sum { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cp); font-size: 17px; white-space: nowrap; }
 
 /* 가정 단면 */
+/* @@C 단면 · 토목 가정 카드 · 범례 (이 줄 바로 아래에 추가) */
 .sec7 { position: relative; margin: 0 auto; }
 .sec7 > svg { position: absolute; left: 0; top: 0; }
 .fh { position: absolute; height: 26px; padding: 0 6px; border: 1.5px solid #B9C8E2; border-radius: 8px; background: #F4F7FC; color: var(--ink); font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; text-align: right; -moz-appearance: textfield; transition: border-color .15s, background .15s; }
@@ -300,6 +303,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .iso-lab .ar span { display: block; font-size: 13px; color: var(--ink-3); }
 .iso-lab ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 .iso-lab ul b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+/* @@E 사이클 바차트 편집 (이 줄 바로 아래에 추가) */
 /* 사이클 바차트 (조닝 판 아래) — 막대 = 시작 · 기간 (WD), 진한 레인 = 층 사이클을 정하는 쪽 */
 .iso-cy { grid-column: 1 / -1; min-width: 0; }
 .iso-row + .iso-row { margin-top: 12px; }
@@ -336,6 +340,7 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .tm-o { font-size: 11.5px; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--cp-line); background: var(--cp-soft); color: var(--cp-deep); cursor: pointer; font-family: var(--f-ui); white-space: nowrap; }
 .tm-o:hover { background: var(--cp); color: #fff; border-color: var(--cp); }
 .tm-o.on { cursor: default; background: transparent; border-color: var(--rule); color: var(--ink-3); }
+/* @@F 코어 여러 개 (이 줄 바로 아래에 추가) */
 /* 지상 코어 블록 : 드래그로 위치 이동 */
 .core-h.drag { cursor: grab; touch-action: none; outline: none; }
 .core-h.drag:hover .core-top, .core-h.drag:focus-visible .core-top { stroke: var(--cp); stroke-width: 1.8; }
@@ -353,6 +358,7 @@ body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none;
 .iso-none { font-size: 14px; color: var(--ink-3); padding: 14px 16px; margin: 4px 0; background: var(--sheet-2); border-radius: 14px; border: 1px dashed var(--rule); }
 
 /* 주요 판단 */
+/* @@D 주요 가정사항 및 조건 편집 (이 줄 바로 아래에 추가) */
 /* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
 .sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); }
 .sec-kf h3 { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }

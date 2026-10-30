@@ -7,6 +7,9 @@
   function $$(s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); }
   var LIB = GE.defaultLib(), ST = GK.store('gonggi-agent-o7'), PRESETS = GK.PRESETS;
   var S = null, lastR = null, current = 'refA', timer = null, secG = null, lastGround = 'AUTO', downloads = null, widths = {}, gInfo = [], tipOn = -1;
+  /* 화면 안 편집 동작 등록 : 요소에 data-act="이름" (클릭) · data-actc="이름" (입력 바뀜) → ACT[이름] · ACTC[이름](요소, 이벤트).
+     기능마다 자기 함수 곁에서 등록한다 (공용 클릭 처리기를 고치지 않게) */
+  var ACT = {}, ACTC = {};
   var TEAMC = ['var(--t1)', 'var(--t2)', 'var(--t3)', 'var(--t4)', 'var(--t5)', 'var(--t6)', 'var(--slate)', 'var(--hrock)'];
   var LKS = ['soil', 'wsoil', 'wrock', 'srock', 'hrock'], LNM = ['토사', '풍화토', '풍화암', '연암', '경암'];
 
@@ -700,6 +703,7 @@
     }, 0);
   }
   document.addEventListener('change', onSecEdit);
+  document.addEventListener('change', function (e) { var ac = e.target && e.target.closest && e.target.closest('[data-actc]'); if (ac && ACTC[ac.getAttribute('data-actc')]) ACTC[ac.getAttribute('data-actc')](ac, e); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.classList && e.target.classList.contains('fh')) { e.preventDefault(); onSecEdit(e); } });
 
   /* ───────── 조닝 아래 사이클 바차트 : 엔진이 실제로 계산한 단위 (기초 = 준비 · 철근 · 형틀 Zone 1개, 지하 = 층별 외벽 · 바닥 또는 역타 Zone 순환,
@@ -1051,6 +1055,7 @@
     $('#lib-reset').addEventListener('click', function () { LIB = GE.defaultLib(); fillLib(); recompute(); });
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+      var ac = t.closest('[data-act]'); if (ac && ACT[ac.getAttribute('data-act')]) { ACT[ac.getAttribute('data-act')](ac, e); return; }
       var pb = t.closest('[data-p]'); if (pb) { loadPreset(pb.getAttribute('data-p')); return; }
       var cz = t.closest('[data-coresz]');
       if (cz && lastR) {
