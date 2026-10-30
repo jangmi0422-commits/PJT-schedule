@@ -24,7 +24,8 @@
   --slate: #98A0AC; --slate-2: #CBD1D9; --slate-3: #E8EBEE;
   --soil: #EAEEF4; --wsoil: #DCE3ED; --wrock: #CCD6E3; --srock: #B8C4D4; --hrock: #9DABBF; --gwl: #3B8FD0;
   --t1: #3566C2; --t2: #34A0C4; --t3: #8D9EE6; --t4: #1E3A62; --t5: #6FB6E8; --t6: #6A7C9E;
-  --g-prep: #CDD3DC; --g-civ: #9DB6DC; --g-frame: #1E3A62; --g-fin: #3F86C8;
+  /* 대공종 : 준비 웜그레이 · 토목 샌드 · 골조 네이비 · 마감 틸 (채도 낮게, 이웃끼리 구분) */
+  --g-prep: #D6CFC4; --g-civ: #CFAB6E; --g-frame: #2A4870; --g-fin: #367F7A;
   --f-ui: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
   --f-num: "Inter Tight", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   /* 메인 공기 : V5 퀵산정과 같은 두꺼운 표시 글꼴 · 라벨은 코딩 글꼴 */
@@ -61,10 +62,8 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .presets { display: flex; gap: 2px; padding: 4px; background: rgba(255, 255, 255, .7); border: 1px solid var(--rule); border-radius: 999px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .presets::-webkit-scrollbar { display: none; }
 .presets button { border: 0; background: transparent; border-radius: 999px; padding: 7px 15px; font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
-.presets button small { font-size: 12.5px; color: var(--ink-3); font-weight: 400; margin-left: 3px; }
 .presets button:hover { color: var(--ink); background: rgba(20, 24, 32, .04); }
 .presets button.on { background: var(--ink); color: #fff; box-shadow: 0 2px 8px -2px rgba(20, 24, 32, .4); }
-.presets button.on small { color: rgba(255, 255, 255, .7); }
 .top-r { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
 .mini { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
 .mini b { font-family: var(--f-disp); font-variant-numeric: tabular-nums; font-size: 21px; color: var(--ink); font-weight: 400; margin: 0 2px 0 6px; }
@@ -120,23 +119,6 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .why b .num { font-weight: 600; }
 .why .pc { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--cp-deep); margin-left: 6px; font-size: 14px; }
 .why .ctx { display: block; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
-.comp { margin-top: 18px; }
-.comp-k { font-size: 13.5px; color: var(--ink-3); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; }
-.fl-wrap { position: relative; }
-.fl-strip { display: flex; height: 30px; gap: 2px; }
-.fl-strip i { display: flex; align-items: center; justify-content: center; min-width: 2px; border-radius: 4px; font-style: normal; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; font-family: var(--f-ui); letter-spacing: -.01em; }
-.fl-strip i:first-child { border-radius: 8px 4px 4px 8px; } .fl-strip i:last-child { border-radius: 4px 8px 8px 4px; }
-.fl-strip i .n { margin-left: 4px; font-weight: 700; }
-.fl-t { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 1.5px solid var(--ink); }
-.fl-t::after { content: ""; position: absolute; left: -5px; bottom: -4px; width: 7px; height: 7px; background: var(--ink); transform: rotate(45deg); }
-.fl-ax { position: relative; height: 18px; margin-top: 9px; font-size: 12.5px; color: var(--ink-3); }
-.fl-ax span { position: absolute; top: 0; white-space: nowrap; transform: translateX(-50%); }
-.fl-ax span:first-child { transform: none; } .fl-ax span:last-child { transform: translateX(-100%); }
-.comp-leg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-.comp-leg div { font-size: 13.5px; color: var(--ink-3); min-width: 0; }
-.comp-leg .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
-.comp-leg b { display: block; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; color: var(--ink); letter-spacing: -.02em; line-height: 1.2; }
-.comp-leg b small { font-size: 13px; font-weight: 500; color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
 .hero-foot { margin-top: auto; padding-top: 22px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 14px; color: var(--ink-2); }
 .hero-foot .dt b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); font-size: 15.5px; margin-left: 4px; }
 .wchip { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 4px 12px; text-decoration: none; }
@@ -145,6 +127,55 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 
 /* 마일스톤 */
 /* @@A 머리 사례 단추 · 마일스톤 C.P 흐름 (이 줄 바로 아래에 추가) */
+/* 사례 단추 : 'A. Semi Top Down' — 머리가 좁으면 고른 단추만 이름까지, 나머지는 'B.' 처럼 글자만 */
+.presets button { display: inline-flex; align-items: baseline; gap: 5px; }
+.presets button .pk { font-family: var(--f-num); font-weight: 700; letter-spacing: -.01em; }
+.presets button:not(.on) .pk { color: var(--ink); }
+@media (max-width: 640px) {
+  .presets button:not(.on) .pn { display: none; }
+  .presets button:not(.on) { padding-left: 12px; padding-right: 12px; }
+}
+/* 머리가 한 줄인 901~1179px : 머리 단추만 줄임 (입력 시트 단추는 폭이 넉넉해 그대로) */
+@media (min-width: 901px) and (max-width: 1179.98px) {
+  .presets.hdr button:not(.on) .pn { display: none; }
+  .presets.hdr button:not(.on) { padding-left: 12px; padding-right: 12px; }
+}
+/* C.P 흐름 : 대공종 칸 (이름 · % · 개월) — 칸 아래 가는 띠 = C.P 공종 구분 (커서 · 탭 → 머리 줄에 공종 · 기간) · 아래 축 = 마일스톤 */
+.fl-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 13.5px; color: var(--ink-3); min-width: 0; }
+.fl-hd > span:first-child { flex: none; }
+.fl-rd { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-3); text-align: right; }
+.fl-rd b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); margin-left: 4px; }
+.fl-rd .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.fl-rd em { font-style: normal; font-family: var(--f-num); font-variant-numeric: tabular-nums; margin-left: 8px; }
+.fl-wrap { position: relative; }
+.fl-strip { display: flex; gap: 3px; height: 54px; }
+.fl-c { position: relative; min-width: 0; border-radius: 5px; overflow: hidden; }
+.fl-c:first-child { border-top-left-radius: 11px; border-bottom-left-radius: 11px; }
+.fl-c:last-child { border-top-right-radius: 11px; border-bottom-right-radius: 11px; }
+.fl-s { position: absolute; top: 0; bottom: 0; font-style: normal; cursor: pointer; transition: background-color .12s; }
+.fl-s::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: 5px; height: 3px; border-radius: 2px; background: currentColor; opacity: .26; transition: opacity .12s; }
+.fl-s:first-of-type::after { left: 9px; }
+.fl-s:last-of-type::after { right: 9px; }
+.fl-s:hover, .fl-s.on { background-color: rgba(20, 24, 32, .07); }
+.fl-c.dk .fl-s:hover, .fl-c.dk .fl-s.on { background-color: rgba(255, 255, 255, .12); }
+.fl-s:hover::after, .fl-s.on::after { opacity: .85; }
+.fl-l { position: absolute; left: 10px; right: 6px; top: 7px; pointer-events: none; white-space: nowrap; overflow: hidden; }
+.fl-l .k { display: block; font-size: 12.5px; line-height: 15px; font-weight: 600; letter-spacing: -.01em; }
+.fl-l .k small { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 500; opacity: .8; margin-left: 5px; }
+.fl-l b { display: block; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 18px; line-height: 21px; font-weight: 600; letter-spacing: -.025em; }
+.fl-c.cmp .fl-l { left: 2px; right: 2px; text-align: center; top: 8px; }
+.fl-c.cmp .fl-l .k { font-size: 11.5px; }
+.fl-c.cmp .fl-l b { font-size: 15px; line-height: 20px; }
+.fl-ax { position: relative; height: 34px; margin-top: 6px; font-size: 12.5px; color: var(--ink-3); }
+.fl-ax::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: var(--rule); }
+.fl-t { position: absolute; top: 1px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 1.5px; background: var(--navy); transform: rotate(45deg); }
+.fl-ax span { position: absolute; top: 14px; white-space: nowrap; line-height: 1.3; }
+.fl-ax span.e { color: var(--ink-2); font-weight: 500; }
+@media (max-width: 640px) {
+  .fl-strip { height: 50px; }
+  .fl-l { top: 6px; }
+  .fl-l b { font-size: 17px; line-height: 20px; }
+}
 .t-ms { display: flex; flex-direction: column; }
 .ms-list { display: flex; flex-direction: column; }
 .ms-flow { margin-top: auto; padding-top: 18px; }
@@ -502,7 +533,6 @@ details.ss[open] > summary::after { content: "접기"; }
   .bento { gap: 12px; }
   .th h2 { font-size: 18px; }
   .big b { font-size: 92px; }
-  .comp-leg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kf7 { grid-template-columns: minmax(0, 1fr); }
   .g, .g.c3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .strata7 { grid-template-columns: 14px minmax(0, 1fr) 96px 72px; }
@@ -526,10 +556,10 @@ details.ss[open] > summary::after { content: "접기"; }
       <div class="brand-t"><b>공기산정 에이전트</b><span id="pj">-</span></div>
     </div>
     <nav class="presets hdr" id="presets" aria-label="실적 사례 불러오기">
-      <button type="button" data-p="refA">사례 A<small>역타</small></button>
-      <button type="button" data-p="refB">사례 B<small>순타</small></button>
-      <button type="button" data-p="refC">사례 C<small>DC</small></button>
-      <button type="button" data-p="blank">새 프로젝트</button>
+      <button type="button" data-p="refA" title="A. Semi Top Down" aria-label="A. Semi Top Down"><span class="pk">A.</span><span class="pn">Semi Top Down</span></button>
+      <button type="button" data-p="refB" title="B. Bottom Up" aria-label="B. Bottom Up"><span class="pk">B.</span><span class="pn">Bottom Up</span></button>
+      <button type="button" data-p="refC" title="C. Open Cut" aria-label="C. Open Cut"><span class="pk">C.</span><span class="pn">Open Cut</span></button>
+      <button type="button" data-p="blank" title="D. 직접입력" aria-label="D. 직접입력"><span class="pk">D.</span><span class="pn">직접입력</span></button>
     </nav>
     <div class="top-r">
       <span class="mini" aria-hidden="true">총 공기<b id="mini-total">-</b>개월</span>
@@ -557,7 +587,7 @@ details.ss[open] > summary::after { content: "접기"; }
     <section class="tile t-ms" aria-labelledby="ms-t">
       <header class="th sm"><h2 id="ms-t">마일스톤</h2><span class="sub" id="ms-sub"></span></header>
       <div class="ms-list" id="ms-list"></div>
-      <div class="ms-flow comp" id="ms-flow"></div>
+      <div class="ms-flow" id="ms-flow"></div>
     </section>
 
     <section class="tile t-quick" aria-labelledby="q1-t">
@@ -627,7 +657,7 @@ details.ss[open] > summary::after { content: "접기"; }
     </div>
     <div class="sh-h2">
       <nav class="presets" id="presets2" aria-label="실적 사례 불러오기 (시트)">
-        <button type="button" data-p="refA">사례 A</button><button type="button" data-p="refB">사례 B</button><button type="button" data-p="refC">사례 C</button><button type="button" data-p="blank">새 프로젝트</button>
+        <button type="button" data-p="refA" title="A. Semi Top Down" aria-label="A. Semi Top Down"><span class="pk">A.</span><span class="pn">Semi Top Down</span></button><button type="button" data-p="refB" title="B. Bottom Up" aria-label="B. Bottom Up"><span class="pk">B.</span><span class="pn">Bottom Up</span></button><button type="button" data-p="refC" title="C. Open Cut" aria-label="C. Open Cut"><span class="pk">C.</span><span class="pn">Open Cut</span></button><button type="button" data-p="blank" title="D. 직접입력" aria-label="D. 직접입력"><span class="pk">D.</span><span class="pn">직접입력</span></button>
       </nav>
       <button class="btn" id="btn-xlsx" type="button" hidden>엑셀 저장</button>
       <span class="note">바꾸는 즉시 다시 계산됩니다</span>

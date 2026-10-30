@@ -195,44 +195,152 @@
         '<div class="bar" aria-hidden="true"><i class="done" style="width:' + (prev / tot * 100).toFixed(2) + '%"></i><i style="left:' + (prev / tot * 100).toFixed(2) + '%;width:' + (Math.max(0, d) / tot * 100).toFixed(2) + '%;background:' + (end ? 'var(--cp)' : 'var(--navy)') + '"></i></div></div>';
       prev = x.m; return h;
     }).join('');
-    /* C.P 흐름 : C.P 공종을 순서대로 (대공종 색) + 마일스톤 눈금 + 대공종별 합계 */
-    var box = $('#ms-flow'), Wf = Math.max(200, (box.clientWidth || 380)), parts = GK.cpParts(R), G = GK.cpGroups(R), keys = ['준비', '토목', '골조', '마감'];
-    var avail = Wf - 2 * Math.max(0, parts.length - 1);
-    var strip = parts.map(function (p) {
-      var gk = GRP[p.id] || '골조', c = GCOL[gk], px = p.d / tot * avail, full = p.label + ' ' + m1(p.d), inner = '';
-      if (px >= tw(full, 12) + 14) inner = esc(p.label) + '<span class="n">' + m1(p.d) + '</span>';
-      else if (px >= tw(m1(p.d), 12) + 10) inner = '<span class="n" style="margin:0">' + m1(p.d) + '</span>';
-      return '<i style="flex:' + p.d.toFixed(3) + ' 1 0;background:' + c[0] + ';color:' + c[1] + '" title="' + esc(full + '개월 · ' + gk) + '">' + inner + '</i>';
+    renderFlow(R, ms);
+  }
+  /* C.P 흐름 : C.P 공종을 대공종 (준비 · 토목 · 골조 · 마감) 연속 구간으로 묶어 칸마다 이름 · % · 개월 (대공종 합계 표를 겸함).
+     칸 아래 가는 띠 = 그 안의 C.P 공종 — 커서 · 탭 → 머리 줄에 공종 · 기간. 좁은 칸도 글자가 들어가게 최소 폭을 주고,
+     마일스톤 눈금은 같은 칸 안에서 비례 배치 (칸 폭에 맞춘 구간별 축척) */
+  var FLOW = { runs: [], cnt: 0, st: '', on: null };
+  /* 기간 표기 : 착공월이 있으면 Master Schedule 축과 같은 'YY.MM' (좁은 머리 줄에서 잘리지 않게) */
+  function flowWhen(a, b) { var st = FLOW.st; return st ? GK.yy(GK.addM(st, a)) + ' ~ ' + GK.yy(GK.addM(st, b)) : 'M+' + m1(a) + ' ~ ' + m1(b); }
+  function flowRead(el) {
+    var rd = $('#fl-rd'); if (!rd || (el && el === FLOW.on)) return;
+    if (FLOW.on) FLOW.on.classList.remove('on');
+    var r = el && FLOW.runs[+el.getAttribute('data-r')], p = r && r.ps[+el.getAttribute('data-j')];
+    FLOW.on = p ? el : null;
+    if (!p) { rd.innerHTML = 'C.P 공종<b>' + FLOW.cnt + '</b>'; return; }
+    el.classList.add('on');
+    rd.innerHTML = '<span class="sw" style="background:' + (GCOL[r.k] || GCOL['골조'])[0] + '"></span>' + esc(p.label) + '<b>' + m1(p.d) + '</b>개월<em>' + esc(flowWhen(p.s, p.s + p.d)) + '</em>';
+  }
+  ACT.flSeg = function (el) { flowRead(el); };
+  function renderFlow(R, ms) {
+    var box = $('#ms-flow'), Wf = Math.max(200, box.clientWidth || 380), st = R.inp.start, tot = Math.max(0.01, R.total), GAP = 3, runs = [], t = 0;
+    GK.cpParts(R).forEach(function (p) {
+      var gk = GRP[p.id] || '골조', run = runs[runs.length - 1];
+      if (!run || run.k !== gk) runs.push(run = { k: gk, s: t, d: 0, ps: [] });
+      run.ps.push({ label: p.label, s: t, d: p.d }); run.d += p.d; t += p.d;
+    });
+    FLOW.runs = runs; FLOW.st = st; FLOW.on = null; FLOW.cnt = runs.reduce(function (a, r) { return a + r.ps.length; }, 0);
+    if (!runs.length) { box.innerHTML = ''; return; }
+    var span = Math.max(0.01, t), n = runs.length, avail = Wf - GAP * (n - 1);
+    var pct = function (d) { return Math.round(d / span * 100) + '%'; };
+    /* '%' 는 tw 근사보다 넓어 +3 여유 (좁은 칸에서 % 가 잘리지 않게) */
+    var needF = function (r) { return Math.max(tw(r.k, 12.5) + 5 + tw(pct(r.d), 11) + 3, tw(m1(r.d), 18)) + 16; };
+    var needM = function (r) { return Math.max(tw(r.k, 12.5), tw(m1(r.d), 18)) + 16; };
+    var needC = function (r) { return Math.max(tw(r.k, 11.5), tw(m1(r.d), 15)) + 8; };
+    /* 칸 폭 : 비례 → 글자가 안 들어가면 % 를 빼고 (m), 더 좁으면 작은 글자 가운데 (c) + 최소 폭으로 고정하고 나머지를 다시 나눔 */
+    var md = runs.map(function () { return 'f'; }), pin = runs.map(function () { return false; }), w = [];
+    for (var it = 0; it <= n; it++) {
+      var fixW = 0, freeD = 0, more = false;
+      runs.forEach(function (r, i) { if (pin[i]) fixW += needC(r); else freeD += r.d; });
+      var k = Math.max(0, avail - fixW) / Math.max(1e-6, freeD);
+      runs.forEach(function (r, i) {
+        w[i] = pin[i] ? needC(r) : r.d * k;
+        md[i] = w[i] >= needF(r) ? 'f' : w[i] >= needM(r) ? 'm' : 'c';
+        if (!pin[i] && w[i] < needC(r)) { pin[i] = true; more = true; }
+      });
+      if (!more) break;
+    }
+    if (!w.every(function (x) { return x > 0; })) w = runs.map(function (r) { return r.d / span * avail; });
+    var X0 = [], acc = 0;
+    runs.forEach(function (r, i) { X0[i] = acc; acc += w[i] + GAP; });
+    /* 시점 (개월) → 가로 위치 (px) : 칸 경계에 걸리면 칸 사이 틈 가운데 */
+    var xAt = function (m) {
+      for (var i = 0; i < n; i++) {
+        var r = runs[i], e = r.s + r.d;
+        if (i < n - 1 && Math.abs(m - e) < 0.03) return X0[i] + w[i] + GAP / 2;
+        if (m <= e || i === n - 1) return X0[i] + Math.max(0, Math.min(1, (m - r.s) / Math.max(1e-6, r.d))) * w[i];
+      }
+      return Wf;
+    };
+    var strip = runs.map(function (r, i) {
+      var c = GCOL[r.k] || GCOL['골조'];
+      var subs = r.ps.map(function (p, j) {
+        return '<i class="fl-s" data-act="flSeg" data-r="' + i + '" data-j="' + j + '" style="left:' + ((p.s - r.s) / r.d * 100).toFixed(2) + '%;width:' + (p.d / r.d * 100).toFixed(2) + '%" title="' + esc(p.label + ' ' + m1(p.d) + '개월') + '"></i>';
+      }).join('');
+      var lab = '<span class="k">' + esc(r.k) + (md[i] === 'f' ? '<small>' + pct(r.d) + '</small>' : '') + '</span><b>' + m1(r.d) + '</b>';
+      return '<div class="fl-c' + (md[i] === 'c' ? ' cmp' : '') + (c[1] === '#fff' ? ' dk' : '') + '" style="flex:' + w[i].toFixed(1) + ' 1 0;background:' + c[0] + ';color:' + c[1] + '">' + subs + '<span class="fl-l">' + lab + '</span></div>';
     }).join('');
-    var ticks = ms.filter(function (x) { return x.k !== '준공' && x.m > 0.05 && x.m < tot - 0.05; }).map(function (x) { return '<b class="fl-t" style="left:' + (x.m / tot * 100).toFixed(2) + '%" title="' + esc(x.k) + '"></b>'; }).join('');
-    var ax = '<span>' + (st ? GK.ym(GK.addM(st, 0)) : 'M+0') + '</span>' + ms.filter(function (x) { return x.k !== '준공'; }).map(function (x) { var p = x.m / tot * 100; return p > 12 && p < 88 ? '<span style="left:' + p.toFixed(2) + '%">' + esc(x.k.replace(' 완료', '')) + '</span>' : ''; }).join('') +
-      '<span style="left:100%">' + (st ? GK.ym(GK.addM(st, R.total)) : 'M+' + m1(R.total)) + '</span>';
-    box.innerHTML = '<div class="comp-k"><span>C.P 흐름</span></div><div class="fl-wrap"><div class="fl-strip">' + strip + '</div>' + ticks + '</div><div class="fl-ax" aria-hidden="true">' + ax + '</div>' +
-      '<div class="comp-leg">' + keys.map(function (k) { return '<div><span class="sw" style="background:' + GCOL[k][0] + '"></span>' + k + '<b>' + m1(G[k]) + '<small>' + Math.round(G[k] / tot * 100) + '%</small></b></div>'; }).join('') + '</div>';
+    /* 마일스톤 눈금 + 축 글자 (M+0 · 마일스톤 · 준공) — 겹치는 마일스톤 글자는 생략 (눈금 title 에 남음) */
+    var tk = ms.filter(function (x) { return x.k !== '준공' && x.m > 0.05 && x.m < tot - 0.05; }), FS = 12.5;
+    var L0 = st ? GK.ym(GK.addM(st, 0)) : 'M+0', L1 = st ? GK.ym(GK.addM(st, R.total)) : 'M+' + m1(R.total), edge = tw(L0, FS) + 8, endL = Wf - tw(L1, FS) - 8, labs = '';
+    var ticks = tk.map(function (x) {
+      /* 글자는 눈금 가운데 — 양 끝 글자와 겹치면 눈금을 덮는 범위 안에서 비켜 놓고, 그래도 안 되면 생략 */
+      var cx = xAt(x.m), nm = x.k.replace(' 완료', ''), lw = tw(nm, FS), a = Math.min(Math.max(cx - lw / 2, edge), endL - lw);
+      if (a >= edge && a <= cx + 2 && a + lw >= cx - 2) { labs += '<span style="left:' + (a / Wf * 100).toFixed(2) + '%">' + esc(nm) + '</span>'; edge = a + lw + 8; }
+      return '<b class="fl-t" style="left:' + (cx / Wf * 100).toFixed(2) + '%" title="' + esc(x.k + ' · ' + (st ? GK.ym(GK.addM(st, x.m)) : 'M+' + m1(x.m))) + '"></b>';
+    }).join('');
+    box.innerHTML = '<div class="fl-hd"><span>C.P 흐름</span><span class="fl-rd" id="fl-rd"></span></div>' +
+      '<div class="fl-wrap" role="group" aria-label="' + esc('C.P 흐름 · ' + runs.map(function (r) { return r.k + ' ' + m1(r.d) + '개월'; }).join(' · ')) + '"><div class="fl-strip">' + strip + '</div></div>' +
+      '<div class="fl-ax" aria-hidden="true">' + ticks + '<span style="left:0">' + esc(L0) + '</span>' + labs + '<span class="e" style="right:0">' + esc(L1) + '</span></div>';
+    flowRead(null);
+    if (!box.__fl) {
+      /* 마우스 · 펜 : 올리면 보이고 벗어나면 되돌림. 터치 : 탭 (ACT.flSeg) 으로 고르고 흐름 밖을 탭하면 되돌림
+         (터치 뒤 따라오는 마우스 호환 이벤트로 바로 지워지지 않게 pointerType 으로 나눔) */
+      box.__fl = 1;
+      box.addEventListener('pointerover', function (e) { if (e.pointerType === 'touch') return; var s = e.target && e.target.closest ? e.target.closest('.fl-s') : null; if (s || FLOW.on) flowRead(s); });
+      box.addEventListener('pointerleave', function (e) { if (e.pointerType !== 'touch') flowRead(null); });
+      document.addEventListener('pointerdown', function (e) { if (FLOW.on && e.pointerType === 'touch' && !box.contains(e.target)) flowRead(null); });
+    }
   }
 
   /* ───────── Master Schedule (C.P = 빨강 · C.P 연결선 · 개월 축 · 마일스톤) */
-  /* Master Schedule : 연차 머리 · 가는 눈금, 행 왼쪽 = 대공종 색 띠, C.P = 코발트 막대 (앞 병행 = 빗금), Non-C.P = 옅은 막대.
-     C.P 연결선 · 마일스톤 (점선 + 아래 알약 라벨). 행 전체가 말풍선 걸림 영역 */
+  /* Master Schedule : 머리 = 한 달 한 칸 (착공월 없으면 M+ 1행, 있으면 연도 · 월 · M+ 3행), 행 왼쪽 = 대공종 색 띠,
+     C.P = 코발트 막대 (앞 병행 = 빗금), Non-C.P = 옅은 막대. C.P 연결선 · 마일스톤 (점선 + 아래 알약 라벨). 행 전체가 말풍선 걸림 영역 */
   function gantt(R, Wc) {
     var W = Math.max(680, Math.floor(Wc)), nar = Wc < 760;
-    var acts = GK.ganttActs(R), n = acts.length, st = R.inp.start;
-    var LW = nar ? 136 : 214, PR = 58, top = 54, rh = nar ? 30 : 33, bh = nar ? 11 : 12;
+    var acts = GK.ganttActs(R), n = acts.length, st = R.inp.start, hasSt = !!GK.addM(st, 0);
+    var hRows = hasSt ? ['연도', '월', 'M+'] : ['M+'], hr = nar ? 21 : 23, hy = 4;
+    var LW = nar ? 136 : 214, PR = 58, top = hy + hRows.length * hr, rh = nar ? 30 : 33, bh = nar ? 11 : 12;
     var Mmax = Math.ceil(R.total + 0.4), span = W - LW - PR, X = function (m) { return LW + m / Mmax * span; };
-    var rowsH = n * rh, bg = '', s = '', fg = '', xEnd = W - PR + 34;
+    var rowsH = n * rh, bg = '', hd = '', s = '', fg = '', xEnd = W - PR + 34;
     var defs = '<defs>' + pat('o7g-pre', 5, '<path d="M-1 6L6 -1" stroke="var(--cp)" stroke-width=".9" opacity=".45"/>', '#EEF3FC') + '</defs>';
-    /* 연차 : 위쪽 얇은 칸 + 짝수 연차 옅은 바탕 */
-    for (var yr = 0; yr * 12 < Mmax; yr++) {
-      var ya = X(yr * 12), yb = X(Math.min(Mmax, yr * 12 + 12));
-      if (yr % 2 === 1) bg += Rc(ya, top - 4, yb - ya, rowsH + 4, '#F6F8FB');
-      bg += Rc(ya + 1, top - 44, yb - ya - 2, 18, yr % 2 ? '#EEF2F8' : '#F5F7FA', ' rx="5"');
-      if (yb - ya > 36) bg += T(ya + 9, top - 31, (yr + 1) + '년차', { fs: 11.5, w: 600, c: 'var(--ink-2)' });
-    }
-    var pxM = span / Mmax, step = pxM > 26 ? 3 : pxM > 13 ? 6 : 12;
-    for (var m = 0; m <= Mmax; m++) {
-      var x = X(m), maj = m % step === 0;
-      if (pxM > 7 || maj) bg += Ln(x, top - (maj ? 5 : 2), x, top + rowsH, maj ? '#E3E8EF' : '#EEF1F5', maj ? 0.8 : 0.6);
-      if (maj) bg += T(x, top - 10, st ? GK.yy(GK.addM(st, m)) : 'M+' + m, { a: 'middle', fs: 10.5, c: 'var(--ink-3)', cls: 'n' });
+    ganttHead();
+    /* 머리 행 : 달 칸 (가는 선) · 숫자는 칸 가운데 (촘촘하면 2 · 3 · 6개월마다, 눈금은 매달) · 연도 경계 = 조금 진한 선 · 짝수 연도 옅은 바탕 */
+    function ganttHead() {
+      var pxM = span / Mmax, nfs = nar ? 10 : 10.5, need = tw('00', nfs) + 6;
+      var step = [1, 2, 3, 6, 12].filter(function (k) { return pxM * k >= need; })[0] || 12;
+      var cal = [];
+      for (var m = 0; m <= Mmax; m++) { var d = hasSt ? GK.addM(st, m) : null; cal.push(d ? { y: d.getFullYear(), mo: d.getMonth() + 1 } : null); }
+      var yb = function (m) { return m > 0 && m < Mmax && (hasSt ? cal[m].mo === 1 : m % 12 === 0); };
+      var rowY = function (k) { return hy + k * hr; }, mid = function (k) { return rowY(k) + hr / 2 + nfs * 0.36; };
+      /* 연도 칸 : 그 해에 속한 달을 묶어 한 칸 */
+      if (hasSt) {
+        for (var a = 0, b = 1; b <= Mmax; b++) {
+          if (b < Mmax && !yb(b)) continue;
+          var xa = X(a), w = X(b) - xa, yv = cal[a].y, lab = String(yv);
+          if (yv % 2 === 0) bg += Rc(xa, hy, w, top - hy + rowsH, '#F6F8FB');
+          lab = w >= tw(lab, 11.5) + 10 ? lab : w >= tw('00', 11) + 8 ? '’' + lab.slice(2) : '';
+          if (lab) hd += T(xa + w / 2, mid(0), lab, { a: 'middle', fs: 11.5, w: 600, c: 'var(--ink-2)', cls: 'n' });
+          a = b;
+        }
+      }
+      /* 세로선 : 머리 (월 · M+ 행은 매달, 연도 행은 경계만 — 숫자를 띄워 찍을 땐 행 아래 짧은 눈금) · 몸통 (매달 옅게) */
+      var h0 = hasSt ? rowY(1) : hy;
+      for (var i = 0; i <= Mmax; i++) {
+        var x = X(i), edge = i === 0 || i === Mmax, yr = yb(i);
+        if (yr || edge) hd += Ln(x, hy, x, top, '#C9D3E0', 0.9);
+        else if (step === 1) hd += Ln(x, h0, x, top, '#E3E8EF', 0.6);
+        else for (var k = hasSt ? 1 : 0; k < hRows.length; k++) hd += Ln(x, rowY(k + 1) - 4, x, rowY(k + 1), '#D5DDE8', 0.6);
+        if (yr) bg += Ln(x, top, x, top + rowsH, '#DCE3EC', 0.9);
+        else if (pxM > 5 || edge) bg += Ln(x, top, x, top + rowsH, '#EEF1F5', 0.6);
+      }
+      /* 가로선 · 행 이름 (왼쪽 칸) */
+      hd += Ln(0, hy, xEnd, hy, '#E3E8EF', 0.8);
+      hRows.forEach(function (nm, k) {
+        if (k) hd += Ln(0, rowY(k), xEnd, rowY(k), '#EEF1F5', 0.6);
+        hd += T(LW - 12, mid(k), nm, { a: 'end', fs: 11, w: 600, c: 'var(--ink-3)', cls: nm === 'M+' ? 'n' : '' });
+      });
+      hd += Ln(0, top, xEnd, top, '#D5DDE8', 0.9);
+      /* 월 (1~12) · M+ (0, 1, 2 …) : 촘촘하면 같은 칸끼리 step 간격 (숫자가 칸보다 넓으면 바탕색 테두리로 경계선과 떨어뜨림) */
+      for (var c = 0; c < Mmax; c++) {
+        var xc = X(c + 0.5);
+        if (c % step) continue;
+        var hal = step > 1 ? (hasSt && cal[c].y % 2 === 0 ? '#F6F8FB' : '#fff') : '';
+        if (hasSt) hd += T(xc, mid(1), cal[c].mo, { a: 'middle', fs: nfs, w: cal[c].mo === 1 ? 600 : 400, c: cal[c].mo === 1 ? 'var(--ink-2)' : 'var(--ink-3)', cls: 'n', halo: hal });
+        var k12 = !hasSt && c % 12 === 0 && c > 0;
+        hd += T(xc, mid(hRows.length - 1), c, { a: 'middle', fs: nfs, w: k12 ? 600 : 400, c: k12 ? 'var(--ink-2)' : 'var(--ink-3)', cls: 'n', halo: hal });
+      }
     }
     var cpMap = {}, cpS = {}, rowOf = {};
     R.cpLine.forEach(function (c, i) { cpMap[c.id] = c; cpS[c.id] = i ? R.cpLine[i - 1].e : 0; });
@@ -283,7 +391,7 @@
       fg += Rc(L0, yl, w, 20, end ? 'var(--cp)' : '#fff', ' rx="10"' + (end ? '' : ' stroke="#CBD5E3" stroke-width=".8"')) + T(L0 + w / 2, yl + 14, lab, { a: 'middle', fs: 11.5, w: 600, c: end ? '#fff' : 'var(--ink-2)' });
     });
     var H = top + rowsH + 76;
-    return svgEl(W, H, defs + bg + s + fg, 'Master Schedule 바차트 · 총 ' + m1(R.total) + '개월');
+    return svgEl(W, H, defs + bg + hd + s + fg, 'Master Schedule 바차트 · 총 ' + m1(R.total) + '개월');
   }
   function renderGantt(R) {
     var el = $('#gantt'); hideTip(); el.innerHTML = gantt(R, el.clientWidth || 900); widths.gantt = el.clientWidth;
