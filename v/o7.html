@@ -22,7 +22,7 @@
   --cp: #1F56C9; --cp-ink: #FFFFFF; --cp-soft: #E7EEFB; --cp-deep: #173F94; --cp-line: #B9CBEE;
   --ok: #2E7A5A; --ok-soft: #E4F1EA; --warn: #8E651B; --warn-soft: #F7F0E1;
   --slate: #98A0AC; --slate-2: #CBD1D9; --slate-3: #E8EBEE;
-  --soil: #EAEEF4; --wsoil: #DCE3ED; --wrock: #CCD6E3; --srock: #B8C4D4; --hrock: #9DABBF; --gwl: #3B8FD0;
+  --soil: #F2EBDA; --wsoil: #E4CFA2; --wrock: #C9B79E; --srock: #B5BDC7; --hrock: #959BA4; --gwl: #2B8BD3;
   --t1: #3566C2; --t2: #34A0C4; --t3: #8D9EE6; --t4: #1E3A62; --t5: #6FB6E8; --t6: #6A7C9E;
   /* 대공종 : 준비 웜그레이 · 토목 샌드 · 골조 네이비 · 마감 틸 (채도 낮게, 이웃끼리 구분) */
   --g-prep: #D6CFC4; --g-civ: #CFAB6E; --g-frame: #2A4870; --g-fin: #367F7A;
@@ -276,6 +276,28 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 
 /* 가정 단면 */
 /* @@C 단면 · 토목 가정 카드 · 범례 (이 줄 바로 아래에 추가) */
+/* 단면 색 (단면 타일 안) : 굴착선 = 앰버, 지보 (앵커 · 스트럿) = 틸, 기초 · 콘크리트 = 회색 — 지층 · 수위는 :root 토큰 */
+.t-sec { --s-exc: #D9892C; --s-exc-ink: #9A5A14; --s-sup: #16968A; --s-conc: #727983; }
+/* 기초 (매트) 두께 칸 : 층고 칸과 같은 모양, 자동값은 흐리게 */
+.fh.fh-m.auto { color: var(--ink-2); font-weight: 500; }
+.fhl .fr.fm { border-top: 1px solid var(--rule); }
+.fhl .fr.fm .fl { color: var(--ink-2); font-family: var(--f-ui); font-size: 15px; }
+/* 범례 : 지층 한 줄 · 선 기호 한 줄 */
+.lg .lg-st { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+/* 토목 가정 카드 : 번호 · 짧은 제목 / 핵심 값 / 보조 한 줄 (아래 맞춤) — 긴 원문은 title */
+.kn .kn-h { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--ink-3); }
+.kn .kn-h i { flex: none; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 10.5px; font-weight: 700; display: grid; place-items: center; }
+.kn .kn-h b { min-width: 0; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kn .kn-v { margin-top: 2px; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15.5px; font-weight: 600; letter-spacing: -.015em; line-height: 1.3; color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; text-wrap: balance; }
+.kn .kn-s { margin-top: auto; padding-top: 1px; font-size: 12px; color: var(--ink-3); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 1180px) { .t-sec > #s-notes.kn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 1180 ~ 1400px : 오른쪽 열 (카드 · 범례 · 주요 가정사항) 이 너무 좁아지지 않게 도면 폭을 양보 */
+@media (min-width: 1180px) and (max-width: 1399.98px) { .tile.t-sec { grid-template-columns: minmax(0, 1fr) minmax(300px, 30%); } }
+@media (max-width: 640px) {
+  .t-sec .kn { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .t-sec .kn li { padding: 9px 11px 10px; }
+  .t-sec .kn .kn-v { font-size: 14.5px; }
+}
 .sec7 { position: relative; margin: 0 auto; }
 .sec7 > svg { position: absolute; left: 0; top: 0; }
 .fh { position: absolute; height: 26px; padding: 0 6px; border: 1.5px solid #B9C8E2; border-radius: 8px; background: #F4F7FC; color: var(--ink); font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; text-align: right; -moz-appearance: textfield; transition: border-color .15s, background .15s; }
@@ -298,9 +320,9 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px var(--cp-line); }
 .fhl .fe { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
 .fh.fh-l { position: static; width: 100%; height: 34px; font-size: 16px; }
-.kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 22px; }
-.kn li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
-.kn li i { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 11.5px; font-weight: 700; display: grid; place-items: center; margin-top: 0; }
+/* 토목 가정 카드 (도면 번호 ① ② … 와 짝) : 같은 크기 격자 — 세부는 @@C */
+.kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); grid-auto-rows: 1fr; gap: 8px; }
+.kn li { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 11px; background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--rule); cursor: help; }
 
 /* 조닝 (아이소메트릭 적층) */
 .iso { display: flex; flex-direction: column; gap: 4px; }
@@ -399,24 +421,65 @@ body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none;
 
 /* 주요 판단 */
 /* @@D 주요 가정사항 및 조건 편집 (이 줄 바로 아래에 추가) */
-/* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
-.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); }
+/* 영향 큰 6개 = 같은 크기 카드 (2열 3행), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면).
+   연필 = 그 자리 편집 (Esc 취소 · Enter / 바깥 클릭 적용) · 꺾쇠 = 관련 입력 (조닝 · 단면 층고) 으로 이동 */
+.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); container-type: inline-size; }
 .sec-kf h3 { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
 .kf7 { display: flex; flex-direction: column; gap: 12px; }
-.kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--cp-line); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
-.kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
-.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; word-break: keep-all; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
-.kc .kw { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kf-lo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; }
-.kf-lo > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; padding: 6px 0; border-bottom: 1px solid var(--rule-2); cursor: help; }
-.kf-lo dt { flex: none; font-size: 13px; color: var(--ink-3); }
-.kf-lo dd { margin: 0; min-width: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--ink); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 8px; }
+.kc { position: relative; min-width: 0; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px var(--rule); transition: box-shadow .16s, background-color .16s; }
+.kc-b, .kc.ed { display: flex; flex-direction: column; gap: 1px; width: 100%; height: 100%; min-width: 0; padding: 10px 14px 11px; text-align: left; }
+.kc-b { border: 0; border-radius: inherit; background: transparent; color: inherit; }
+.kc .kk { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.kc .kk::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--cp); }
+.kc .kt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kc .kv { display: block; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kc .kv small { font-family: var(--f-ui); font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink-3); }
+.kc .kv i { font-style: normal; }
+.kc .kw { display: block; font-size: 12.5px; color: var(--ink-3); line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ki { flex: none; width: 13px; height: 13px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-3); opacity: .45; transition: opacity .16s, color .16s; }
+.kc.can:hover, .kc.go:hover { box-shadow: inset 0 0 0 1px var(--cp-line); background: #FBFCFE; }
+.kc:hover .ki, .kc-b:focus-visible .ki, button.kr:hover .ki, button.kr:focus-visible .ki { opacity: 1; color: var(--cp); }
+.kc.ed { box-shadow: inset 0 0 0 1.5px var(--cp), 0 0 0 3px var(--cp-soft); gap: 2px; }
+.ke { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 41px; }
+.ke select, .ke-i { width: 100%; min-width: 0; height: 34px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sheet-2); color: var(--ink); font-size: 14.5px; font-weight: 600; }
+.ke select { padding: 0 6px; }
+.ke select:focus, .ke-i:focus-within { border-color: var(--accent); background: #fff; outline: none; }
+.ke-n { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ke-n small { font-size: 11.5px; line-height: 13px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ke-i { display: flex; align-items: center; padding: 0 9px 0 10px; }
+.ke-i input { flex: 1; min-width: 0; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; outline: none; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; -moz-appearance: textfield; appearance: textfield; }
+.ke-i input::-webkit-outer-spin-button, .ke-i input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ke-i i { flex: none; font-style: normal; font-size: 12.5px; color: var(--ink-3); margin-left: 4px; }
+.ke-i .kp { margin: 0 3px 0 0; font-family: var(--f-num); }
+.ke.two .ke-i { height: 26px; padding: 0 7px 0 8px; }
+.ke.two .ke-i input { font-size: 14.5px; }
+.kf-lo { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; padding: 0; }
+.kf-lo li { min-width: 0; border-bottom: 1px solid var(--rule-2); }
+.kr { display: flex; align-items: baseline; gap: 8px; width: 100%; min-width: 0; padding: 6px 0; border: 0; background: none; text-align: left; color: inherit; cursor: help; }
+button.kr { cursor: pointer; }
+.kr .kr-k { flex: none; font-size: 13px; color: var(--ink-3); }
+.kr .kr-v { flex: 1; min-width: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--ink); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kr .ki { margin-left: 0; width: 12px; height: 12px; align-self: center; }
+button.kr:hover .kr-v { color: var(--cp-deep); }
+.kf-lo li.ed { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.kf-lo li.ed .kk { flex: none; font-size: 13px; color: var(--ink-3); }
+.kf-lo li.ed .ke { flex: 1; min-height: 0; }
+.kf-lo li.ed .ke select, .kf-lo li.ed .ke-i { height: 28px; font-size: 13.5px; }
+/* 계산값 칸에서 이동한 곳 (조닝 팀수 · 단면 층고) 을 잠깐 표시 */
+.kf-hl { animation: kfHl 1.6s ease-out; }
+.kf-hl:not(input) { border-radius: 9px; }
+@keyframes kfHl { 0%, 45% { box-shadow: 0 0 0 4px var(--cp-soft), 0 0 0 5px var(--cp-line); } 100% { box-shadow: 0 0 0 4px rgba(231, 238, 251, 0), 0 0 0 5px rgba(185, 203, 238, 0); } }
+@media (prefers-reduced-motion: reduce) { .kf-hl { animation: none; box-shadow: 0 0 0 4px var(--cp-soft), 0 0 0 5px var(--cp-line); } }
+/* 칸이 아주 좁을 때만 (넓은 화면 1180 ~ 1350px 의 오른쪽 열) 카드도 한 줄에 하나 · 한 줄 표는 400px 이하에서 한 줄에 하나 */
+@container (max-width: 300px) { .kf-hi { grid-template-columns: minmax(0, 1fr); } }
+@container (max-width: 400px) { .kc .kv .lx { display: none; } .kf-lo { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .kf-hi { gap: 6px; }
-  .kc { padding: 9px 12px 10px; }
-  .kc .kv { font-size: 16px; word-break: keep-all; overflow-wrap: break-word; }
+  .kc-b, .kc.ed { padding: 9px 11px 10px; }
+  .kc .kv { font-size: 16px; }
+  .ke { min-height: 39px; }
+  .ke.two .ke-i { height: 25px; }
   .kf-lo { grid-template-columns: minmax(0, 1fr); }
 }
 

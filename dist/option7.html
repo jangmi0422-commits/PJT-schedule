@@ -128,7 +128,7 @@ ul.rv { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; }
   --cp: #1F56C9; --cp-ink: #FFFFFF; --cp-soft: #E7EEFB; --cp-deep: #173F94; --cp-line: #B9CBEE;
   --ok: #2E7A5A; --ok-soft: #E4F1EA; --warn: #8E651B; --warn-soft: #F7F0E1;
   --slate: #98A0AC; --slate-2: #CBD1D9; --slate-3: #E8EBEE;
-  --soil: #EAEEF4; --wsoil: #DCE3ED; --wrock: #CCD6E3; --srock: #B8C4D4; --hrock: #9DABBF; --gwl: #3B8FD0;
+  --soil: #F2EBDA; --wsoil: #E4CFA2; --wrock: #C9B79E; --srock: #B5BDC7; --hrock: #959BA4; --gwl: #2B8BD3;
   --t1: #3566C2; --t2: #34A0C4; --t3: #8D9EE6; --t4: #1E3A62; --t5: #6FB6E8; --t6: #6A7C9E;
   /* 대공종 : 준비 웜그레이 · 토목 샌드 · 골조 네이비 · 마감 틸 (채도 낮게, 이웃끼리 구분) */
   --g-prep: #D6CFC4; --g-civ: #CFAB6E; --g-frame: #2A4870; --g-fin: #367F7A;
@@ -382,6 +382,28 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 
 /* 가정 단면 */
 /* @@C 단면 · 토목 가정 카드 · 범례 (이 줄 바로 아래에 추가) */
+/* 단면 색 (단면 타일 안) : 굴착선 = 앰버, 지보 (앵커 · 스트럿) = 틸, 기초 · 콘크리트 = 회색 — 지층 · 수위는 :root 토큰 */
+.t-sec { --s-exc: #D9892C; --s-exc-ink: #9A5A14; --s-sup: #16968A; --s-conc: #727983; }
+/* 기초 (매트) 두께 칸 : 층고 칸과 같은 모양, 자동값은 흐리게 */
+.fh.fh-m.auto { color: var(--ink-2); font-weight: 500; }
+.fhl .fr.fm { border-top: 1px solid var(--rule); }
+.fhl .fr.fm .fl { color: var(--ink-2); font-family: var(--f-ui); font-size: 15px; }
+/* 범례 : 지층 한 줄 · 선 기호 한 줄 */
+.lg .lg-st { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+/* 토목 가정 카드 : 번호 · 짧은 제목 / 핵심 값 / 보조 한 줄 (아래 맞춤) — 긴 원문은 title */
+.kn .kn-h { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--ink-3); }
+.kn .kn-h i { flex: none; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 10.5px; font-weight: 700; display: grid; place-items: center; }
+.kn .kn-h b { min-width: 0; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kn .kn-v { margin-top: 2px; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15.5px; font-weight: 600; letter-spacing: -.015em; line-height: 1.3; color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; text-wrap: balance; }
+.kn .kn-s { margin-top: auto; padding-top: 1px; font-size: 12px; color: var(--ink-3); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 1180px) { .t-sec > #s-notes.kn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 1180 ~ 1400px : 오른쪽 열 (카드 · 범례 · 주요 가정사항) 이 너무 좁아지지 않게 도면 폭을 양보 */
+@media (min-width: 1180px) and (max-width: 1399.98px) { .tile.t-sec { grid-template-columns: minmax(0, 1fr) minmax(300px, 30%); } }
+@media (max-width: 640px) {
+  .t-sec .kn { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .t-sec .kn li { padding: 9px 11px 10px; }
+  .t-sec .kn .kn-v { font-size: 14.5px; }
+}
 .sec7 { position: relative; margin: 0 auto; }
 .sec7 > svg { position: absolute; left: 0; top: 0; }
 .fh { position: absolute; height: 26px; padding: 0 6px; border: 1.5px solid #B9C8E2; border-radius: 8px; background: #F4F7FC; color: var(--ink); font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; text-align: right; -moz-appearance: textfield; transition: border-color .15s, background .15s; }
@@ -404,9 +426,9 @@ svg text.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .fhl .fr.hot .fp { background: var(--cp-soft); color: var(--cp-deep); font-weight: 700; box-shadow: inset 0 0 0 1px var(--cp-line); }
 .fhl .fe { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-3); text-align: right; white-space: nowrap; }
 .fh.fh-l { position: static; width: 100%; height: 34px; font-size: 16px; }
-.kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 22px; }
-.kn li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
-.kn li i { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-style: normal; font-family: var(--f-num); font-size: 11.5px; font-weight: 700; display: grid; place-items: center; margin-top: 0; }
+/* 토목 가정 카드 (도면 번호 ① ② … 와 짝) : 같은 크기 격자 — 세부는 @@C */
+.kn { list-style: none; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-2); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); grid-auto-rows: 1fr; gap: 8px; }
+.kn li { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 11px; background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--rule); cursor: help; }
 
 /* 조닝 (아이소메트릭 적층) */
 .iso { display: flex; flex-direction: column; gap: 4px; }
@@ -505,24 +527,65 @@ body.dragging, body.dragging .core-h.drag { cursor: grabbing; user-select: none;
 
 /* 주요 판단 */
 /* @@D 주요 가정사항 및 조건 편집 (이 줄 바로 아래에 추가) */
-/* 영향 큰 것 = 작은 카드 (근거 한 줄), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면) */
-.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); }
+/* 영향 큰 6개 = 같은 크기 카드 (2열 3행), 나머지 = 항목 · 값 한 줄 표 (근거는 마우스를 올리면).
+   연필 = 그 자리 편집 (Esc 취소 · Enter / 바깥 클릭 적용) · 꺾쇠 = 관련 입력 (조닝 · 단면 층고) 으로 이동 */
+.sec-kf { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-2); container-type: inline-size; }
 .sec-kf h3 { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
 .kf7 { display: flex; flex-direction: column; gap: 12px; }
-.kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.kc { background: #fff; border-radius: 14px; box-shadow: inset 0 0 0 1.5px var(--cp-line); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.kc .kk { font-size: 12.5px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
-.kc .kk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cp); }
-.kc .kv { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; word-break: keep-all; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.3; overflow-wrap: anywhere; }
-.kc .kw { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kf-lo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; }
-.kf-lo > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; padding: 6px 0; border-bottom: 1px solid var(--rule-2); cursor: help; }
-.kf-lo dt { flex: none; font-size: 13px; color: var(--ink-3); }
-.kf-lo dd { margin: 0; min-width: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--ink); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kf-hi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 8px; }
+.kc { position: relative; min-width: 0; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px var(--rule); transition: box-shadow .16s, background-color .16s; }
+.kc-b, .kc.ed { display: flex; flex-direction: column; gap: 1px; width: 100%; height: 100%; min-width: 0; padding: 10px 14px 11px; text-align: left; }
+.kc-b { border: 0; border-radius: inherit; background: transparent; color: inherit; }
+.kc .kk { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.kc .kk::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--cp); }
+.kc .kt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kc .kv { display: block; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kc .kv small { font-family: var(--f-ui); font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink-3); }
+.kc .kv i { font-style: normal; }
+.kc .kw { display: block; font-size: 12.5px; color: var(--ink-3); line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ki { flex: none; width: 13px; height: 13px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-3); opacity: .45; transition: opacity .16s, color .16s; }
+.kc.can:hover, .kc.go:hover { box-shadow: inset 0 0 0 1px var(--cp-line); background: #FBFCFE; }
+.kc:hover .ki, .kc-b:focus-visible .ki, button.kr:hover .ki, button.kr:focus-visible .ki { opacity: 1; color: var(--cp); }
+.kc.ed { box-shadow: inset 0 0 0 1.5px var(--cp), 0 0 0 3px var(--cp-soft); gap: 2px; }
+.ke { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 41px; }
+.ke select, .ke-i { width: 100%; min-width: 0; height: 34px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sheet-2); color: var(--ink); font-size: 14.5px; font-weight: 600; }
+.ke select { padding: 0 6px; }
+.ke select:focus, .ke-i:focus-within { border-color: var(--accent); background: #fff; outline: none; }
+.ke-n { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ke-n small { font-size: 11.5px; line-height: 13px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ke-i { display: flex; align-items: center; padding: 0 9px 0 10px; }
+.ke-i input { flex: 1; min-width: 0; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; outline: none; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; -moz-appearance: textfield; appearance: textfield; }
+.ke-i input::-webkit-outer-spin-button, .ke-i input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ke-i i { flex: none; font-style: normal; font-size: 12.5px; color: var(--ink-3); margin-left: 4px; }
+.ke-i .kp { margin: 0 3px 0 0; font-family: var(--f-num); }
+.ke.two .ke-i { height: 26px; padding: 0 7px 0 8px; }
+.ke.two .ke-i input { font-size: 14.5px; }
+.kf-lo { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; margin: 0; padding: 0; }
+.kf-lo li { min-width: 0; border-bottom: 1px solid var(--rule-2); }
+.kr { display: flex; align-items: baseline; gap: 8px; width: 100%; min-width: 0; padding: 6px 0; border: 0; background: none; text-align: left; color: inherit; cursor: help; }
+button.kr { cursor: pointer; }
+.kr .kr-k { flex: none; font-size: 13px; color: var(--ink-3); }
+.kr .kr-v { flex: 1; min-width: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--ink); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kr .ki { margin-left: 0; width: 12px; height: 12px; align-self: center; }
+button.kr:hover .kr-v { color: var(--cp-deep); }
+.kf-lo li.ed { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.kf-lo li.ed .kk { flex: none; font-size: 13px; color: var(--ink-3); }
+.kf-lo li.ed .ke { flex: 1; min-height: 0; }
+.kf-lo li.ed .ke select, .kf-lo li.ed .ke-i { height: 28px; font-size: 13.5px; }
+/* 계산값 칸에서 이동한 곳 (조닝 팀수 · 단면 층고) 을 잠깐 표시 */
+.kf-hl { animation: kfHl 1.6s ease-out; }
+.kf-hl:not(input) { border-radius: 9px; }
+@keyframes kfHl { 0%, 45% { box-shadow: 0 0 0 4px var(--cp-soft), 0 0 0 5px var(--cp-line); } 100% { box-shadow: 0 0 0 4px rgba(231, 238, 251, 0), 0 0 0 5px rgba(185, 203, 238, 0); } }
+@media (prefers-reduced-motion: reduce) { .kf-hl { animation: none; box-shadow: 0 0 0 4px var(--cp-soft), 0 0 0 5px var(--cp-line); } }
+/* 칸이 아주 좁을 때만 (넓은 화면 1180 ~ 1350px 의 오른쪽 열) 카드도 한 줄에 하나 · 한 줄 표는 400px 이하에서 한 줄에 하나 */
+@container (max-width: 300px) { .kf-hi { grid-template-columns: minmax(0, 1fr); } }
+@container (max-width: 400px) { .kc .kv .lx { display: none; } .kf-lo { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .kf-hi { gap: 6px; }
-  .kc { padding: 9px 12px 10px; }
-  .kc .kv { font-size: 16px; word-break: keep-all; overflow-wrap: break-word; }
+  .kc-b, .kc.ed { padding: 9px 11px 10px; }
+  .kc .kv { font-size: 16px; }
+  .ke { min-height: 39px; }
+  .ke.two .ke-i { height: 25px; }
   .kf-lo { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -3286,18 +3349,19 @@ details.ss[open] > summary::after { content: "접기"; }
     var el = 0, rev = rows.filter(function (r) { return !r.bl; }).reverse();
     rev.forEach(function (r) { r.elB = el; el += r.gr.h * r.gr.cnt; r.elT = el; });
     var elTop = el; dd = 0; rows.forEach(function (r) { if (r.bl) { r.dT = dd; dd += r.gr.h * r.gr.cnt; r.dB = dd; } });
-    var s = '', id = 'o7s', notes = [], gwlLab = '', logYs = [];
-    function note(t, c, x, yy) { notes.push({ t: t, c: 'var(--navy)', x: x, y: yy }); }
+    var s = '', id = 'o7s', notes = [], gwlLab = '', logYs = [], lg = { st: [], gwl: false, wall: false, sup: '', two: { up: false, b: false } }, embT = null;
+    /* 주석 = 도면 번호 ① ② … ↔ 오른쪽 카드 (짧은 제목 · 핵심 값 · 보조 한 줄, 긴 원문은 title). 번호 색 = 도면에서 그 요소의 색 */
+    function note(t, c, x, yy, cd) { cd = cd || {}; notes.push({ t: t, c: c || 'var(--navy)', x: x, y: yy, h: cd.h || '', v: cd.v || '', s: cd.s || '' }); }
     s += '<defs>' +
-      pat(id + '-soil', 8, '<circle cx="2" cy="2" r=".6" fill="#7F90AA" opacity=".38"/><circle cx="6" cy="5.8" r=".5" fill="#7F90AA" opacity=".3"/>') +
-      pat(id + '-wsoil', 9, '<circle cx="2" cy="3" r=".6" fill="#71839E" opacity=".38"/><path d="M5 7h2.4" stroke="#71839E" stroke-width=".6" opacity=".4"/>') +
-      pat(id + '-wrock', 10, '<path d="M1 8l3-3M6 9.5l2.8-2.8" stroke="#647691" stroke-width=".7" opacity=".42"/>') +
-      pat(id + '-srock', 8, '<path d="M-1 9L9 -1" stroke="#5B6C86" stroke-width=".6" opacity=".4"/>') +
-      pat(id + '-hrock', 8, '<path d="M-1 9L9 -1M-1 -1l10 10" stroke="#4E5E78" stroke-width=".55" opacity=".42"/>') +
-      pat(id + '-conc', 5, '<path d="M-1 6L6 -1" stroke="#95A4BA" stroke-width=".6"/>', '#E9EEF5') +
-      pat(id + '-mat', 10, '<circle cx="2.5" cy="3" r=".7" fill="#8394AE"/><circle cx="7.2" cy="7.6" r=".55" fill="#8394AE"/>', '#E3E9F1') +
+      pat(id + '-soil', 8, '<circle cx="2" cy="2" r=".65" fill="#9A8457" opacity=".5"/><circle cx="6" cy="5.8" r=".55" fill="#9A8457" opacity=".42"/>') +
+      pat(id + '-wsoil', 9, '<circle cx="2" cy="3" r=".65" fill="#8E6F38" opacity=".5"/><path d="M5 7h2.4" stroke="#8E6F38" stroke-width=".6" opacity=".5"/>') +
+      pat(id + '-wrock', 10, '<path d="M1 8l3-3M6 9.5l2.8-2.8" stroke="#6F5C47" stroke-width=".7" opacity=".55"/>') +
+      pat(id + '-srock', 8, '<path d="M-1 9L9 -1" stroke="#4E5763" stroke-width=".6" opacity=".45"/>') +
+      pat(id + '-hrock', 8, '<path d="M-1 9L9 -1M-1 -1l10 10" stroke="#353B44" stroke-width=".55" opacity=".45"/>') +
+      pat(id + '-conc', 5, '<path d="M-1 6L6 -1" stroke="#A0A5AC" stroke-width=".6"/>', '#EDEEF0') +
+      pat(id + '-mat', 10, '<circle cx="2.5" cy="3" r=".7" fill="#8C9199"/><circle cx="7.2" cy="7.6" r=".55" fill="#8C9199"/>', '#E1E3E6') +
       pat(id + '-glass', 8, '<path d="M0.5 0V8" stroke="#E2E8F1" stroke-width=".8"/>', '#FAFBFD') +
-      pat(id + '-fill', 7, '<path d="M-1 8L8 -1" stroke="#A3B2C8" stroke-width=".6" opacity=".6"/>', '#F1F4F9') +
+      pat(id + '-fill', 7, '<path d="M-1 8L8 -1" stroke="#C3AE85" stroke-width=".6" opacity=".7"/>', '#F6F1E6') +
       '<linearGradient id="' + id + '-sky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#F3F6FB"/><stop offset="1" stop-color="#FCFDFE"/></linearGradient>' +
       '<linearGradient id="' + id + '-fd" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".05" stop-color="#fff"/><stop offset=".95" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
       '<mask id="' + id + '-mk"><rect x="' + r1(X0 - 8) + '" y="0" width="' + r1(X1 - X0 + 16) + '" height="' + Ht + '" fill="url(#' + id + '-fd)"/></mask>' +
@@ -3307,8 +3371,9 @@ details.ss[open] > summary::after { content: "접기"; }
     for (var i = 0; i < 5; i++) {
       var za = g.z[i], zc = Math.min(g.z[i + 1], maxD); if (!(zc > za)) continue;
       var ya = yd(za), yc = yd(zc);
+      lg.st.push(i);
       strata += Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'var(--' + LKS[i] + ')', ' opacity=".9"') + Rc(X0 - 8, ya, X1 - X0 + 16, yc - ya, 'url(#' + id + '-' + LKS[i] + ')');
-      log += Rc(LC - 14, ya, 10, yc - ya, 'var(--' + LKS[i] + ')') + Rc(LC - 14, ya, 10, yc - ya, 'url(#' + id + '-' + LKS[i] + ')') + (i ? Ln(X0 - 8, ya, X1 + 8, ya, '#FFFFFF', 0.8, null, ' opacity=".7"') : '');
+      log += Rc(LC - 14, ya, 10, yc - ya, 'var(--' + LKS[i] + ')', ' opacity=".9"') + Rc(LC - 14, ya, 10, yc - ya, 'url(#' + id + '-' + LKS[i] + ')') + (i ? Ln(X0 - 8, ya, X1 + 8, ya, '#FFFFFF', 0.8, null, ' opacity=".7"') : '');
       if (yc - ya >= 14) logYs.push({ y: ya + 13, p: 1, s: T(LC - 19, ya + 13, LNM[i], { a: 'end', fs: nar ? 10.5 : 12, w: 500, c: 'var(--ink-2)' }) });
       if (!nar && yc - ya >= 30 && isFinite(g.z[i + 1]) && g.z[i + 1] <= maxD) logYs.push({ y: yc - 5, p: 0, s: T(LC - 19, yc - 5, '−' + r1(g.z[i + 1]), { a: 'end', fs: 11, c: 'var(--ink-3)', cls: 'n' }) });
     }
@@ -3322,7 +3387,8 @@ details.ss[open] > summary::after { content: "접기"; }
       if (open) {
         s += Pg([[eL - sl, yGL], [eL, yH], [bL, yH], [bL, yGL]], ' fill="url(#' + id + '-fill)"') + Pg([[bR, yGL], [bR, yH], [eR, yH], [eR + sl, yGL]], ' fill="url(#' + id + '-fill)"');
         s += '<path d="M' + r1(eL - sl) + ' ' + r1(yGL) + 'L' + r1(eL) + ' ' + r1(yH) + 'M' + r1(eR) + ' ' + r1(yH) + 'L' + r1(eR + sl) + ' ' + r1(yGL) + '" stroke="#3B4E6C" stroke-width="1.2" fill="none"/>';
-        note('오픈컷 1:' + LIB.exc.slope + ' · 사면 폭 ' + r1(g.slopeW) + 'm · 외벽 · 방수 후 되메우기', 'var(--ink)', eL - sl / 2 - 11, (yGL + yH) / 2);
+        note('오픈컷 1:' + LIB.exc.slope + ' · 사면 폭 ' + r1(g.slopeW) + 'm · 외벽 · 방수 후 되메우기', 'var(--s-exc-ink)', eL - sl / 2 - 11, (yGL + yH) / 2,
+          { h: '오픈컷 (사면)', v: '1:' + LIB.exc.slope + ' · 사면 폭 ' + r1(g.slopeW) + 'm', s: '외벽 · 방수 후 되메우기' });
       }
     }
     /* 지하수위 (굴착 바깥) */
@@ -3333,6 +3399,7 @@ details.ss[open] > summary::after { content: "접기"; }
         if (pa > X0 - 8) segs.push([X0 - 8, pa]); if (pb < X1 + 8) segs.push([pb, X1 + 8]);
       } else segs.push([X0 - 8, X1 + 8]);
       segs.forEach(function (q) { s += Ln(q[0], yw, q[1], yw, 'var(--gwl)', 1.4, '8 4'); });
+      lg.gwl = true;
       /* 수위 표시 : 굴착 바깥 오른쪽 → 왼쪽 → (둘 다 좁으면) 주상도 막대 옆 */
       var gT = '지하수위 GL−' + r1(g.gwl), gNeed = tw(gT, 11.5) + 36, sR = segs[segs.length - 1], sLf = segs[0];
       var sym = function (x) { return '<path d="M' + r1(x - 6) + ' ' + r1(yw - 11) + 'h12l-6 9z" fill="var(--gwl)" stroke="#fff" stroke-width="1"/>' + Ln(x - 4, yw + 3, x + 4, yw + 3, 'var(--gwl)', 1.2) + Ln(x - 2, yw + 6, x + 2, yw + 6, 'var(--gwl)', 1.2); };
@@ -3367,26 +3434,34 @@ details.ss[open] > summary::after { content: "접기"; }
       if (emb > 0.05 && yTip - yH >= 7) {
         var xd = eR + ww + (anc ? 7 : 9);
         s += Ln(xd, yH, xd, yTip, '#7C8BA3', .8) + Ln(xd - 3, yH, xd + 3, yH, '#7C8BA3', .8) + Ln(xd - 3, yTip, xd + 3, yTip, '#7C8BA3', .8);
-        s += T(xd + 6, (yH + yTip) / 2 + 4, '근입 ' + r1(emb) + 'm' + (rk && !nar ? ' (' + rk + ')' : ''), { fs: nar ? 10.5 : 11, w: 500, c: 'var(--ink-2)', halo: true });
+        var embS = '근입 ' + r1(emb) + 'm' + (rk && !nar ? ' (' + rk + ')' : '');
+        embT = { x: xd + 6, y: (yH + yTip) / 2 + 4, w: tw(embS, nar ? 10.5 : 11) };
+        s += T(embT.x, embT.y, embS, { fs: nar ? 10.5 : 11, w: 500, c: 'var(--ink-2)', halo: true });
       }
+      lg.wall = true;
       note('흙막이 ' + (GE.WALL_N[b.wall] || b.wall) + ' L≈' + r1(Dw) + 'm' + (wi && wi.n ? ' (' + wi.n + ')' : '') + (Dt ? ' + 엄지말뚝 L≈' + r1(Dt) + 'm' + (wi.nT ? ' (' + wi.nT + ')' : '') : '') +
-        (emb > 0.05 ? ' · 굴착 아래 근입 ' + r1(emb) + 'm' + (rk ? ' (' + rk + ')' : '') : ' · 근입 없음 (확인)') + (R.wall ? ' · ' + R.wall.sets + '조' : ''), 'var(--ink)', eL - ww / 2, Math.max(yGL + 30, yW - 14));
+        (emb > 0.05 ? ' · 굴착 아래 근입 ' + r1(emb) + 'm' + (rk ? ' (' + rk + ')' : '') : ' · 근입 없음 (확인)') + (R.wall ? ' · ' + R.wall.sets + '조' : ''), '#3B4E6C', eL - ww / 2, Math.max(yGL + 30, yW - 14),
+        { h: '흙막이 ' + String(GE.WALL_N[b.wall] || b.wall).replace(/ \(.*\)$/, ''), v: 'L≈' + r1(Dw) + 'm' + (wi && wi.n ? ' · ' + wi.n : '') + (Dt ? ' + 엄지말뚝 ' + r1(Dt) + 'm' : ''),
+          s: (emb > 0.05 ? '근입 ' + r1(emb) + 'm' + (rk ? ' (' + rk + ')' : '') : '근입 없음 (확인)') + (R.wall ? ' · ' + R.wall.sets + '조' : '') });
       if (anc) {
         var spA = LIB.support.ANCHOR.sp, dy = aPx * 0.36;
         for (var q = 0; q < nsup; q++) {
           var yq = yd(Math.min(Hx - 0.5, 1.5 + q * spA));
-          s += Ln(eL - ww, yq, eL - ww - aPx, yq + dy, 'var(--accent)', .9) + Ln(eL - ww - aPx * 0.5, yq + dy * 0.5, eL - ww - aPx, yq + dy, 'var(--accent)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
-          s += Ln(eR + ww, yq, eR + ww + aPx, yq + dy, 'var(--accent)', .9) + Ln(eR + ww + aPx * 0.5, yq + dy * 0.5, eR + ww + aPx, yq + dy, 'var(--accent)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
-          s += Rc(eL - ww - 2.5, yq - 1.5, 3, 3, 'var(--accent)') + Rc(eR + ww - 0.5, yq - 1.5, 3, 3, 'var(--accent)');
+          s += Ln(eL - ww, yq, eL - ww - aPx, yq + dy, 'var(--s-sup)', .9) + Ln(eL - ww - aPx * 0.5, yq + dy * 0.5, eL - ww - aPx, yq + dy, 'var(--s-sup)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
+          s += Ln(eR + ww, yq, eR + ww + aPx, yq + dy, 'var(--s-sup)', .9) + Ln(eR + ww + aPx * 0.5, yq + dy * 0.5, eR + ww + aPx, yq + dy, 'var(--s-sup)', 2.6, null, ' stroke-linecap="round" opacity=".75"');
+          s += Rc(eL - ww - 2.5, yq - 1.5, 3, 3, 'var(--s-sup)') + Rc(eR + ww - 0.5, yq - 1.5, 3, 3, 'var(--s-sup)');
         }
-        note('어스앵커 ' + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spA + 'm' + (R.exc.anchor ? ' · 총 ' + fmt(R.exc.anchor.total) + '본 (' + R.exc.anchor.sets + '조)' : ''), 'var(--cp-deep)', Math.max(X0, eL - ww - aPx - 10), yd(1.5) + dy + 4);
+        lg.sup = 'ANCHOR';
+        note('어스앵커 ' + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spA + 'm' + (R.exc.anchor ? ' · 총 ' + fmt(R.exc.anchor.total) + '본 (' + R.exc.anchor.sets + '조)' : ''), 'var(--s-sup)', Math.max(X0, eL - ww - aPx - 10), yd(1.5) + dy + 4,
+          { h: '어스앵커', v: nsup + '단 · 간격 ' + spA + 'm', s: '첫 단 GL−1.5m' + (R.exc.anchor ? ' · ' + fmt(R.exc.anchor.total) + '본 (' + R.exc.anchor.sets + '조)' : '') });
       }
     }
     if (si) {
       /* 차수 SCW : 굴착 외곽 둘레 (부분 지하면 얕은 기초 구간까지 감싼 외곽) */
       var Dc = si.main, yS = yd(Math.min(Dc, maxD - 0.5)), xa = eL - sl - 8, xb = (partial ? Math.max(fR, eR + sl) : eR + sl) + 5;
       s += Rc(xa, yGL - 5, 3, yS - yGL + 5, 'var(--steel)') + Rc(xb, yGL - 5, 3, yS - yGL + 5, 'var(--steel)');
-      note('차수 SCW · L≈' + r1(Dc) + 'm · ' + (partial ? '굴착 · 얕은 기초 구간 외곽 둘레' : '굴착 외곽 둘레'), 'var(--steel)', xa + 1.5, yS - 12);
+      note('차수 SCW · L≈' + r1(Dc) + 'm · ' + (partial ? '굴착 · 얕은 기초 구간 외곽 둘레' : '굴착 외곽 둘레'), 'var(--steel)', xa + 1.5, yS - 12,
+        { h: '차수 SCW', v: 'L≈' + r1(Dc) + 'm', s: partial ? '굴착 · 얕은 기초 외곽 둘레' : '굴착 외곽 둘레' });
     }
     /* 지하층 */
     rows.forEach(function (r) {
@@ -3403,39 +3478,49 @@ details.ss[open] > summary::after { content: "접기"; }
       var spS = LIB.support[b.sup].sp;
       for (var q2 = 0; q2 < nsup; q2++) {
         var yq2 = yd(Math.min(Hx - 0.5, 1.5 + q2 * spS));
-        if (b.sup === 'STRUT') s += Ln(eL, yq2, eR, yq2, 'var(--accent)', 1.3, '9 3', ' opacity=".8"') + Rc(eL, yq2 - 2.5, 5, 5, 'var(--accent)') + Rc(eR - 5, yq2 - 2.5, 5, 5, 'var(--accent)');
-        else { var run = Math.min((yH - yq2) * 0.9, (eR - eL) * 0.3); s += Ln(eL, yq2, eL + run, yH, 'var(--accent)', 1.4, null, ' opacity=".8"') + Ln(eR, yq2, eR - run, yH, 'var(--accent)', 1.4, null, ' opacity=".8"'); }
+        if (b.sup === 'STRUT') s += Ln(eL, yq2, eR, yq2, 'var(--s-sup)', 1.3, '9 3', ' opacity=".8"') + Rc(eL, yq2 - 2.5, 5, 5, 'var(--s-sup)') + Rc(eR - 5, yq2 - 2.5, 5, 5, 'var(--s-sup)');
+        else { var run = Math.min((yH - yq2) * 0.9, (eR - eL) * 0.3); s += Ln(eL, yq2, eL + run, yH, 'var(--s-sup)', 1.4, null, ' opacity=".8"') + Ln(eR, yq2, eR - run, yH, 'var(--s-sup)', 1.4, null, ' opacity=".8"'); }
       }
-      note((b.sup === 'STRUT' ? '스트럿 (버팀보) ' : '레이커 ') + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spS + 'm', 'var(--cp-deep)', b.sup === 'STRUT' ? cx : eL + 16, yd(1.5) + (b.sup === 'STRUT' ? 0 : 14));
+      lg.sup = b.sup;
+      note((b.sup === 'STRUT' ? '스트럿 (버팀보) ' : '레이커 ') + nsup + '단 · 첫 단 GL−1.5m · 간격 ' + spS + 'm', 'var(--s-sup)', b.sup === 'STRUT' ? cx : eL + 16, yd(1.5) + (b.sup === 'STRUT' ? 0 : 14),
+        { h: b.sup === 'STRUT' ? '스트럿 (버팀보)' : '레이커', v: nsup + '단 · 간격 ' + spS + 'm', s: '첫 단 GL−1.5m' });
     }
-    if (TD && b.nB > 0) note('역타 : 지하 슬래브가 지보 · 기준층 ' + R.tdBase.name + ' 슬래브 선타설 → 아래로 굴착 · 슬래브 반복', 'var(--cp-deep)', bL + (bR - bL) / Math.max(3, Math.min(7, Math.round((bR - bL) / 34))), yGL + 17);
+    if (TD && b.nB > 0) note('역타 : 지하 슬래브가 지보 · 기준층 ' + R.tdBase.name + ' 슬래브 선타설 → 아래로 굴착 · 슬래브 반복', 'var(--navy)', bL + (bR - bL) * (nar ? 2 : 1) / Math.max(3, Math.min(7, Math.round((bR - bL) / 34))), yGL + 17,
+      { h: '역타 (Top-Down)', v: '기준층 ' + R.tdBase.name + ' 선타설', s: '지하 슬래브 = 지보' });
     if (R.PRD && b.nB > 0) {
       var nC = Math.max(3, Math.min(7, Math.round((bR - bL) / 34))), yP = yd(prdL), xp0 = 0;
       for (var c = 0; c < nC; c++) { var xp = bL + (bR - bL) * (c + 0.5) / nC; if (!c) xp0 = xp; s += Ln(xp, yGL, xp, yP, '#7C8BA3', 1.5, null, ' opacity=".7"') + Rc(xp - 2.5, yP - 1, 5, 3, '#7C8BA3'); }
-      note('PRD · SPS 기둥 ' + R.PRD.n + '공 · L≈' + r1(R.PRD.L) + 'm (굴착 전 선시공)', 'var(--steel)', xp0 - 12, yP + 4);
+      note('PRD · SPS 기둥 ' + R.PRD.n + '공 · L≈' + r1(R.PRD.L) + 'm (굴착 전 선시공)', 'var(--steel)', xp0 - 12, yP + 4,
+        { h: 'PRD · SPS 기둥', v: R.PRD.n + '공 · L≈' + r1(R.PRD.L) + 'm', s: '굴착 전 선시공' });
     }
     /* 기초 매트 · 얕은 기초 · 파일 */
     var mL = partial ? bL : fL, mR = partial ? bR : fR, yMt = yd(matTop), yMb = yd(matBot);
     if (!partial && b.nB > 0) { mL = Math.max(fL, eL); mR = Math.min(fR, eR); }
     s += Rc(mL, yMt, mR - mL, Math.max(3, yMb - yMt), 'url(#' + id + '-mat)', ' stroke="var(--navy)" stroke-width=".8"');
     var matLab = '매트 t=' + r1(g.tMat) + 'm';
-    if (yMb - yMt >= 15 && mR - mL > tw(matLab, 11.5) + 12) s += T((mL + mR) / 2, (yMt + yMb) / 2 + 4, matLab, { a: 'middle', fs: 11, w: 600, c: 'var(--navy)', halo: '#E3E9F1' });
-    else note('기초 매트 t=' + r1(g.tMat) + 'm', 'var(--ink)', mL + Math.min(34, (mR - mL) * 0.18), (yMt + yMb) / 2);
+    /* 매트가 굴착선 아래까지 내려가면 (굴착 깊이 고정 + 두꺼운 매트) 매트 글자가 '굴착 GL−' 글자와 겹친다 → 그때는 번호 · 카드로 */
+    var mHit = b.nB > 0 && Math.abs((yMt + yMb) / 2 + 4 - (yH + 16)) < 15 && Math.abs((mL + mR) / 2 - (partial ? (eL + eR) / 2 : cx)) < (tw(matLab, 11.5) + tw('굴착 GL−' + r1(Hx) + 'm', 12)) / 2 + 6;
+    if (!mHit && yMb - yMt >= 15 && mR - mL > tw(matLab, 11.5) + 12) s += T((mL + mR) / 2, (yMt + yMb) / 2 + 4, matLab, { a: 'middle', fs: 11, w: 600, c: 'var(--navy)', halo: '#E1E3E6' });
+    else note('기초 매트 t=' + r1(g.tMat) + 'm', 'var(--s-conc)', mL + Math.min(34, (mR - mL) * 0.18), (yMt + yMb) / 2,
+      { h: '기초 매트', v: 't=' + r1(g.tMat) + 'm', s: GE.FOUND_N[R.fType] || '' });
     var yShB = 0;
-    if (partial) { yShB = yd(g.Hs); s += Rc(bR, yGL + 1, fR - bR, Math.max(3, yShB - yGL - 1), 'url(#' + id + '-mat)', ' stroke="var(--navy)" stroke-width=".8"'); note('얕은 기초 (지하 없는 구간) · GL−' + r1(g.Hs) + 'm', 'var(--ink)', bR + (fR - bR) * 0.5, (yGL + yShB) / 2); }
+    if (partial) {
+      yShB = yd(g.Hs); s += Rc(bR, yGL + 1, fR - bR, Math.max(3, yShB - yGL - 1), 'url(#' + id + '-mat)', ' stroke="var(--navy)" stroke-width=".8"');
+      note('얕은 기초 (지하 없는 구간) · GL−' + r1(g.Hs) + 'm', 'var(--s-conc)', bR + (fR - bR) * 0.5, (yGL + yShB) / 2, { h: '얕은 기초', v: 'GL−' + r1(g.Hs) + 'm', s: '지하 없는 구간' });
+    }
     if (pile) {
       var piles = function (a, bnd, yA) { var np = Math.max(4, Math.min(18, Math.round((bnd - a) / 13))), o = ''; for (var p = 0; p < np; p++) { var xq = a + 6 + (bnd - a - 12) * (np > 1 ? p / (np - 1) : 0.5); o += Ln(xq, yA, xq, yd(pTip), '#8C9AB0', .8) + Ln(xq - 1.8, yd(pTip) - 3, xq, yd(pTip), '#8C9AB0', .8) + Ln(xq + 1.8, yd(pTip) - 3, xq, yd(pTip), '#8C9AB0', .8); } return o; };
       s += piles(mL, mR, yMb); if (partial) s += piles(bR + 4, fR, yShB);
       if (pTr) { var yt = yd(pTip) - 10; s += '<path d="M' + r1(mL) + ' ' + r1(yt) + 'h' + r1((partial ? fR : mR) - mL) + '" stroke="#fff" stroke-width="6"/><path d="M' + r1(mL) + ' ' + r1(yt - 3) + 'h' + r1((partial ? fR : mR) - mL) + 'M' + r1(mL) + ' ' + r1(yt + 3) + 'h' + r1((partial ? fR : mR) - mL) + '" stroke="var(--ink-3)" stroke-width=".8"/>'; }
       s += T((mL + (partial ? fR : mR)) / 2, yd(pTip) + 17, (R.fType === 'PHC' ? 'PHC 파일 ' : '현장타설말뚝 ') + fmt(pile.n) + '본' + (pRock ? ' · 지지층 풍화암 GL−' + r1(g.wrockTop) + 'm' : ''), { a: 'middle', fs: 11.5, w: 500, c: 'var(--ink-2)', halo: true });
     }
-    /* 굴착선 */
+    /* 굴착선 (앰버 점선 — 2회 타설 이음 코발트 점선과 따로) */
     if (b.nB > 0) {
-      s += Ln(eL - 10, yH, eR + 10, yH, 'var(--cp)', 1.1, '5 3');
-      s += T(partial ? (eL + eR) / 2 : cx, yH + 16, '굴착 GL−' + r1(Hx) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--cp-deep)', halo: true });
+      s += Ln(eL - 10, yH, eR + 10, yH, 'var(--s-exc)', 1.4, '5 3');
+      s += T(partial ? (eL + eR) / 2 : cx, yH + 16, '굴착 GL−' + r1(Hx) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--s-exc-ink)', halo: true });
     } else {
-      s += Ln(fL - 6, yd(matBot), fR + 6, yd(matBot), 'var(--cp)', 1.1, '5 3');
-      s += T(cx, yd(matBot) + 16, '터파기 GL−' + r1(Hx || matBot) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--cp-deep)', halo: true });
+      s += Ln(fL - 6, yd(matBot), fR + 6, yd(matBot), 'var(--s-exc)', 1.4, '5 3');
+      s += T(cx, yd(matBot) + 16, '터파기 GL−' + r1(Hx || matBot) + 'm', { a: 'middle', fs: 12, w: 600, c: 'var(--s-exc-ink)', halo: true });
     }
     /* 지상층 (입면) */
     /* 코어 띠 : 평면 (조닝 지상 판) 에서 옮긴 코어 위치를 긴 변 방향으로 그대로 — 옥탑은 코어 위에 */
@@ -3490,7 +3575,7 @@ details.ss[open] > summary::after { content: "접기"; }
     }
     if (!nar) {
       s += dimV(22, rows[0].y0, yGL, '#6B7B95', '높이 ' + r1(elTop) + 'm');
-      if (b.nB > 0 && yH - yGL > 60) s += dimV(22, yGL, yH, 'var(--cp-deep)', '굴착 ' + r1(Hx) + 'm');
+      if (b.nB > 0 && yH - yGL > 60) s += dimV(22, yGL, yH, 'var(--s-exc-ink)', '굴착 ' + r1(Hx) + 'm');
     }
     /* 주석 번호 (도면 키노트) */
     notes.forEach(function (n, i) {
@@ -3522,6 +3607,27 @@ details.ss[open] > summary::after { content: "접기"; }
       s += Rc(cP, ym - 10, wP, 20, hot ? 'var(--cp-soft)' : 'var(--band)', ' rx="10"' + (hot ? ' stroke="var(--cp-line)" stroke-width=".8"' : '')) + T(cP + wP / 2, ym + 4, pTxt, { a: 'middle', fs: 11.5, w: hot ? 600 : 400, c: hot ? 'var(--cp-deep)' : 'var(--ink-3)' });
       html += inp + ' style="left:' + cIn + 'px;top:' + r1(ym - 13) + 'px;width:' + wIn + 'px">';
     });
+    /* 기초 (매트) 두께 칸 : 매트 높이 (바로 위 층 칸과 겹치면 그 아래) — 층고 칸과 같은 모양, data-mat → ACTC.secMat (S.adv.mat 0.3 ~ 6m, 비우면 자동) */
+    var rLast = rows[rows.length - 1], yMm = (yMt + yMb) / 2, yMr = Math.max(yMm, (rLast.y0 + rLast.y1) / 2 + (nar ? 22 : 30));
+    /* 근입 글자가 오른쪽 열까지 들어와 있으면 그 아래로 */
+    if (embT && embT.x + embT.w > W - RW - 2 && yMr < embT.y + (nar ? 15 : 19) && yMr > embT.y - (nar ? 26 : 32)) yMr = embT.y + (nar ? 15 : 19);
+    var xm = b.nB > 0 ? (open ? Math.max(mR, eR + (R.scw ? 9 : 0)) : eR + ww + (anc ? aPx + 2 : 0)) : mR;
+    if (partial) xm = Math.max(xm, fR);
+    if (RX - 2 - (xm + 6) > 6) s += Math.abs(yMr - yMm) < 1 ? Ln(xm + 6, yMm, RX - 2, yMm, 'var(--slate-2)', 1, '1.5 3') :
+      '<path d="M' + r1(xm + 6) + ' ' + r1(yMm) + 'H' + r1(RX - 16) + 'L' + r1(RX - 2) + ' ' + r1(yMr) + '" fill="none" stroke="var(--slate-2)" stroke-width="1" stroke-dasharray="1.5 3"/>';
+    var matSet = +((R.inp && R.inp.adv) || {}).mat > 0, matSub = '두께 · ' + (matSet ? '입력' : '자동'), nZf = R.found && R.found.nZ ? R.found.nZ + ' Zone' : '1회';
+    var mInp = '<input class="fh fh-m' + (nar ? ' fh-l' : '') + (matSet ? '' : ' auto') + '" type="number" min="0.3" max="6" step="0.1" inputmode="decimal" data-mat="' + (+g.tMat.toFixed(2)) + '" data-actc="secMat" value="' + (+g.tMat.toFixed(2)) +
+      '" aria-label="기초 매트 두께 (m)" title="기초 매트 두께 (' + (matSet ? '입력값' : '자동') + ') — 0.3 ~ 6m, 비우면 자동 · 바꾸면 바로 공기에 반영"';
+    if (nar) {
+      s += T(cLab, yMr + 4.3, '기초', { fs: 12, w: 600, c: 'var(--navy)' });
+      lst += '<div class="fr fm"><span class="fl">기초<small>' + matSub + '</small></span>' + mInp + '><span class="fp">' + nZf + '</span><span class="fe">GL−' + r1(matBot) + '</span></div>';
+    } else {
+      s += T(cLab, yMr - 1, '기초', { fs: 14, w: 600, c: 'var(--navy)' }) + T(cLab, yMr + 13, matSub, { fs: 11.5, c: 'var(--ink-3)' });
+      s += Rc(cP, yMr - 10, wP, 20, 'var(--band)', ' rx="10"') + T(cP + wP / 2, yMr + 4, nZf, { a: 'middle', fs: 11.5, c: 'var(--ink-3)' });
+      html += mInp + ' style="left:' + cIn + 'px;top:' + r1(yMr - 13) + 'px;width:' + wIn + 'px">';
+    }
+    /* 2회 타설 이음 : 지상 = 층 안 코발트 점선, 지하 = 외벽에 짧은 코발트 표시 — 범례도 그린 쪽만 */
+    lg.two = { up: rows.some(function (r) { return !r.bl && r.gr.n > 1; }), b: rows.some(function (r) { return r.bl && r.gr.n > 1; }) };
     /* 아래 : 가로 축척 + 세로 과장 배율 (지하 · 단일 층 기준) */
     var nice = [5, 10, 20, 25, 50, 100, 200], sm = 200; for (var ni = 0; ni < nice.length; ni++) if (nice[ni] * hs >= 40) { sm = nice[ni]; break; }
     var ysb = Ht - 14, smx = X0 + sm * hs, vx = k / hs;
@@ -3531,9 +3637,15 @@ details.ss[open] > summary::after { content: "접기"; }
     if (vx > 1.15) s += Rc(vxX, ysb - 13, vxW, 18, 'var(--cp-soft)', ' rx="9"') + T(vxX + vxW / 2, ysb, vxT, { a: 'middle', fs: 11, w: 600, c: 'var(--cp-deep)', cls: 'n' });
     else vxW = -14;
     if (vx <= 1.15) s += T(smx + tw(sm + 'm', 10.5) / 2 + 10, ysb, '같은 축척', { fs: 11, c: 'var(--ink-3)' });
-    var nh = notes.map(function (n, i) { return '<li><i style="background:' + n.c + '">' + (i + 1) + '</i><span>' + esc(n.t) + '</span></li>'; }).join('');
+    /* 토목 가정 카드 : 번호 배지 (도면 번호와 같은 색) + 짧은 제목 · 핵심 값 · 보조 한 줄 — 긴 원문은 title */
+    /* 핵심 값 줄바꿈은 '·' 뒤 · '+' 앞에서만 (값 · 단위가 갈라지지 않게) */
+    var kvTxt = function (v) { return esc(v).replace(/ /g, ' ').replace(/ · /g, ' · ').replace(/ \+ /g, ' + '); };
+    var nh = notes.map(function (n, i) {
+      return '<li title="' + esc(n.t) + '"><div class="kn-h"><i style="background:' + n.c + '">' + (i + 1) + '</i><b>' + esc(n.h || n.t) + '</b></div>' +
+        (n.v ? '<span class="kn-v">' + kvTxt(n.v) + '</span>' : '') + (n.s ? '<span class="kn-s">' + esc(n.s) + '</span>' : '') + '</li>';
+    }).join('');
     if (lst) lst = '<div class="fhl" role="group" aria-label="층별 층고 (바꾸면 바로 다시 계산)"><div class="fr hd"><span>층</span><span>층고 (m)</span><span>타설</span><span>바닥 EL</span></div>' + lst + '</div>';
-    return { html: '<div class="sec7" style="width:' + W + 'px;height:' + Ht + 'px">' + svgEl(W, Ht, s, '가정 단면도 · 지상 ' + b.nUp + '층 · 지하 ' + b.nB + '층') + html + '</div>' + lst, groups: G, elTop: elTop, notes: nh, Ht: Ht, vx: vx };
+    return { html: '<div class="sec7" style="width:' + W + 'px;height:' + Ht + 'px">' + svgEl(W, Ht, s, '가정 단면도 · 지상 ' + b.nUp + '층 · 지하 ' + b.nB + '층') + html + '</div>' + lst, groups: G, elTop: elTop, notes: nh, lg: lg, Ht: Ht, vx: vx };
   }
   function renderSection(R) {
     var box = $('#section'), sc = section(R, box.clientWidth || 700);
@@ -3543,15 +3655,25 @@ details.ss[open] > summary::after { content: "접기"; }
     $('#s-chips').innerHTML = '<span>지상 <b>' + b.nUp + '</b>층' + (b.nPH ? ' + 옥탑 <b>' + b.nPH + '</b>' : '') + ' · 지하 <b>' + b.nB + '</b>층</span>' +
       '<span>높이 <b>' + r1(sc.elTop) + '</b>m' + (b.nB > 0 ? ' · 굴착 GL−<b>' + r1(R.geo.H) + '</b>m' : '') + '</span>' +
       (two.length ? '<span class="hot" title="' + esc(fr.dc ? '층고 ' + LIB.dc.split + 'm 이상 = 수직재 2회' : fr.coreRows.length ? '코어 ' + LIB.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + LIB.frame.split + 'm 이상 = 수직재 2회 (층 사이클 ×' + r2(1 + LIB.frame.vShare) + ')') + '">2회 타설 : ' + esc(two.map(function (x) { return x.label; }).join(', ')) + '</span>' : '');
-    var sw = function (k) { return '<svg width="18" height="12" aria-hidden="true"><rect width="18" height="12" rx="3" fill="var(--' + k + ')" opacity=".6"/><rect width="18" height="12" rx="3" fill="url(#o7s-' + k + ')"/></svg>'; };
-    $('#s-lg').innerHTML = LKS.map(function (k, i) { return '<span>' + sw(k) + LNM[i] + '</span>'; }).join('') +
-      '<span><svg width="22" height="12" aria-hidden="true"><path d="M1 6h20" stroke="var(--gwl)" stroke-width="1.6" stroke-dasharray="5 3"/></svg>지하수위</span>' +
-      '<span><svg width="22" height="12" aria-hidden="true"><path d="M1 6h20" stroke="var(--cp)" stroke-width="1.6" stroke-dasharray="5 3"/></svg>굴착선 · 타설 이음</span>' +
-      '<span><svg width="22" height="12" aria-hidden="true"><path d="M2 3l18 6" stroke="var(--cp)" stroke-width="1.3"/><path d="M11 6l9 3" stroke="var(--cp)" stroke-width="3.2" stroke-linecap="round" opacity=".85"/></svg>지보</span>' +
-      '<span><svg width="18" height="12" aria-hidden="true"><rect width="18" height="12" rx="3" fill="url(#o7s-mat)" stroke="var(--ink-2)" stroke-width=".8"/></svg>매트</span>';
+    /* 범례 : 도면에 실제로 그린 것만, 도면과 같은 색 · 선 (지층 = 흙 · 암 색, 수위 = 물빛, 굴착선 = 앰버, 2회 타설 이음 = C.P 코발트, 지보 = 틸, 매트 = 콘크리트) */
+    var L = sc.lg, ic = function (w, inner) { return '<svg width="' + w + '" height="14" viewBox="0 0 ' + w + ' 14" aria-hidden="true">' + inner + '</svg>'; };
+    var sw = function (k) { return ic(18, '<rect y="1" width="18" height="12" fill="var(--' + k + ')" opacity=".9"/><rect y="1" width="18" height="12" fill="url(#o7s-' + k + ')"/>'); };
+    var supI = L.sup === 'ANCHOR' ? '<path d="M3 4l18 6" stroke="var(--s-sup)" stroke-width=".9"/><path d="M12 7l9 3" stroke="var(--s-sup)" stroke-width="2.6" stroke-linecap="round" opacity=".75"/><rect x="1.5" y="2.5" width="3" height="3" fill="var(--s-sup)"/>' :
+      L.sup === 'STRUT' ? '<path d="M3 7h18" stroke="var(--s-sup)" stroke-width="1.3" stroke-dasharray="9 3" opacity=".8"/><rect x="1" y="4.5" width="5" height="5" fill="var(--s-sup)"/><rect x="18" y="4.5" width="5" height="5" fill="var(--s-sup)"/>' :
+      '<path d="M3 2l16 11" stroke="var(--s-sup)" stroke-width="1.4" opacity=".8"/>';
+    $('#s-lg').innerHTML = '<span class="lg-st">' + L.st.map(function (i) { return '<span>' + sw(LKS[i]) + LNM[i] + '</span>'; }).join('') + '</span>' +
+      (L.gwl ? '<span>' + ic(24, '<path d="M1 9h22" stroke="var(--gwl)" stroke-width="1.4" stroke-dasharray="8 4"/><path d="M7 1h8l-4 6z" fill="var(--gwl)"/>') + '지하수위</span>' : '') +
+      '<span>' + ic(24, '<path d="M1 7h22" stroke="var(--s-exc)" stroke-width="1.4" stroke-dasharray="5 3"/>') + (b.nB > 0 ? '굴착선' : '터파기선') + '</span>' +
+      (L.two.up || L.two.b ? '<span>' + (L.two.up ? ic(24, '<path d="M1 7h22" stroke="var(--cp)" stroke-width="1.1" stroke-dasharray="5 3"/>') : '') +
+        (L.two.b ? ic(14, '<rect x="4.5" y="0" width="5" height="14" fill="url(#o7s-conc)"/><path d="M4.5 0v14" stroke="#8C9AB0" stroke-width=".7"/><path d="M1.5 7h11" stroke="var(--cp)" stroke-width="1.3"/>') : '') + '2회 타설 이음</span>' : '') +
+      (L.wall ? '<span>' + ic(14, '<rect x="5" y="0" width="5" height="14" rx="1" fill="#3B4E6C"/>') + '흙막이</span>' : '') +
+      (L.sup ? '<span>' + ic(24, supI) + (L.sup === 'ANCHOR' ? '어스앵커' : L.sup === 'STRUT' ? '스트럿' : '레이커') + '</span>' : '') +
+      '<span>' + ic(18, '<rect x=".4" y="1.4" width="17.2" height="11.2" fill="url(#o7s-mat)" stroke="var(--navy)" stroke-width=".8"/>') + '기초 매트</span>';
   }
   function onSecEdit(e) {
     var el = e.target; if (!el || !el.classList || !el.classList.contains('fh') || !lastR || !secG) return;
+    /* 기초 (매트) 두께 칸 : 바뀜 (change) 은 ACTC.secMat 이 받고, Enter 만 여기서 넘긴다 */
+    if (el.hasAttribute('data-mat')) { if (e.type === 'keydown') ACTC.secMat(el, e); return; }
     if (!document.body.contains(el)) return;
     var gi = +el.getAttribute('data-g'), gr = secG[gi], h = parseFloat(el.value);
     if (!gr) return;
@@ -3565,6 +3687,22 @@ details.ss[open] > summary::after { content: "접기"; }
       if (kd) { var nx = document.querySelector('#section input[data-floor-h="' + lab + '"]'); if (nx) nx.focus(); }
     }, 0);
   }
+  /* 기초 (매트) 두께 칸 : 0.3 ~ 6m 로 맞추고, 비우면 자동 (지상 층수 기준) · 0 이하 · 숫자 아님 = 원래 값으로 */
+  ACTC.secMat = function (el, e) {
+    if (!lastR || !document.body.contains(el)) return;
+    var raw = String(el.value).trim(), x = parseFloat(raw), cur = lastR.geo.tMat, was = S.adv && +S.adv.mat > 0 ? +S.adv.mat : null, v;
+    if (raw === '') v = null;
+    else if (!isFinite(x) || x <= 0) { el.value = +cur.toFixed(2); return; }
+    else v = Math.round(Math.max(0.3, Math.min(6, x)) * 100) / 100;
+    if (v === was || (v != null && was == null && Math.abs(v - cur) < 1e-9)) { el.value = +cur.toFixed(2); return; }
+    var kd = e && e.type === 'keydown';
+    /* 다시 그리기는 이벤트가 끝난 뒤 (blur 중 DOM 교체 오류 방지) */
+    setTimeout(function () {
+      S.adv = S.adv || {}; S.adv.mat = v; if (current) markPreset('');
+      GK.fill(document, S); recompute();
+      if (kd) { var nx = document.querySelector('#section input[data-mat]'); if (nx) nx.focus(); }
+    }, 0);
+  };
   document.addEventListener('change', onSecEdit);
   document.addEventListener('change', function (e) { var ac = e.target && e.target.closest && e.target.closest('[data-actc]'); if (ac && ACTC[ac.getAttribute('data-actc')]) ACTC[ac.getAttribute('data-actc')](ac, e); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.classList && e.target.classList.contains('fh')) { e.preventDefault(); onSecEdit(e); } });
@@ -3912,34 +4050,208 @@ details.ss[open] > summary::after { content: "접기"; }
   }
   function renderZone(R) { var box = $('#zone'), z = zoning(R, box.clientWidth || 520); box.innerHTML = z.html; $('#z-lg').innerHTML = z.legend; widths.zone = box.clientWidth; }
 
-  /* ───────── 주요 판단 (영향 큰 것 먼저) */
+  /* ───────── 주요 가정사항 및 조건 : 영향 큰 6개 = 같은 크기 카드 (2열 3행), 나머지 = 한 줄 표.
+     칸을 누르면 그 자리에서 편집 (선택 · 숫자) → S 갱신 → 다시 계산. Esc = 취소 · Enter / 바깥 클릭 = 적용.
+     계산값 (기준층 사이클 · 분할 타설 · 기초 Zone) 은 편집 대신 관련 입력 (조닝 · 단면 층고) 으로 이동 */
+  var KF_N = 6, KF_ORD = ['sup', 'found', 'cyc', 'split', 'lim', 'H', 'wall', 'ground', 'mat', 'gwl', 'core', 'fz', 'pile', 'scw'];
+  var KF_SUP = { ANCHOR: '어스앵커', STRUT: '스트럿', RAKER: '레이커', OPEN: '오픈컷', SLAB: '역타 슬래브 지지' };
+  var KI_ED = '<svg class="ki" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.3 3.2l2.5 2.5-6.7 6.7-3.2.7.7-3.2zM9 4.5l2.5 2.5"/></svg>';
+  var KI_GO = '<svg class="ki" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.6 10.6 8l-4.4 4.4"/></svg>';
+  var kfIt = {}, kfEd = null, kfFoc = null;
+  function kfOptsOf(id) { var el = document.getElementById(id); return el ? Array.prototype.map.call(el.options, function (o) { return [o.value, o.textContent]; }) : []; }
+  function kfNumF(key, lab, u, cur, ph, o) { o = o || {}; return { key: key, lab: lab, u: u, cur: cur, ph: ph, step: o.step || 'any', min: o.min || 0, int: !!o.int, pos: !!o.pos, pre: o.pre || '' }; }
   function renderKf(R) {
-    var g = R.geo, b = R.basic, fr = R.frame, A = R.inp.adv || {}, F = [], L = LIB;
-    function add(k, v, why, hi) { F.push({ k: k, v: v, why: why, hi: !!hi }); }
-    if (b.nB > 0) add('굴착 깊이', 'GL−' + r1(g.H) + 'm', A.H > 0 ? '입력값' : (b.seq === 'TD' ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m');
+    var g = R.geo, b = R.basic, fr = R.frame, A = S.adv || {}, L = LIB, td = b.seq === 'TD', open = b.sup === 'OPEN' && b.nB > 0, F = {};
+    function add(id, k, v, why, ed, vh) { F[id] = { id: id, k: k, v: v, vh: vh, why: why, ed: ed || null }; }
+    function sel(opts, cur, grp) { cur = String(cur); return { t: 'sel', opts: opts, cur: cur, grp: grp }; }
+    function nums(f) { return { t: 'num', f: f }; }
+    function go(to, f, tip) { return { t: 'go', to: to, f: f, tip: tip }; }
+    function pos(v) { return +v > 0 ? +v : ''; }
     if (b.nB > 0) {
-      if (R.exc && R.exc.ns > 0) { var sp = L.support[b.sup].sp, an = R.exc.anchor; add(GE.SUP_N[b.sup], R.exc.ns + '단', '굴착 ' + r1(g.H) + 'm · 첫 단 1.5m · 간격 ' + sp + 'm' + (an ? ' · 단당 ' + fmt(an.perStage) + '본, 총 ' + fmt(an.total) + '본 · ' + an.sets + '조' : ''), true); }
-      else if (b.sup === 'OPEN') add('지보', '오픈컷 1:' + L.exc.slope, '사면 폭 ' + r1(g.slopeW) + 'm 필요 · 흙막이 벽체 없음' + (R.scw ? ' (외곽 SCW 차수만)' : ''), true);
-      else if (b.seq === 'TD') add('지보', '역타 슬래브 지지', '기준층 ' + R.tdBase.name + ' 슬래브를 먼저 치고 아래층 굴착 · 슬래브 반복', true);
+      var sv;
+      if (td) sv = ['역타 슬래브 지지', '기준층 ' + R.tdBase.name + ' 슬래브 선행 → 하향 굴착 · 슬래브 반복'];
+      else if (open) sv = ['오픈컷 1:' + L.exc.slope, '사면 폭 ' + r1(g.slopeW) + 'm 필요 · 흙막이 벽체 없음' + (R.scw ? ' (외곽 SCW 차수만)' : '')];
+      else {
+        var ns = R.exc && R.exc.ns, an = R.exc && R.exc.anchor, sp = (L.support[b.sup] || {}).sp;
+        sv = [KF_SUP[b.sup] + (ns > 0 ? ' · ' + ns + '단' : ''), '굴착 ' + r1(g.H) + 'm' + (ns > 0 ? ' · 첫 단 1.5m · 간격 ' + sp + 'm' + (an ? ' · 단당 ' + fmt(an.perStage) + '본, 총 ' + fmt(an.total) + '본 · ' + an.sets + '조' : '') : '')];
+      }
+      add('sup', '지보', sv[0], sv[1], sel(kfOptsOf('in-sup'), td ? 'SLAB' : b.sup, function (v) { return v === 'SLAB' ? '역타' : '순타'; }));
+      add('H', '굴착 깊이', 'GL−' + r1(g.H) + 'm', A.H > 0 ? '입력값' : (td ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m',
+        nums([kfNumF('adv.H', '굴착 깊이', 'm', pos(A.H), A.H > 0 ? '자동' : r1(g.H), { pos: true, pre: 'GL−' })]));
+      var wCur = open && b.wall !== 'SCW' ? 'NONE' : b.wall, wO = kfOptsOf('in-wall').filter(function (o) { return o[0] === wCur || !(td && o[0] === 'NONE'); });
+      if (R.wall) add('wall', '흙막이', GE.WALL_N[b.wall], R.wall.qty + ' · ' + R.wall.sets + '조', sel(wO, wCur));
+      else if (open) add('wall', '흙막이', b.wall === 'SCW' ? 'SCW (차수)' : '없음 (오픈컷)', b.wall === 'SCW' && R.scw ? R.scw.qty : '사면 개착 · 벽체 없음', sel(wO, wCur));
+      if (open && b.wall !== 'SCW') add('scw', '차수', R.scw ? 'SCW 병행' : '없음', R.scw ? R.scw.qty : '오픈컷 외곽 차수 없음', sel([['1', 'SCW 병행'], ['0', '없음']], S.scw ? '1' : '0'));
+      add('gwl', '지하수위', isFinite(g.gwl) ? 'GL−' + r1(g.gwl) + 'm' : '없음', isFinite(g.gwl) ? (g.gwl < g.H ? '굴착 바닥이 수위보다 ' + r1(g.H - g.gwl) + 'm 아래 → 차수 · 영구배수 검토' : '굴착 바닥보다 깊음') : '입력 없음',
+        nums([kfNumF('gwl', '지하수위', 'm', S.gwl == null ? '' : S.gwl, '없음', { pre: 'GL−' })]));
     }
-    if (R.wall) add('흙막이', GE.WALL_N[b.wall], R.wall.qty + ' · ' + R.wall.sets + '조');
-    if (R.scw) add('차수', 'SCW', R.scw.qty);
-    add('기초 형식', GE.FOUND_N[R.fType], R.fWhy, true);
-    add('매트 두께', r1(g.tMat) + 'm', A.mat > 0 ? '입력값' : '자동 = 0.9 + 0.045 × 지상 ' + b.nUp + '층' + (b.use === 'dc' ? ' + DC 0.6' : '') + ' (1.2 ~ 3.5)');
-    if (R.pile) add('파일', fmt(R.pile.n) + '본', R.pile.qty.replace(/^[\d,]+본 ?/, '') + ' · ' + R.pile.basis);
-    add('기초 Zone', R.found.nZ + ' Zone · ' + R.found.teams + '팀', 'Zone ' + fmt(R.found.vZ) + '㎥ · 철근 ' + r1(R.found.reb) + 't → 사이클 ' + r1(R.found.cyc) + 'WD');
-    add('지반', R.ground.name + (R.ground.assumed ? ' (가정)' : ''), '풍화암 GL−' + r1(g.wrockTop) + 'm · 연암 GL−' + r1(g.rockTop) + 'm', R.ground.assumed);
-    if (isFinite(g.gwl) && b.nB > 0) add('지하수위', 'GL−' + r1(g.gwl) + 'm', g.gwl < g.H ? '굴착 바닥이 수위보다 ' + r1(g.H - g.gwl) + 'm 아래 → 차수 · 영구배수 검토' : '굴착 바닥보다 깊음');
+    var fCur = S.found || 'AUTO';
+    add('found', '기초 형식', GE.FOUND_N[R.fType], (fCur === 'AUTO' ? '자동 : ' : '') + R.fWhy, sel(kfOptsOf('in-found').filter(function (o) { return o[0] === fCur || !(td && o[0] === 'PHC'); }), fCur));
+    add('mat', '매트 두께', r1(g.tMat) + 'm', A.mat > 0 ? '입력값' : '자동 = 0.9 + 0.045 × 지상 ' + b.nUp + '층' + (b.use === 'dc' ? ' + DC 0.6' : '') + ' (1.2 ~ 3.5)',
+      nums([kfNumF('adv.mat', '매트 두께', 'm', pos(A.mat), A.mat > 0 ? '자동' : r1(g.tMat), { step: 0.1, pos: true })]));
+    if (R.pile) add('pile', '파일', fmt(R.pile.n) + '본', R.pile.qty.replace(/^[\d,]+본 ?/, '') + ' · ' + R.pile.basis, nums([kfNumF('adv.pileN', '파일 본수', '본', pos(A.pileN), A.pileN > 0 ? '자동' : R.pile.n, { step: 1, int: true, pos: true })]));
+    add('fz', '기초 Zone', R.found.nZ + ' Zone · ' + R.found.teams + '팀', 'Zone ' + fmt(R.found.vZ) + '㎥ · 철근 ' + r1(R.found.reb) + 't → 사이클 ' + r1(R.found.cyc) + 'WD', go('sec-zone', '[data-team="fTeams"]', '철근팀 수는 조닝에서'));
+    var gc = $$('[data-chips][data-k="ground"]'); gc = gc[gc.length - 1];
+    add('ground', '지반', R.ground.name + (R.ground.assumed ? ' (가정)' : ''), '풍화암 GL−' + r1(g.wrockTop) + 'm · 연암 GL−' + r1(g.rockTop) + 'm',
+      sel(gc ? $$('[data-v]', gc).map(function (x) { return [x.getAttribute('data-v'), x.textContent]; }) : [], S.ground || 'AUTO'));
     var t = GK.tactOf(R), ty = fr.typ;
-    add('기준층 사이클', m1(t) + ' WD/층', ty.dc ? 'DC 사이클 · 외주부 ' + ty.dc.P.N + ' / 코어 ' + ty.dc.C.N + ' Zone · ' + ty.dc.gov + ' 지배' : '바닥 ' + ty.slab.Z + ' Zone ÷ ' + ty.slab.T + '팀' + (ty.core ? ' · 코어 ' + ty.core.Z + ' Zone' : '') + ' · 주공정 ' + fr.gov, true);
+    add('cyc', '기준층 사이클', m1(t) + ' WD/층', ty.dc ? 'DC 사이클 · 외주부 ' + ty.dc.P.N + ' / 코어 ' + ty.dc.C.N + ' Zone · ' + ty.dc.gov + ' 지배' : '바닥 ' + ty.slab.Z + ' Zone ÷ ' + ty.slab.T + '팀' + (ty.core ? ' · 코어 ' + ty.core.Z + ' Zone' : '') + ' · 주공정 ' + fr.gov, go('sec-zone', '[data-team="uTeams"]', '팀 수 · Zone 은 조닝에서'));
     var two = GK.secLevels(R).filter(function (x) { return x.kind !== 'b' && x.n > 1; });
-    add('분할 타설 층', two.length ? two.map(function (x) { return x.label; }).join(', ') : '없음', fr.dc ? '층고 ' + L.dc.split + 'm 이상 = 수직재 2회 (그 아래 1회)' : fr.coreRows.length ? '코어 ' + L.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + L.frame.split + 'm 이상 = 수직재 2회 · 층 사이클 × ' + r2(1 + L.frame.vShare), two.length > 0);
-    if (fr.coreRows.length) add('코어 거푸집', fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼', R.inp.coreSys && R.inp.coreSys !== 'AUTO' ? '선택값' : '자동 : 지상 15층 이상 ACS');
-    if (b.seq === 'TD') add('역타 구조제한', '기초 전 ' + fr.lim + 'F · 수직재 전 ' + fr.lim2 + 'F', R.tags.lim === '기본' ? '모를 때 기본값 (지하 + 지상 25 · 32개층)' : '입력값', true);
-    var hi = F.filter(function (x) { return x.hi; }), lo = F.filter(function (x) { return !x.hi; });
-    $('#kf').innerHTML = (hi.length ? '<div class="kf-hi">' + hi.map(function (x) { return '<div class="kc" title="' + esc(x.why) + '"><span class="kk">' + esc(x.k) + '</span><b class="kv">' + esc(x.v) + '</b><span class="kw">' + esc(x.why) + '</span></div>'; }).join('') + '</div>' : '') +
-      (lo.length ? '<dl class="kf-lo">' + lo.map(function (x) { return '<div title="' + esc(x.k + ' : ' + x.why) + '"><dt>' + esc(x.k) + '</dt><dd>' + esc(x.v) + '</dd></div>'; }).join('') + '</dl>' : '');
+    add('split', '분할 타설 층', two.length ? two.map(function (x) { return x.label; }).join(', ') : '없음', fr.dc ? '층고 ' + L.dc.split + 'm 이상 = 수직재 2회 (그 아래 1회)' : fr.coreRows.length ? '코어 ' + L.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + L.frame.split + 'm 이상 = 수직재 2회 · 층 사이클 × ' + r2(1 + L.frame.vShare), go('sec-sec', two.length ? 'input[data-floor-h="' + two[0].label + '"]' : '', '층고는 단면에서'));
+    if (fr.coreRows.length) add('core', '코어 거푸집', fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼', S.coreSys && S.coreSys !== 'AUTO' ? '선택값' : '자동 : 지상 15층 이상 ACS', sel(kfOptsOf('in-core'), S.coreSys || 'AUTO'));
+    if (td) {
+      var l1 = Math.max(1, L.td.limTot1 - b.nB), l2 = Math.max(fr.lim, L.td.limTot2 - b.nB);   /* 비우면 엔진 자동값 (수직재 전 = max(기초 전, 지하 + 지상 32 − 지하)) */
+      add('lim', '역타 구조제한', '기초 전 ' + fr.lim + 'F · 수직재 전 ' + fr.lim2 + 'F', '기초 · 지하 수직재 완료 전 허용 지상층' + (R.tags.lim === '기본' ? ' — 기본값 (지하 + 지상 ' + L.td.limTot1 + ' · ' + L.td.limTot2 + '개층)' : ''),
+        nums([kfNumF('lim', '기초 전', 'F', pos(S.lim), l1, { step: 1, int: true, min: 1 }), kfNumF('lim2', '수직재 전', 'F', pos(S.lim2), l2, { step: 1, int: true, min: 1 })]),
+        '<small>기초<i class="lx"> 전</i></small> ' + fr.lim + 'F<small class="lx"> ·</small> <small>수직재<i class="lx"> 전</i></small> ' + fr.lim2 + 'F');
+    }
+    var ids = KF_ORD.filter(function (id) { return F[id]; }), hi = ids.slice(0, KF_N), lo = ids.slice(KF_N);
+    /* 편집 중에 다른 동작 (예 : 조닝 팀수 버튼) 이 먼저 다시 그리면 고친 값을 버리지 않고 반영 → 곧 다시 계산 (사례를 바꾼 경우는 버림) */
+    var pe = kfEd; kfEd = null;
+    if (pe && pe.dirty && pe.S === S && pe.box.isConnected) { try { kfSet(pe.id, kfVals(pe.box)); } catch (er) { if (window.console) console.error(er); } }
+    kfIt = F;
+    function kind(x) { return x.ed ? (x.ed.t === 'go' ? ' go' : ' can') : ''; }
+    function icon(x) { return x.ed ? (x.ed.t === 'go' ? KI_GO : KI_ED) : ''; }
+    function wrap(x, body, cls) {
+      var e = x.ed, tip = x.why + (e && e.t === 'go' ? ' — ' + e.tip : '');
+      if (!e) return '<div class="' + cls + '" title="' + esc(tip) + '">' + body + '</div>';
+      return '<button type="button" class="' + cls + '"' + (e.t === 'go' ? ' data-act="kfGo" data-to="' + e.to + '" data-f="' + esc(e.f || '') + '"' : ' data-act="kfEdit"') + ' title="' + esc(tip) + '" aria-label="' + esc(x.k + ' ' + x.v + ' — ' + (e.t === 'go' ? e.tip : '수정')) + '">' + body + '</button>';
+    }
+    var h = '<div class="kf-hi">' + hi.map(function (id) { var x = F[id]; return '<div class="kc' + kind(x) + '" data-kf="' + id + '">' + wrap(x, '<span class="kk"><span class="kt">' + esc(x.k) + '</span>' + icon(x) + '</span><b class="kv">' + (x.vh || esc(x.v)) + '</b><span class="kw">' + esc(x.why) + '</span>', 'kc-b') + '</div>'; }).join('') + '</div>';
+    if (lo.length) h += '<ul class="kf-lo">' + lo.map(function (id) { var x = F[id]; return '<li class="' + kind(x).trim() + '" data-kf="' + id + '">' + wrap(x, '<span class="kr-k">' + esc(x.k) + '</span><span class="kr-v">' + esc(x.v) + '</span>' + icon(x), 'kr') + '</li>'; }).join('') + '</ul>';
+    $('#kf').innerHTML = h;
+    if (kfFoc) { var fb = $('#kf [data-kf="' + kfFoc + '"] button'); kfFoc = null; if (fb) { try { fb.focus({ preventScroll: true }); } catch (er) { fb.focus(); } } }
   }
+  /* 칸 편집기 : 선택 (select · 마우스로 고르면 바로 적용) · 숫자 (Enter 적용).
+     마우스 · 터치로 열면 목록을 바로 펼치고, 키보드로 열면 펼치지 않는다 (화살표로 고르고 Enter · Esc 가 그대로 듣게) */
+  function kfOpen(id, pick) {
+    if (kfEd) kfCommit(false);
+    var x = kfIt[id], box = $('#kf [data-kf="' + id + '"]');
+    if (!x || !x.ed || x.ed.t === 'go' || !box) return;
+    var e = x.ed, h = '<span class="kk"><span class="kt">' + esc(x.k) + '</span></span><span class="ke' + (e.t === 'num' && e.f.length > 1 ? ' two' : '') + '">';
+    if (e.t === 'sel') {
+      var grp = null, body = '';
+      e.opts.forEach(function (o) {
+        var gn = e.grp ? e.grp(o[0]) : null;
+        if (gn !== grp) { if (grp) body += '</optgroup>'; if (gn) body += '<optgroup label="' + esc(gn) + '">'; grp = gn; }
+        body += '<option value="' + esc(o[0]) + '"' + (o[0] === e.cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+      });
+      if (grp) body += '</optgroup>';
+      h += '<select aria-label="' + esc(x.k) + '">' + body + '</select>';
+    } else {
+      h += e.f.map(function (f) {
+        var two = e.f.length > 1;
+        return '<label class="ke-n">' + (two ? '<small>' + esc(f.lab) + '</small>' : '') + '<span class="ke-i">' + (f.pre ? '<i class="kp">' + esc(f.pre) + '</i>' : '') + '<input type="number" step="' + f.step + '" min="' + f.min + '" inputmode="' + (f.int ? 'numeric' : 'decimal') + '" value="' + esc(f.cur == null ? '' : f.cur) + '" placeholder="' + esc(f.ph) + '" aria-label="' + esc(two ? x.k + ' · ' + f.lab : x.k) + '"><i>' + esc(f.u) + '</i></span></label>';
+      }).join('');
+    }
+    box.innerHTML = h + '</span>'; box.classList.add('ed');
+    var ed = kfEd = { id: id, box: box, kbd: false, dirty: false, S: S }, c0 = box.querySelector('select, input'), sl = box.querySelector('select');
+    box.addEventListener('keydown', kfKey);
+    box.addEventListener('focusout', kfOut);
+    box.addEventListener('input', function () { ed.dirty = true; });
+    /* 편집기 안의 글자 · 단위를 눌러도 편집이 닫히지 않게 (단위 · 칸 둘레를 누르면 그 숫자 칸으로) */
+    box.addEventListener('mousedown', function (e) {
+      if (/^(INPUT|SELECT|OPTION)$/.test(e.target.tagName)) return;
+      e.preventDefault(); var w = e.target.closest('.ke-n'), fi = w && w.querySelector('input'); if (fi) fi.focus();
+    });
+    if (sl) sl.addEventListener('change', function () { ed.dirty = true; if (kfEd === ed && !ed.kbd) kfCommit(true); });
+    if (c0) { try { c0.focus({ preventScroll: true }); } catch (er) { c0.focus(); } if (c0.tagName === 'INPUT') c0.select(); }
+    if (pick && sl && sl.showPicker) { try { sl.showPicker(); } catch (er) {} }
+  }
+  function kfKey(e) {
+    var ed = kfEd; if (!ed || !ed.box.contains(e.target)) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); kfCancel(); }
+    else if (e.key === 'Enter') { e.preventDefault(); kfCommit(true); }
+    else if (e.target.tagName === 'SELECT' && !/^(Tab|Shift| |F4)$/.test(e.key) && !e.altKey) ed.kbd = true;   /* 화살표로 고르는 중엔 Enter · 바깥으로 나갈 때 적용 (목록을 펼쳐 고르면 바로) */
+  }
+  /* 누르고 있는 중인지 (누른 시각 · 손을 떼거나 키를 누르면 0) — 바깥을 누른 채로 포커스가 빠지면 손을 뗀 뒤 = 그 클릭이 처리된 뒤 적용 */
+  var kfPtr = 0;
+  document.addEventListener('pointerdown', function () { kfPtr = Date.now(); }, true);
+  ['pointerup', 'pointercancel', 'keydown'].forEach(function (t) { document.addEventListener(t, function () { kfPtr = 0; }, true); });
+  function kfOut(e) {
+    var ed = kfEd; if (!ed) return;
+    var to = e.relatedTarget; if (to && ed.box.contains(to)) return;
+    function commit() { if (kfEd === ed) kfCommit(false); }
+    /* 바깥을 눌러 빠진 경우 : 손을 뗀 뒤 그 클릭까지 처리되고 나서 적용 (다른 칸이면 kfOpen 이 이 편집을 적용하고 열고,
+       클릭이 다시 그리면 renderKf 가 고친 값을 반영 · 손 뗌을 놓쳐도 2초 뒤 적용). 키보드 (Tab) · 창 전환 : 입력 칸이면 바로, 그 밖은 조금 뒤에 */
+    if (kfPtr && Date.now() - kfPtr < 2000) {
+      var tm = 0, once = function () { clearTimeout(tm); document.removeEventListener('pointerup', once, true); document.removeEventListener('pointercancel', once, true); setTimeout(commit, 0); };
+      tm = setTimeout(once, 2000);
+      document.addEventListener('pointerup', once, true); document.addEventListener('pointercancel', once, true);
+      return;
+    }
+    var txt = to && !$('#kf').contains(to) && to.matches && to.matches('input, select, textarea');
+    setTimeout(commit, txt ? 0 : 260);
+  }
+  /* 숫자로 읽을 수 없는 입력 (예 : '-' 만) 은 NaN → 그 칸은 바꾸지 않음 (비운 것 = 자동 과 구분) */
+  function kfVals(box) { return $$('select, input', box).map(function (c) { return c.validity && c.validity.badInput ? NaN : c.value; }); }
+  function kfCommit(refocus) {
+    var ed = kfEd; if (!ed) return; kfEd = null;
+    var vals = kfVals(ed.box), ch = false;
+    if (ed.dirty && ed.S === S) { try { ch = kfSet(ed.id, vals); } catch (er) { if (window.console) console.error(er); } }
+    var a = document.activeElement, kf = $('#kf'), keep = a && !ed.box.contains(a) && kf.contains(a) ? a.closest('[data-kf]') : null;
+    var out = a && a !== document.body && !kf.contains(a) ? a : null;
+    kfFoc = refocus ? ed.id : keep ? keep.getAttribute('data-kf') : null;
+    if (ch) recompute();
+    if (ed.box.isConnected && lastR) renderKf(lastR);
+    /* 편집 중 바깥의 입력 칸 (예 : 단면 층고) 을 눌렀는데 다시 그리기로 그 칸이 바뀌었으면 같은 칸으로 포커스를 돌려준다 */
+    if (out && !out.isConnected) {
+      var fh = out.getAttribute('data-floor-h'), na = out.id ? document.getElementById(out.id) : fh ? $('#section input[data-floor-h="' + fh + '"]') : null;
+      if (na) { try { na.focus({ preventScroll: true }); } catch (er) { na.focus(); } }
+    }
+  }
+  function kfCancel() { var ed = kfEd; if (!ed) return; kfEd = null; kfFoc = ed.id; if (lastR) renderKf(lastR); }
+  /* 값 반영 : 공사 순서 · 지보 · 흙막이는 엔진 규칙에 맞춰 함께 (슬래브 지지 = 역타, 흙막이 없음 = 오픈컷) */
+  function kfSet(id, vals) {
+    var x = kfIt[id], e = x && x.ed; if (!e) return false;
+    if (e.t === 'num') {
+      var last = null;
+      e.f.forEach(function (f, i) {
+        var raw = vals[i], v = raw === '' || raw == null ? null : parseFloat(raw);
+        if (v != null) { if (!isFinite(v) || v < f.min) return; if (f.int) v = Math.round(v); if (f.pos && v <= 0) v = null; }
+        var p = f.key.split('.'), o = getP(S, p);
+        if ((o == null || o === '' ? '' : String(+o)) === (v == null ? '' : String(v))) return;
+        setP(S, p, v); last = f.key;
+      });
+      if (!last) return false;
+      onField(last, getP(S, last.split('.')));
+      return true;
+    }
+    var v = vals[0]; if (v == null || v === '' || v === e.cur) return false;
+    if (id === 'sup') {
+      if (v === 'SLAB') { S.seq = 'TD'; if (S.wall === 'NONE') S.wall = 'CIP'; }
+      else { S.seq = 'BU'; S.support = v; if (v === 'OPEN') { if (S.wall !== 'SCW') S.wall = 'NONE'; } else if (S.wall === 'NONE') S.wall = 'CIP'; }
+      onField('seq', S.seq);
+    } else if (id === 'wall') {
+      S.wall = v;
+      if (S.seq !== 'TD') { if (v === 'NONE') S.support = 'OPEN'; else if (v !== 'SCW' && S.support === 'OPEN') S.support = 'ANCHOR'; }
+      onField('wall', v);
+    } else if (id === 'scw') { S.scw = v === '1'; onField('scw', S.scw); }
+    else { var k = { found: 'found', ground: 'ground', core: 'coreSys' }[id]; if (!k) return false; S[k] = v; onField(k, v); }
+    return true;
+  }
+  ACT.kfEdit = function (el, e) { var bx = el.closest('[data-kf]'); if (bx) kfOpen(bx.getAttribute('data-kf'), !!(e && e.detail > 0)); };
+  /* 계산값 칸 → 관련 입력으로 이동 (조닝 팀수 · 단면 층고) : 그 자리를 잠깐 표시하고, 층고 칸 · 키보드로 왔으면 포커스 */
+  ACT.kfGo = function (el, e) {
+    var to = el.getAttribute('data-to'), f = el.getAttribute('data-f'), kbd = !!(e && e.detail === 0);
+    /* 대상은 표시 직전에 다시 찾는다 (그 사이 다시 그려져도 새 요소에 표시 · 포커스) */
+    function find() {
+      var tg = document.getElementById(to), fx = null; if (!tg) return null;
+      try { fx = f ? tg.querySelector(f) : null; } catch (er) { fx = null; }
+      if (!fx && tg.id === 'sec-sec') fx = tg.querySelector('input.fh');
+      return { tg: tg, fx: fx };
+    }
+    var t0 = find(); if (!t0) return;
+    (t0.fx || t0.tg).scrollIntoView({ behavior: 'smooth', block: t0.fx ? 'center' : 'start' });
+    if (!t0.fx) return;
+    setTimeout(function () {
+      var t = find(), fx = t && t.fx; if (!fx) return;
+      fx.classList.remove('kf-hl'); void fx.offsetWidth; fx.classList.add('kf-hl');
+      setTimeout(function () { fx.classList.remove('kf-hl'); }, 1700);
+      var fc = fx.matches('input') ? fx : kbd ? fx.querySelector('button:not(:disabled)') : null;
+      if (fc) { try { fc.focus({ preventScroll: true }); } catch (er) { fc.focus(); } }
+    }, 420);
+  };
   /* 확인 사항 (= 히어로 칩 건수) 과 계산 가정 (엔진 notes) 을 나눠 보여 준다 */
   function renderWarns(R) {
     var w = GK.warns(R), n = R.notes || [];
