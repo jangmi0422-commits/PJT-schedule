@@ -39,6 +39,10 @@
 - 버전 목록 : https://github.com/jangmi0422-commits/PJT-schedule/tree/claude/air-calculation-agent-data-cf7y78/releases
 - 저장소는 공개 — 실제 현장명 · 회사명은 코드 주석에도 쓰지 않는다
 
+## 나중에 요청이 오면 (지금은 만들지 않음)
+- 사용자가 '인수인계 zip 파일 만들어줘' 라고 하면 : 회사 컴퓨터 (엔터프라이즈 Claude) 로 옮기기 위한 묶음을 만든다 — 최신 releases HTML + 인수인계 MD 1개 (이 대화의 결정 · 계산 규칙 · 사례 재현값 · 지킬 것 · 점검 방법, Node 없을 때 눈으로 확인하는 법 포함) + 소스 zip (engine.js · kit.js · kit.css · v/ · build.js · tests/ · CLAUDE.md). 회사 메일 첨부 제한으로 2개만 가능하다고 하면 MD 하나에 빌드 · 점검 스크립트와 'HTML → 소스 분리' 방법까지 담는다.
+- 회사 검토자료 · 도면은 이 (개인 · 공개) 저장소에 절대 넣지 않는다.
+
 ## 지킬 것
 - 화면에 회사명 · 로고 금지. 실제 현장명 금지 (사례 A · B · C 로 표기)
 - v2.8 관리자 비밀번호는 문서 · 메모리 · 답변 · 파일 어디에도 쓰지 않는다
