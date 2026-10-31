@@ -1030,14 +1030,15 @@
     else if (e.key === 'Escape' && t.value !== t.defaultValue) { e.preventDefault(); t.value = t.defaultValue; }
   });
 
-  /* ───────── 조닝 아래 사이클 바차트 : 엔진이 실제로 계산한 단위 (기초 = 준비 · 철근 · 형틀 Zone 1개, 지하 = 층별 외벽 · 바닥 또는 역타 Zone 순환,
-     지상 = DC 는 외주부 · 코어 공종, 일반은 팀당 Zone 연속) — 막대 = 시작 · 기간 (WD), 진한 레인 = 층 사이클을 정하는 쪽.
-     편집 : 막대 끝 숫자를 누르면 숫자 칸 → 그 값이 나오도록 해당 파라미터 (공법 라이브러리 S.libOv · 상세 입력 S.adv) 를 엔진 식으로 역산해 다시 계산.
-     묶음 행 (수직재 · 지하 층) 은 숫자 · 이름을 누르면 공종별로 펼침. 순서 : 행 왼쪽 손잡이를 끌거나 눌러서 ▲▼ (키보드 ↑↓) — 표시 순서 (S.adv.cyOrder) 로 다시 쌓음 (합계 같음) */
-  var CYED = {}, CYCH = {}, cyCur = '', cyOpen = {}, edTok = null, cyMv = null;
+  /* ───────── 조닝 아래 사이클 표 : 엔진이 실제로 계산한 단위 (기초 = 준비 · 철근 · 형틀 · 타설 Zone 1개, 지하 = 층별 외벽 · 바닥 / 역타 Zone 순환 / 부분 지하 경로,
+     지상 = DC 는 외주부 · 코어 공종 사슬, 일반은 팀당 Zone 연속).
+     표 = Activity | 일수 (WD) | 바차트 (머리 = WD 눈금 1 2 3 …). 일수 칸 = 직접 입력 · ▲▼ (0.5 WD, 최소 0.5) → 그 값이 나오도록 해당 파라미터
+     (공법 라이브러리 S.libOv · 상세 입력 S.adv) 를 엔진 식으로 역산해 다시 계산.
+     바를 좌우로 끌면 앞 공종과 겹침 (0 ≤ 겹침 ≤ 앞 공종 일수, 0.5 WD 단위) → S.adv.fOv · bOv · pOv · dcOv (엔진이 사이클 = 가장 늦은 끝으로 계산) · 역타 Zone 은 시차 (td.f1Lag) */
+  var CYED = {}, CYCH = {}, cyCur = '', cyDg = null;
   function rd(x) { return Math.round(x * 1e4) / 1e4; }
-  /* 차트마다 편집 칸 · 순서 묶음 목록 (되돌리기 단추가 쓴다) */
-  function cyBegin(id, pins) { (CYCH[id] ? CYCH[id].eds : []).forEach(function (k) { delete CYED[k]; }); CYCH[id] = { eds: [], oks: [], pins: pins || [] }; cyCur = id; }
+  /* 차트마다 편집 칸 · 팀 고정 · 겹침 입력 키 (되돌리기 단추가 쓴다) */
+  function cyBegin(id, pins, ovk) { (CYCH[id] ? CYCH[id].eds : []).forEach(function (k) { delete CYED[k]; }); CYCH[id] = { eds: [], pins: pins || [], ovk: ovk || [] }; cyCur = id; }
   function addEd(key, e) { e.key = key; e.ch = cyCur; CYED[key] = e; var c = CYCH[cyCur]; if (c && c.eds.indexOf(key) < 0) c.eds.push(key); return key; }
   /* 상세 입력 기록 : 처음 고칠 때 원래 값 (없으면 null) 을 S.cyPrev 에 — 되돌리기는 그 값으로 */
   function jHas(ak) { return !!(S.cyPrev && Object.prototype.hasOwnProperty.call(S.cyPrev, ak)); }
@@ -1066,7 +1067,7 @@
     var lv = getP(LIB, path.split('.')), dv = libDef(path);
     var k = o.k != null ? o.k : (lv > 0 ? cur / lv : 0);
     if (!(k > 0) || !isFinite(cur) || !(dv > 0)) return '';
-    return addEd(key, { lab: lab, cur: cur, def: dv * k, on: hasOv(path), min: o.min != null ? o.min : 0.1, max: edMax(dv * k), pin: o.pin,
+    return addEd(key, { lab: lab, cur: cur, def: dv * k, on: hasOv(path), min: o.min != null ? o.min : 0.1, max: edMax(dv * k), pin: o.pin, zero: !!o.zero,
       set: function (v) { setLib(path, rd(Math.max(0.01, v / k))); },
       reset: function () { delOv(path); } });
   }
@@ -1103,257 +1104,350 @@
   /* DC 공종 → 라이브러리 키 (철근 · 테이블폼은 물량 ÷ 생산성 자동 계산이라 고치지 않음) */
   var DCMAP = { '양중': 'lift', '형틀': 'form', '해체': 'strip', '타설': 'pour', '비계 · 안전망': 'scaf', '비계 · 동바리': 'scaf', 'M&E': 'me', '양생': 'cure', '양생 · 해체': 'cure', '보 형틀': 'bform', '코어 슬래브 형틀': 'coreForm' };
   var DCRO = '물량 ÷ 생산성 (자동 계산)';
-  function edDC(nm, cur) { var p = DCMAP[nm]; return p ? edLin('u.dc.' + p, nm, 'dc.' + p, cur) : ''; }
+  function edDC(id, nm, cur) { var p = DCMAP[nm]; return p ? edLin('u.dc.' + id, nm, 'dc.' + p, cur) : ''; }
 
-  function cyRow(n, segs, v, o) { o = o || {}; return { n: n, segs: segs, v: v, ghost: o.ghost || null, tip: o.tip || '', id: o.id || n, ed: o.ed || '', ok: o.ok || '', g: o.g || '', kids: o.kids || null }; }
-  /* 저장된 표시 순서 (같은 행 묶음일 때만 — 구조가 바뀌면 기본 순서) */
-  function cyOrd(ok, list) {
-    var c = CYCH[cyCur]; if (c && c.oks.indexOf(ok) < 0) c.oks.push(ok);
-    var o = S.adv && S.adv.cyOrder && S.adv.cyOrder[ok], ids = list.map(function (x) { return x.id; });
-    if (!Array.isArray(o) || o.length !== ids.length || !ids.every(function (id) { return o.indexOf(id) >= 0; })) return list;
-    return o.map(function (id) { return list[ids.indexOf(id)]; });
+  /* 표 한 줄 : n = Activity, s · d = 막대 시작 · 기간 (WD), ed = 일수 편집 키 (없으면 ro = 읽기 전용 이유), k = 막대 색 (w = 외벽 · gh = 점선),
+     ov = 끌기 { key, pe : 앞 공종이 모두 끝나는 때, mx : 최대 겹침 (= 바로 앞 공종 일수), o : 지금 겹침 } 또는 역타 { key: 'lag', lag : 시차 배수, z : Zone 일수, L : 지금 시차, ed : 시차 칸 },
+     lock = 끌 수 없는 이유 (title), ch · ci = 같은 사슬 · 순서 (끄는 동안 사슬을 엔진 규칙대로 다시 쌓음 : 착수 = 앞 공종이 모두 끝나는 때 − 겹침),
+     at = 사슬 밖 덧붙임 (PIT 추가 : 바로 앞 공종 끝에 붙고 뒤 공종 착수에는 안 셈) */
+  function cyRow(n, s, d, o) {
+    o = o || {};
+    return { n: n, s: s, d: d, ed: o.ed || '', ro: o.ro || '', k: o.k || '', ov: o.ov || null, lock: o.lock || '', tip: o.tip || '', segs: o.segs || null, ghost: o.ghost || null,
+      ch: o.ch || '', ci: o.ci != null ? o.ci : -1, at: !!o.at, sub: !!o.sub };
   }
-  /* 순차 공종 : 표시 순서대로 이어 쌓기. 항목 = { id, n, d, ed, tip, kids: [묶음 안 공종], kok: 묶음 순서 키, ghost: { d, lab, ed } } */
-  function cySeq(ok, items) {
-    var t = 0;
-    return cyOrd(ok, items).map(function (it) {
-      var s0 = t, segs = [], kids = null, ko = ok + '.' + (it.kok || it.id);
-      if (it.kids) kids = cyOrd(ko, it.kids).map(function (q) { var sg = { s: t, d: q.d, k: q.k }; segs.push(sg); t += q.d; return cyRow(q.n, [sg], r1(q.d), { id: q.id, ed: q.ed, tip: q.tip, ok: ko }); });
-      else { segs.push({ s: t, d: it.d, k: it.k }); t += it.d; }
-      return cyRow(it.n, segs, r1(t - s0), { id: it.id, ed: it.ed, ok: ok, g: kids ? ok + ':' + it.id : '', kids: kids,
-        tip: it.tip || (kids ? kids.map(function (q) { return q.n + ' ' + q.v; }).join(' → ') : ''), ghost: it.ghost ? { s: t, d: it.ghost.d, lab: it.ghost.lab, ed: it.ghost.ed } : null });
-    });
-  }
+  var LOCK0 = '첫 공종 — 뒤 공종 바를 끌어 겹침 지정';
   function cyFound(R) {
-    var f = R.found, pit = f.nPit ? f.Rpit - f.R : 0, own = f.R0 != null && Math.abs(f.R - f.R0) > 1e-9;
-    cyBegin('found');
-    var rows = cySeq('found', [
-      { id: 'prep', n: '준비', d: f.prep, ed: edLin('f.prep', '준비', 'found.prep', f.prep), tip: '영구배수 · 버림 · 먹' },
-      { id: 'reb', n: '철근', d: f.R, ed: edAdv('f.reb', '철근', 'fRwd', f.R, 1, function (x) { return +x > 0 ? +x : f.R0; }, { min: 0.5, max: 200 }),
-        ghost: pit > 0.01 ? { d: pit, lab: 'PIT +' + r1(pit), ed: edLin('f.pit', 'PIT 추가', 'found.pitAdd', pit) } : null,
-        tip: own ? 'Zone 당 철근 ' + r1(f.R) + 'WD (입력 · 자동 ' + f.R0 + ')' : r1(f.reb) + 't ÷ ' + r1(f.tpd) + 't/일 (' + f.crew + '명)' },
-      { id: 'tail', n: '형틀 · 타설', d: f.tail, ed: edLin('f.tail', '형틀 · 타설', 'found.tail', f.tail), tip: '형틀 · 검측 · 타설' }
-    ]);
-    return { id: 'found', tot: f.cyc + pit, v: r1(f.cyc), u: 'WD / Zone', x: f.nPit ? 'PIT ' + r1(f.cycPit) : '', lanes: [{ rows: rows, ok: 'found' }] };
+    var f = R.found, pit = f.nPit ? f.Rpit - f.R : 0, own = f.R0 != null && Math.abs(f.R - f.R0) > 1e-9, ov = f.ov || { r: 0, t: 0 };
+    if (S.adv && S.adv.cyOrder) delete S.adv.cyOrder;   /* 옛 표시 순서 (없앤 기능) */
+    cyBegin('found', null, ['fOv']);
+    var sR = f.prep - ov.r, eR = sR + f.R, fT = Math.max(f.prep, eR), rows = [];
+    rows.push(cyRow('준비', 0, f.prep, { ed: edLin('f.prep', '준비', 'found.prep', f.prep), tip: '영구배수 · 버림 · 먹', ch: 'f', ci: 0, lock: LOCK0 }));
+    rows.push(cyRow('철근', sR, f.R, { ed: edAdv('f.reb', '철근', 'fRwd', f.R, 1, function (x) { return +x > 0 ? +x : f.R0; }, { min: 0.5, max: 200 }), ch: 'f', ci: 1,
+      tip: own ? 'Zone 당 철근 ' + r1(f.R) + 'WD (입력 · 자동 ' + f.R0 + ')' : r1(f.reb) + 't ÷ ' + r1(f.tpd) + 't/일 (' + f.crew + '명)',
+      ov: { key: 'f.r', pe: f.prep, mx: f.prep, o: ov.r } }));
+    if (pit > 0.01) rows.push(cyRow('PIT 추가', eR, pit, { k: 'gh', sub: true, at: true, ed: edLin('f.pit', 'PIT 추가', 'found.pitAdd', pit), ch: 'f', ci: 2, tip: 'PIT Zone 만 — 바닥 · 벽체 2회 타설', lock: 'PIT Zone 만 철근에 이어서' }));
+    rows.push(cyRow('형틀 · 타설', fT - ov.t, f.tail, { ed: edLin('f.tail', '형틀 · 타설', 'found.tail', f.tail), tip: '형틀 · 검측 · 타설', ch: 'f', ci: 3, ov: { key: 'f.t', pe: fT, mx: f.R, o: ov.t } }));
+    return { id: 'found', tot: Math.max(f.cyc, eR + pit), v: r1(f.cyc), u: 'WD / Zone', x: f.nPit ? 'PIT ' + r1(f.cycPit) : '', lanes: [{ rows: rows }] };
   }
   function cyBase(R) {
     var bs = R.base, b = R.basic, g = R.geo, hF = b.hF || 1;
     if (!bs || b.nB === 0) return null;
-    cyBegin('base');
     if (bs.td) {
+      /* 역타 Zone 순환 : Zone k 시작 = 시차 × (k − 1) — Zone 2 · 3 바를 끌면 시차가 바뀜 (겹침 = Zone 일수 − 시차) */
+      cyBegin('base');
       var TD = LIB.td, n1 = Math.max(2, Math.min(4, Math.round(g.Adeep / TD.f1ZoneA))), z = TD.f1Zone / hF, lag = TD.f1Lag / hF, rows = [];
-      var ez = edLin('b.z', '역타 슬래브 Zone', 'td.f1Zone', z, { k: 1 / hF }), el = edLin('b.lag', 'Zone 시차', 'td.f1Lag', lag, { k: 1 / hF, min: 0 });
-      for (var i = 0; i < n1; i++) rows.push(cyRow('Zone ' + (i + 1), [{ s: i * lag, d: z }], r1(z), { ed: ez }));
-      return { id: 'base', tot: z + (n1 - 1) * lag, v: r1(z + (n1 - 1) * lag), u: 'WD / 슬래브', x: '아래층 ×' + TD.slabF, xe: [{ lab: '시차', v: r1(lag), ed: el }], lanes: [{ rows: rows }] };
+      var ez = edLin('b.z', '역타 슬래브 Zone', 'td.f1Zone', z, { k: 1 / hF }), el = edLin('b.lag', 'Zone 시차', 'td.f1Lag', lag, { k: 1 / hF, min: 0, zero: true });
+      for (var i = 0; i < n1; i++) rows.push(cyRow('Zone ' + (i + 1), i * lag, z, { ed: ez, ch: 'td', ci: i, lock: LOCK0, tip: i ? '시작 = 시차 ' + r1(lag) + ' × ' + i : '',
+        ov: i && el ? { key: 'lag', lag: i, z: z, L: lag, o: Math.max(0, z - lag), ed: el } : null }));
+      return { id: 'base', tot: z + (n1 - 1) * lag, v: r1(z + (n1 - 1) * lag), u: 'WD / 슬래브', x: '아래층 ×' + TD.slabF, xe: [{ lab: '시차', ed: el }], lanes: [{ rows: rows }] };
     }
     var lr = LIB.base.liftRef;
     if (bs.partial) {
-      var p = bs.path, kW = (g.sumB || 0) / (hF * lr), kB = b.rRC / (b.rExt * hF), it = [];
+      /* 부분 지하 경로 : 외벽 → 방수 · 되메우기 → 바닥 (겹침 = adv.pOv) */
+      cyBegin('base', null, ['pOv']);
+      var p = bs.path, po = p.ov || { bf: 0, s: 0 }, kW = (g.sumB || 0) / (hF * lr), kB = b.rRC / (b.rExt * hF), open = b.sup === 'OPEN', rp = [];
       var Zs1 = Math.max(1, Math.round(g.AdnEff / LIB.base.zoneA)), per1 = Math.ceil(Zs1 / Math.ceil(Zs1 / LIB.base.zpt - 1e-9) - 1e-9);
-      it.push({ id: 'wall', n: '외벽', d: p.walls, ed: edAdv('b.pw', '외벽', 'liftWD', p.walls, kW, liftEff, { min: kW, max: 60 * kW }), tip: '지하 ' + b.nB + '개층 외벽 · ' + r2(liftEff(S.adv && S.adv.liftWD)) + 'WD / ' + lr + 'm' });
-      if (b.sup === 'OPEN') it.push({ id: 'bf', n: '방수 · 되메우기', d: p.backfill, ed: edAdv('b.pbf', '방수 · 되메우기', 'backfill', p.backfill, kB, bfEff, { min: 0 }), tip: '토목 ' + r1(p.backfillExt) + 'WD → 골조 가동률 환산' });
-      it.push({ id: 'slab', n: p.nSlab > 1 ? '바닥 ' + p.nSlab + '개층' : '바닥', d: p.slab, ed: edSlab('b.ps', '바닥', p.slab, per1, hF, p.nSlab), tip: '층당 ' + r1(p.slabPer) + 'WD' });
-      var rp = cySeq('part', it), tp = p.walls + (b.sup === 'OPEN' ? p.backfill : 0) + p.slab;
-      return { id: 'base', tot: tp, v: r1(tp), u: 'WD', x: '', lanes: [{ rows: rp, ok: 'part' }] };
+      rp.push(cyRow('외벽', 0, p.walls, { k: 'w', ed: edAdv('b.pw', '외벽', 'liftWD', p.walls, kW, liftEff, { min: kW, max: 60 * kW }), ch: 'p', ci: 0, lock: LOCK0, tip: '지하 ' + b.nB + '개층 외벽 · ' + r2(liftEff(S.adv && S.adv.liftWD)) + 'WD / ' + lr + 'm' }));
+      var pe = p.walls, pd = p.walls;
+      if (open) {
+        var sb = p.walls - po.bf;
+        rp.push(cyRow('방수 · 되메우기', sb, p.backfill, { ed: edAdv('b.pbf', '방수 · 되메우기', 'backfill', p.backfill, kB, bfEff, { min: 0 }), ch: 'p', ci: 1, tip: '토목 ' + r1(p.backfillExt) + 'WD → 골조 가동률 환산',
+          ov: { key: 'p.bf', pe: p.walls, mx: p.walls, o: po.bf } }));
+        if (p.backfill > 0) { pe = Math.max(p.walls, sb + p.backfill); pd = p.backfill; }
+      }
+      rp.push(cyRow(p.nSlab > 1 ? '바닥 ' + p.nSlab + '개층' : '바닥', pe - po.s, p.slab, { ed: edSlab('b.ps', '바닥', p.slab, per1, hF, p.nSlab), ch: 'p', ci: 2, tip: '층당 ' + r1(p.slabPer) + 'WD',
+        ov: { key: 'p.s', pe: pe, mx: pd, o: po.s } }));
+      var tp = p.span != null ? p.span : p.walls + (open ? p.backfill : 0) + p.slab;
+      return { id: 'base', tot: tp, v: r1(tp), u: 'WD', x: '', lanes: [{ rows: rp }] };
     }
-    /* 순타 층별 : 외벽 (끊어치기) → 바닥 — 층 순서는 고정, 숫자를 누르면 외벽 · 바닥으로 펼쳐 고침 */
-    var t2 = 0, rb = [], lE = liftEff(S.adv && S.adv.liftWD);
+    /* 순타 층별 : 외벽 (끊어치기) → 바닥, 층 안 겹침 = adv.bOv[층] · 층 WD = 가장 늦은 끝 */
+    cyBegin('base', null, ['bOv']);
+    var t2 = 0, rb = [], lE = liftEff(S.adv && S.adv.liftWD), ci = 0;
     bs.rows.forEach(function (x) {
-      var kw = x.h / (hF * lr), per = Math.ceil(x.Z / x.T - 1e-9);
-      var kids = [
-        cyRow('외벽', [{ s: t2, d: x.Vw, k: 'w' }], m1(x.Vw), { id: 'w', ed: edAdv('b.w.' + x.lv, x.lv + ' 외벽', 'liftWD', x.Vw, kw, liftEff, { min: kw, max: 60 * kw }), tip: r1(x.h) + 'm × ' + r2(lE) + 'WD / ' + lr + 'm · Lift ' + bs.liftH + 'm ' + x.lifts + '회' }),
-        cyRow('바닥 ' + x.slab, [{ s: t2 + x.Vw, d: x.Sw }], m1(x.Sw), { id: 's', ed: edSlab('b.s.' + x.lv, x.lv + ' 바닥', x.Sw, per, hF, 1), tip: x.Z + ' Zone ÷ ' + x.T + '팀 → ' + per + ' Zone × ' + r2(LIB.base.slabD / hF) + 'WD' })
-      ];
-      rb.push(cyRow(x.lv, [{ s: t2, d: x.Vw, k: 'w' }, { s: t2 + x.Vw, d: x.Sw }], m1(x.wd), { id: x.lv, g: 'base:' + x.lv, kids: kids, tip: '외벽 ' + x.lifts + '회 ' + m1(x.Vw) + ' → 바닥 ' + m1(x.Sw) }));
+      var kw = x.h / (hF * lr), per = Math.ceil(x.Z / x.T - 1e-9), o = x.ov || 0, we = t2 + x.Vw;
+      rb.push(cyRow(x.lv + ' 외벽', t2, x.Vw, { k: 'w', ed: edAdv('b.w.' + x.lv, x.lv + ' 외벽', 'liftWD', x.Vw, kw, liftEff, { min: kw, max: 60 * kw }), ch: 'b', ci: ci++, lock: '층 첫 공종 (아래층 완료 후)',
+        tip: r1(x.h) + 'm × ' + r2(lE) + 'WD / ' + lr + 'm · Lift ' + bs.liftH + 'm ' + x.lifts + '회' }));
+      rb.push(cyRow(x.slab + ' 바닥', we - o, x.Sw, { ed: edSlab('b.s.' + x.lv, x.slab + ' 바닥', x.Sw, per, hF, 1), ch: 'b', ci: ci++,
+        tip: x.Z + ' Zone ÷ ' + x.T + '팀 → ' + per + ' Zone × ' + r2(LIB.base.slabD / hF) + 'WD', ov: { key: 'b.' + x.lv, pe: we, mx: x.Vw, o: o } }));
       t2 += x.wd;
     });
     return { id: 'base', tot: t2, v: m1(t2 / Math.max(1, bs.rows.length)), u: 'WD / 층', x: '', key: [['w', '외벽'], ['', '바닥']], lanes: [{ rows: rb }] };
   }
   function cyTyp(R) {
     var fr = R.frame, ty = fr.typ, tact = GK.tactOf(R);
-    cyBegin('typ', ['uTeams', 'cTeams']);
+    cyBegin('typ', ['uTeams', 'cTeams'], ['dcOv']);
     if (ty.dc) {
-      var d = ty.dc, nV = (d.lifts || 1) * 5;
-      var lane = function (st, ok) {
-        var items = [];
-        for (var q = 0; q < nV; q += 5) {
-          items.push({ id: 'v' + (q / 5 + 1), kok: 'v', n: nV > 5 ? '수직재 ' + (q / 5 + 1) + '차' : '수직재',
-            kids: st.items.slice(q, q + 5).map(function (it) { var nm = it[0].replace(/ \d\/\d차$/, ''); return { id: nm, n: nm, d: it[1], ed: edDC(nm, it[1]), tip: DCMAP[nm] ? '' : DCRO }; }) });
-        }
-        st.items.slice(nV).forEach(function (it) { items.push({ id: it[0], n: it[0], d: it[1], ed: edDC(it[0], it[1]), tip: DCMAP[it[0]] ? '' : DCRO }); });
-        return { name: st.name, info: st.N + ' Zone · ' + st.T + '팀', gov: d.gov === st.name, rows: cySeq(ok, items), ok: ok };
+      /* DC : 외주부 · 코어 공종 사슬 (겹침 = adv.dcOv.P · C, 키 = 수직재 v0 ~ v4 · 이후 a0 …) → 착수 = 앞 공종이 모두 끝나는 때 − 겹침, Zone 1개 작업 = 가장 늦은 끝 */
+      var d = ty.dc, nv = (d.lifts || 1) * 5;
+      var lane = function (st, L) {
+        var rows = [], e = 0;
+        st.items.forEach(function (it, i) {
+          var nm = it[0], s = st.ss ? st.ss[i] : e, ed = edDC(L + i, nm.replace(/ \d\/\d차$/, ''), it[1]), key = i < nv ? 'v' + (i % 5) : 'a' + (i - nv);
+          rows.push(cyRow(nm, s, it[1], { ed: ed, ro: ed ? '' : DCRO, ch: 'dc' + L, ci: i, lock: LOCK0,
+            ov: i ? { key: 'dc' + L + '.' + key, pe: e, mx: st.items[i - 1][1], o: st.ov ? st.ov[i] : 0 } : null }));
+          e = Math.max(e, s + it[1]);
+        });
+        return { name: st.name, info: st.N + ' Zone · ' + st.T + '팀', gov: d.gov === st.name, rows: rows };
       };
-      var P = lane(d.P, 'dcP'), C = lane(d.C, 'dcC');
-      return { id: 'typ', tot: Math.max(d.P.zone, d.C.zone), v: m1(tact), u: 'WD / 층', x: '', lanes: [P, C] };
+      return { id: 'typ', tot: Math.max(d.P.zone, d.C.zone), v: m1(tact), u: 'WD / 층', x: '', lanes: [lane(d.P, 'P'), lane(d.C, 'C')] };
     }
+    /* 일반 지상 : 팀당 Zone 연속 (Zone 단위라 겹침 없음 — 일수만) */
+    var lockZ = 'Zone 단위 연속 작업 — 겹침 대신 일수만 고칩니다';
     var sl = ty.slab, per = sl.per, zs = sl.wd > 0 ? Math.min(sl.wd, per * fr.dS * (sl.lk || 1) * (sl.hf || 1)) / per : 0, lanes = [], segs = [];
     for (var i = 0; i < per; i++) segs.push({ s: i * zs, d: zs, lab: i + 1 });
     var tot = sl.wd;
     lanes.push({ name: ty.core ? '외주부' : '외주부 · 코어 일체', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd,
-      rows: [cyRow('팀당 ' + per + ' Zone', segs, m1(sl.wd), { ed: edFrame('u.slab', R, sl), ghost: sl.wd > per * zs + 0.05 ? { s: per * zs, d: sl.wd - per * zs, lab: '최소' } : null, tip: 'Zone ' + r2(zs) + 'WD × ' + per })] });
+      rows: [cyRow('팀당 ' + per + ' Zone', 0, sl.wd, { segs: segs, ed: edFrame('u.slab', R, sl), lock: lockZ, ghost: sl.wd > per * zs + 0.05 ? { s: per * zs, d: sl.wd - per * zs, lab: '최소' } : null, tip: 'Zone ' + r2(zs) + 'WD × ' + per })] });
     if (ty.core) {
       var c = ty.core, nc = c.per * c.lifts, zc = c.wd / Math.max(1, nc), sc = [];
       for (var j = 0; j < nc; j++) sc.push({ s: j * zc, d: zc, lab: j + 1 });
       lanes.push({ name: '코어', info: c.Z + ' Zone · ' + c.T + '팀' + (c.lifts > 1 ? ' · ' + c.lifts + ' Lift' : ''), gov: c.wd > sl.wd,
-        rows: [cyRow('팀당 ' + c.per + ' Zone', sc, m1(c.wd), { ed: edLin('u.core', '코어 사이클', 'frame.core.' + fr.sysC, c.wd, { pin: ['cTeams'] }), tip: 'Zone ' + r2(zc) + 'WD × ' + nc })] });
+        rows: [cyRow('팀당 ' + c.per + ' Zone', 0, c.wd, { segs: sc, ed: edLin('u.core', '코어 사이클', 'frame.core.' + fr.sysC, c.wd, { pin: ['cTeams'] }), lock: lockZ, tip: 'Zone ' + r2(zc) + 'WD × ' + nc })] });
       tot = Math.max(tot, c.wd);
     }
     return { id: 'typ', tot: tot, v: m1(tact), u: 'WD / 층', x: '', lanes: lanes };
   }
-  /* 막대 끝 숫자 : 고칠 수 있으면 단추 (바뀐 값 = 점 · 진한 글자), 묶음이면 펼침 단추 */
-  function cyNum(r) {
-    var e = r.ed && CYED[r.ed];
-    if (e) return '<button type="button" class="cy-v' + (e.on ? ' on' : '') + (r.cls ? ' ' + r.cls : '') + '" data-act="cyEd" data-k="' + esc(r.ed) + '" title="' + esc(e.lab + ' · 눌러서 수정' + (e.on ? ' (기본 ' + m1(e.def) + ')' : '')) + '">' + r.v + '</button>';
-    if (r.g) {
-      var on = (r.kids || []).some(function (q) { return q.ed && CYED[q.ed] && CYED[q.ed].on; });
-      return '<button type="button" class="cy-v grp' + (on ? ' on' : '') + '" data-act="cyTog" data-g="' + esc(r.g) + '" title="공종별로 펼쳐서 수정">' + r.v + '</button>';
-    }
-    return '<span class="cy-v ro">' + r.v + '</span>';
+  /* 일수 칸 : 숫자 입력 + ▲▼ (0.5 WD). 바뀐 값 = 코발트. ri = 표 안 자리 (다시 그린 뒤 포커스) */
+  function cyMin(e) { return e.zero ? 0 : Math.max(0.5, e.min || 0); }
+  function cyStepper(key, lab, ri, small) {
+    var e = CYED[key]; if (!e) return '';
+    var mn = cyMin(e), at = ' data-ck="' + esc(key) + '" data-ri="' + esc(ri) + '"';
+    return '<span class="cy-sp' + (e.on ? ' on' : '') + (small ? ' sm' : '') + '" title="' + esc(e.on ? '바뀐 값 · 기본 ' + m1(e.def) + ' WD' : '직접 입력 · ▲▼ 0.5 WD') + '">' +
+      '<input class="cy-in" type="number" inputmode="decimal" step="0.5" min="' + mn + '"' + (e.max ? ' max="' + r2(e.max) + '"' : '') + ' value="' + (+e.cur).toFixed(1) + '" data-actc="cyIn"' + at + ' aria-label="' + esc(lab + ' 일수 (WD)') + '">' +
+      '<span class="cy-ar"><button type="button" class="cy-st up" data-act="cyStep" data-d="1"' + at + ' aria-label="' + esc(lab) + ' +0.5 WD"></button>' +
+      '<button type="button" class="cy-st dn" data-act="cyStep" data-d="-1"' + at + ' aria-label="' + esc(lab) + ' −0.5 WD"' + (cyShown(e) <= mn + 1e-9 ? ' disabled' : '') + '></button></span></span>';
   }
-  function cyRowHTML(r, F, kid, idx, cnt) {
-    var e = 0, bars = r.segs.map(function (q) { e = Math.max(e, q.s + q.d); return '<i class="' + (q.k || '') + '" style="--s:' + F(q.s) + ';--w:' + F(q.d) + '">' + (q.lab != null ? '<span>' + q.lab + '</span>' : '') + '</i>'; }).join('');
-    var gh = r.ghost && r.ghost.d > 0.01;
-    if (gh) bars += '<i class="gh" style="--s:' + F(r.ghost.s) + ';--w:' + F(r.ghost.d) + '"></i>';
-    var ve = gh ? r.ghost.s + r.ghost.d : e, open = !!(r.g && cyOpen[r.g]);
-    var gl = gh && r.ghost.lab ? (r.ghost.ed && CYED[r.ghost.ed] ? cyNum({ ed: r.ghost.ed, v: esc(r.ghost.lab), cls: 'gl' }) : '<small>' + esc(r.ghost.lab) + '</small>') : '';
-    var nm = r.g ? '<button type="button" class="cy-tg' + (open ? ' open' : '') + '" data-act="cyTog" data-g="' + esc(r.g) + '" aria-expanded="' + open + '">' + esc(r.n) + '</button>' : esc(r.n);
-    /* 손잡이를 누르기만 하면 (끌지 않고) ▲▼ 단추 — 모바일 탭 · 키보드 Enter */
-    var mv = !!(r.ok && cnt > 1 && cyMv && cyMv.ok === r.ok && cyMv.id === r.id);
-    var mvB = mv ? '<span class="cy-mv"><button type="button" data-act="cyMv" data-d="-1" aria-label="' + esc(r.n) + ' 위로"' + (idx > 0 ? '' : ' disabled') + '>▲</button>' +
-      '<button type="button" data-act="cyMv" data-d="1" aria-label="' + esc(r.n) + ' 아래로"' + (idx < cnt - 1 ? '' : ' disabled') + '>▼</button></span>' : '';
-    var h = '<div class="cy-blk' + (mv ? ' mv' : '') + '" data-id="' + esc(r.id) + '"><div class="cy-r' + (kid ? ' kid' : '') + '"' + (r.tip ? ' title="' + esc(r.tip) + '"' : '') + '>' +
-      (r.ok && cnt > 1 ? '<span class="cy-gr" tabindex="0" role="button" aria-label="' + esc(r.n) + ' 순서 바꾸기 (끌기 · 위아래 화살표)" title="끌거나 눌러서 순서 바꾸기"></span>' + mvB : '') +
-      '<span class="cy-n">' + nm + '</span><span class="cy-t">' + bars + '<em style="--e:' + F(ve) + '">' + cyNum(r) + gl + '</em></span></div>';
-    if (open && r.kids) h += '<div class="cy-kids"' + (r.kids[0] && r.kids[0].ok ? ' data-ok="' + esc(r.kids[0].ok) + '"' : '') + '>' + r.kids.map(function (q, i, a) { return cyRowHTML(q, F, true, i, a.length); }).join('') + '</div>';
-    return h + '</div>';
+  function cyF(v, N) { return (Math.max(0, v) / N).toFixed(4); }
+  /* 바 : 끌 수 있으면 dr (role=slider · ←→ 0.5 WD) — 겹친 구간은 빗금 + 겹침 숫자 */
+  function cyBarHTML(r, N) {
+    var at = r.ch ? ' data-ch="' + r.ch + '" data-ci="' + r.ci + '"' : '', h = '';
+    if (r.segs) {
+      r.segs.forEach(function (q) { h += '<i class="cy-b' + (r.k ? ' ' + r.k : '') + '" style="--s:' + cyF(q.s, N) + ';--w:' + cyF(q.d, N) + '" title="' + esc(r.lock) + '">' + (q.lab != null ? '<span>' + q.lab + '</span>' : '') + '</i>'; });
+    } else {
+      var v = r.ov, base = v && v.lag ? v.z : r.d, o = v ? Math.max(0, v.o || 0) : 0;
+      var dat = ' data-s="' + rd(r.s) + '" data-d="' + rd(r.d) + '"' + (r.at ? ' data-at="1"' : '') + (v && v.lag ? ' data-lag="' + v.lag + '"' : '');
+      if (v) {
+        var mx = v.lag ? v.z : v.mx, ttl = '좌우로 끌어 겹침 지정 (0.5 WD) · 지금 ' + m1(o) + ' WD (0 ~ ' + m1(mx) + ')' + (v.lag ? ' · 시차 ' + m1(v.L) : '');
+        dat += ' data-ov="' + esc(v.key) + '" data-pe="' + rd(v.lag ? 0 : v.pe) + '" data-mx="' + rd(mx) + '" data-o="' + rd(o) + '"' + (v.lag ? ' data-z="' + rd(v.z) + '" data-lg="' + rd(v.L) + '" data-ed="' + esc(v.ed) + '"' : '') +
+          ' tabindex="0" role="slider" aria-label="' + esc(r.n + ' 겹침 (WD)') + '" aria-valuemin="0" aria-valuemax="' + r1(mx) + '" aria-valuenow="' + r1(o) + '" title="' + esc(ttl) + '"';
+      } else if (r.lock) dat += ' title="' + esc(r.lock) + '"';
+      h += '<i class="cy-b' + (r.k ? ' ' + r.k : '') + (v ? ' dr' : '') + '" style="--s:' + cyF(r.s, N) + ';--w:' + cyF(r.d, N) + '"' + at + dat + '>' +
+        (v ? '<b class="cy-o" style="--o:' + (base > 0 ? Math.min(1, o / base) : 0).toFixed(4) + '"' + (o > 0.001 ? '' : ' hidden') + '><span>' + r1(o) + '</span></b>' : '') + '</i>';
+    }
+    if (r.ghost && r.ghost.d > 0.01) h += '<i class="cy-b gh" style="--s:' + cyF(r.ghost.s, N) + ';--w:' + cyF(r.ghost.d, N) + '" title="최소 사이클"><span>' + esc(r.ghost.lab || '') + '</span></i>';
+    return h;
+  }
+  function cyRowHTML(r, N, ri) {
+    var days = r.ed && CYED[r.ed] ? cyStepper(r.ed, r.n, ri) : '<span class="cy-ro"' + (r.ro ? ' title="' + esc(r.ro) + '"' : '') + '>' + m1(r.d) + '</span>';
+    return '<div class="cy-r' + (r.sub ? ' sub' : '') + '"><span class="cy-n"' + (r.tip ? ' title="' + esc(r.n + ' · ' + r.tip) + '"' : ' title="' + esc(r.n) + '"') + '>' + esc(r.n) + '</span>' +
+      '<span class="cy-d">' + days + '</span><span class="cy-t">' + cyBarHTML(r, N) + '</span></div>';
+  }
+  /* WD 눈금 머리 : 칸 = 1 WD, 숫자는 글자가 겹치지 않게 1 · 2 · 5 · 10 … 단위 (바차트 칸 폭 = 조닝 배치와 같은 식으로 어림) */
+  function cyPx(N) {
+    var W = Math.max(280, Math.floor(($('#zone') || {}).clientWidth || 520)), nar = W < 470, col = W >= 860 ? W / 3 - 36 : W;
+    return Math.max(60, nar ? col - 20 - 186 : col - 24 - 190) / Math.max(1, N);
+  }
+  function cyStepOf(N) {
+    var px = cyPx(N), need = N >= 100 ? 24 : N >= 10 ? 17 : 11, ss = [1, 2, 5, 10, 20, 50, 100];
+    for (var i = 0; i < ss.length; i++) if (ss[i] * px >= need) return ss[i];
+    return 200;
+  }
+  function cyScale(N, st) {
+    var h = '';
+    for (var d = st; d <= N; d += st) h += '<s style="--x:' + ((d - 0.5) / N).toFixed(4) + '">' + d + '</s>';
+    return '<div class="cy-r cy-sc" aria-hidden="true"><span class="cy-n">Activity</span><span class="cy-d">WD</span><span class="cy-t">' + h + '</span></div>';
+  }
+  function cyChanged(id) {
+    var ch = CYCH[id]; if (!ch) return false;
+    return ch.eds.some(function (k) { return CYED[k] && CYED[k].on; }) || (ch.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; }) ||
+      (ch.ovk || []).some(function (k) { var o = S.adv && S.adv[k]; return o && typeof o === 'object' && Object.keys(o).length > 0; });
   }
   function cyHTML(c) {
     if (!c) return '';
-    var T = Math.max(c.tot, 0.01), F = function (v) { return (v / T).toFixed(4); }, multi = c.lanes.length > 1, h = '', ch = CYCH[c.id] || { eds: [], oks: [] }, ord = (S.adv && S.adv.cyOrder) || {};
-    var chg = ch.eds.some(function (k) { return CYED[k] && CYED[k].on; }) || ch.oks.some(function (k) { return ord[k]; }) || (ch.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; });
-    h += '<div class="cy-hd"><span>사이클</span><b>' + c.v + '</b><small>' + esc(c.u) + '</small>' + (c.x ? '<em>' + esc(c.x) + '</em>' : '') +
-      (c.xe || []).map(function (q) { return q.ed ? '<span class="cy-x">' + esc(q.lab) + ' ' + cyNum(q) + '</span>' : ''; }).join('') +
+    var N = Math.max(1, Math.ceil(c.tot - 1e-6)), st = cyStepOf(N), gs = cyPx(N) >= 4 ? 1 : st >= 5 ? 5 : st, multi = c.lanes.length > 1, chg = cyChanged(c.id), n = 0;
+    var h = '<div class="cy-hd"><span>사이클</span><b>' + c.v + '</b><small>' + esc(c.u) + '</small>' + (c.x ? '<em>' + esc(c.x) + '</em>' : '') +
+      (c.xe || []).map(function (q) { return q.ed && CYED[q.ed] ? '<span class="cy-x">' + esc(q.lab) + cyStepper(q.ed, q.lab, c.id + ':x', true) + '</span>' : ''; }).join('') +
       ((c.key || chg) ? '<span class="cy-hr">' + (c.key ? '<span class="cy-key">' + c.key.map(function (k) { return '<i class="' + k[0] + '"></i>' + esc(k[1]); }).join('') + '</span>' : '') +
-        (chg ? '<button type="button" class="cy-rsa" data-act="cyRsAll" data-cy="' + c.id + '" title="이 사이클에서 고친 값 · 순서를 기본으로">되돌리기</button>' : '') + '</span>' : '') + '</div>';
+        (chg ? '<button type="button" class="cy-rsa" data-act="cyRsAll" data-cy="' + c.id + '" title="이 사이클에서 고친 일수 · 겹침을 기본으로">되돌리기</button>' : '') + '</span>' : '') + '</div>';
+    h += '<div class="cy-tb">' + cyScale(N, st);
     c.lanes.forEach(function (ln) {
       if (multi) h += '<div class="cy-ln' + (ln.gov ? ' gov' : '') + '"><b>' + esc(ln.name) + '</b><span>' + esc(ln.info) + '</span></div>';
-      h += '<div class="cy-g' + (multi && !ln.gov ? ' sub' : '') + '"' + (ln.ok ? ' data-ok="' + esc(ln.ok) + '"' : '') + '>' + ln.rows.map(function (r, i, a) { return cyRowHTML(r, F, false, i, a.length); }).join('') + '</div>';
+      h += '<div class="cy-g' + (multi && !ln.gov ? ' sub' : '') + '">' + ln.rows.map(function (r) { return cyRowHTML(r, N, c.id + ':' + (n++)); }).join('') + '</div>';
     });
-    return '<div class="cy" data-cy="' + c.id + '">' + h + '</div>';
+    return '<div class="cy" data-cy="' + c.id + '" data-n="' + N + '" style="--n:' + N + ';--gs:' + gs + ';--ls:' + st + '">' + h + '</div></div>';
   }
   /* 편집 동작 */
   function cyApply(fn, pins) { pinTeams(pins); fn(); if (current) markPreset(''); GK.fill(document, S); recompute(); }
-  function cyFocus(key) { var b = document.querySelector('#zone .cy-v[data-k="' + key + '"]'); if (b) b.focus({ preventScroll: true }); }
-  ACT.cyTog = function (el) {
-    var g = el.getAttribute('data-g'); cyOpen[g] = !cyOpen[g]; edTok = null;
-    if (lastR) renderZone(lastR);
-    var b = document.querySelector('#zone .cy-tg[data-g="' + g + '"]'); if (b) b.focus({ preventScroll: true });
-  };
-  /* 숫자 → 숫자 칸 (Enter · 칸 밖 = 적용, Esc = 취소). 바뀐 값이면 칸 옆에 '↺ 기본값' */
-  ACT.cyEd = function (el) {
-    var key = el.getAttribute('data-k'), e = CYED[key], em = el.parentNode; if (!e || !em) return;
-    var tok = {}, S0 = S, init = String(+e.cur.toFixed(2)), w = document.createElement('span');
-    edTok = tok; w.className = 'cy-ed';
-    w.innerHTML = '<input class="cy-in" type="number" step="any" inputmode="decimal" min="' + e.min + '"' + (e.max ? ' max="' + r2(e.max) + '"' : '') + ' aria-label="' + esc(e.lab + ' (WD)') + '" value="' + init + '">' +
-      (e.on ? '<button type="button" class="cy-rs1" data-act="cyRs1" data-k="' + esc(key) + '" title="기본값으로">↺ ' + m1(e.def) + '</button>' : '');
-    el.replaceWith(w); em.classList.add('ing');
-    var inp = w.querySelector('input'), box = em.closest('.cy');
-    if (box) { var over = w.getBoundingClientRect().right - box.getBoundingClientRect().right + 6; if (over > 0) em.style.left = Math.max(0, em.offsetLeft - over) + 'px'; }
-    function fin(ok, kb) {
-      if (edTok !== tok) return; edTok = null;
-      /* 칸이 열린 사이 사례를 바꿨으면 (S 교체) 버림 — 옛 값 · 역산 계수를 새 사례에 적용하지 않게 */
-      if (S !== S0) return;
-      /* 범위 밖 값은 한계값으로 (빈 칸 · 숫자 아님 = 취소) */
-      var raw = parseFloat(inp.value), v = Math.min(e.max || Infinity, Math.max(e.min, raw));
-      var good = ok && inp.value !== init && isFinite(raw) && Math.abs(v - e.cur) > 1e-9;
-      /* 기본값 (화면 표시 자리까지 같음) 을 넣으면 덮어쓰기 대신 기본값으로 */
-      var same = good && (Math.abs(v - e.def) < 1e-6 || (v === +v.toFixed(1) && v === +e.def.toFixed(1)));
-      if (good && !(same && !e.on)) cyApply(same ? function () { cyReset1(e); } : function () { e.set(v); }, same ? null : e.pin);
+  function cyFocusSel(sel) {
+    var el = sel && document.querySelector('#zone ' + sel);
+    if (el && el.disabled) el = el.parentNode && el.parentNode.parentNode ? el.parentNode.parentNode.querySelector('.cy-in') : null;
+    if (!el) return;
+    try { el.focus({ preventScroll: true }); } catch (er) { el.focus(); }
+    if (el.select) el.select();
+  }
+  /* 지금 포커스 자리 (다시 그린 뒤 같은 칸으로) */
+  function cyFocusNow() {
+    var a = document.activeElement; if (!a || !a.closest || !a.closest('#zone .cy')) return null;
+    var ri = a.getAttribute('data-ri'), ov = a.getAttribute('data-ov');
+    return ri ? (a.classList.contains('cy-in') ? '.cy-in' : '.cy-st') + '[data-ri="' + ri + '"]' + (a.hasAttribute('data-d') ? '[data-d="' + a.getAttribute('data-d') + '"]' : '') : ov ? '.cy-b[data-ov="' + ov + '"]' : null;
+  }
+  /* 일수 적용 : 범위 안으로 → 기본값 (표시 자리까지 같음) 이면 덮어쓰기 대신 기본값으로 */
+  function cyCommit(key, v, fsel) {
+    var e = CYED[key]; if (fsel === undefined) fsel = cyFocusNow();
+    if (!e) return;
+    v = Math.min(e.max || Infinity, Math.max(cyMin(e), v));
+    if (isFinite(v) && Math.abs(v - e.cur) > 1e-9) {
+      var same = Math.abs(v - e.def) < 1e-6 || (v === +v.toFixed(1) && v === +e.def.toFixed(1));
+      if (same && e.on) cyApply(function () { cyReset1(e); });
+      else if (!same || Math.abs(e.cur - e.def) > 1e-9) cyApply(function () { e.set(v); }, e.pin);
       else if (lastR) renderZone(lastR);
-      if (kb) cyFocus(key);
-    }
-    w.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape') { ev.preventDefault(); fin(false, true); }
-      else if (ev.key === 'Enter' && ev.target === inp) { ev.preventDefault(); fin(true, true); }
-    });
-    /* 칸 밖으로 포커스가 나가면 적용 (칸 ↔ '↺ 기본값' 칩 사이 Tab 은 그대로) */
-    w.addEventListener('focusout', function (ev) { if (ev.relatedTarget && w.contains(ev.relatedTarget)) return; setTimeout(function () { fin(true); }, 0); });
-    inp.focus(); inp.select();
+    } else if (lastR) renderZone(lastR);
+    cyFocusSel(fsel);
+  }
+  /* ▲▼ 는 화면에 보이는 값 (0.1 자리) 기준 — 역산 · 저장 반올림 (예 29.0002) 때문에 ▼ 가 같은 값에 머물지 않게 */
+  function cyShown(e) { return Math.round(+e.cur * 10) / 10; }
+  ACT.cyStep = function (el) {
+    var k = el.getAttribute('data-ck'), e = CYED[k]; if (!e) return;
+    var c = cyShown(e), v = +el.getAttribute('data-d') > 0 ? Math.floor(c * 2 + 1e-6) / 2 + 0.5 : Math.ceil(c * 2 - 1e-6) / 2 - 0.5;
+    cyCommit(k, v, '.cy-st[data-ri="' + el.getAttribute('data-ri') + '"][data-d="' + el.getAttribute('data-d') + '"]');
   };
-  ACT.cyRs1 = function (el) { var k = el.getAttribute('data-k'), e = CYED[k]; edTok = null; if (e) { cyApply(function () { cyReset1(e); }); cyFocus(k); } };
+  /* 숫자 칸 : 바뀜 (칸 밖 · Enter) = 적용 — 다시 그리기는 이벤트가 끝난 뒤, 그 사이 사례를 바꿨으면 (S 교체) 버림 */
+  ACTC.cyIn = function (el) {
+    if (el.getAttribute('data-done')) return;
+    var k = el.getAttribute('data-ck'), raw = parseFloat(el.value), S0 = S;
+    setTimeout(function () { if (S !== S0) return; if (isFinite(raw)) cyCommit(k, raw); else if (lastR) renderZone(lastR); }, 0);
+  };
+  document.addEventListener('keydown', function (e) {
+    var t = e.target; if (!t || !t.classList || !t.classList.contains('cy-in')) return;
+    if (e.key === 'Enter') {
+      e.preventDefault(); var raw = parseFloat(t.value);
+      if (!isFinite(raw)) { t.value = t.defaultValue; return; }
+      t.setAttribute('data-done', '1'); cyCommit(t.getAttribute('data-ck'), raw, '.cy-in[data-ri="' + t.getAttribute('data-ri') + '"]');
+    } else if (e.key === 'Escape' && t.value !== t.defaultValue) { e.preventDefault(); t.value = t.defaultValue; }
+  });
   ACT.cyRsAll = function (el) {
-    var c = CYCH[el.getAttribute('data-cy')], any = false; if (!c) return; edTok = null;
+    var id = el.getAttribute('data-cy'), c = CYCH[id], any = false; if (!c) return;
     c.eds.forEach(function (k) { var e = CYED[k]; if (e && e.on) { e.reset(); any = true; } });
     if ((c.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; })) { unpinTeams(c.pins); any = true; }
-    if (S.adv && S.adv.cyOrder) { var o = Object.assign({}, S.adv.cyOrder); c.oks.forEach(function (k) { delete o[k]; }); if (Object.keys(o).length) S.adv.cyOrder = o; else delete S.adv.cyOrder; }
-    if (any) cyApply(function () {}); else { ST.save({ inp: S, preset: current }); if (lastR) renderZone(lastR); }
+    (c.ovk || []).forEach(function (k) { if (S.adv && S.adv[k] != null) { delete S.adv[k]; any = true; } });
+    if (any) cyApply(function () {}); else if (lastR) renderZone(lastR);
   };
-  /* 되돌리기 칩을 눌러도 숫자 칸이 먼저 적용되지 않게 (포커스 유지) */
-  document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('.cy-rs1')) e.preventDefault(); });
-  /* 순서 바꾸기 : 손잡이를 끌거나 (마우스 · 터치), 누르면 (탭 · Enter) ▲▼ 단추, 포커스 후 ↑↓ — 같은 묶음 (data-ok) 안에서.
-     표시 순서만 바뀌므로 다시 계산 없이 저장 · 다시 그리기 */
-  var cyDr = null;
-  function cySibs(blk) { var par = blk.parentNode; return { ok: par.getAttribute('data-ok'), list: Array.prototype.filter.call(par.children, function (x) { return x.classList.contains('cy-blk'); }) }; }
-  function cyBlk(ok, id) { return document.querySelector('#zone [data-ok="' + ok + '"] > .cy-blk[data-id="' + id + '"]'); }
-  function cyMove(ok, ids, i0, i1, focus) {
-    if (!ok || i0 === i1) return;
-    var o = ids.slice(), id = o.splice(i0, 1)[0]; o.splice(i1, 0, id);
-    S.adv = S.adv || {}; S.adv.cyOrder = Object.assign({}, S.adv.cyOrder); S.adv.cyOrder[ok] = o;
-    ST.save({ inp: S, preset: current }); if (lastR) renderZone(lastR);
-    var b = focus && cyBlk(ok, id), f = b && b.querySelector(':scope > .cy-r > ' + focus);
-    if (b && (!f || f.disabled)) f = b.querySelector(':scope > .cy-r > .cy-mv button:not(:disabled)') || b.querySelector(':scope > .cy-r > .cy-gr');
-    if (f) f.focus({ preventScroll: true });
+  /* 겹침 저장 : 키 → S.adv 경로 (0 이면 지우고 빈 묶음도 지움) */
+  var OVP = { f: ['fOv'], b: ['bOv'], p: ['pOv'], dcP: ['dcOv', 'P'], dcC: ['dcOv', 'C'] };
+  function ovSet(key, v) {
+    var i = key.indexOf('.'), path = (OVP[key.slice(0, i)] || []).concat([key.slice(i + 1)]); if (path.length < 2) return;
+    S.adv = S.adv || {};
+    var o = S.adv, up = [];
+    for (var j = 0; j < path.length - 1; j++) { var nx = Object.assign({}, o[path[j]] && typeof o[path[j]] === 'object' ? o[path[j]] : {}); o[path[j]] = nx; up.push([o, path[j]]); o = nx; }
+    if (v > 1e-9) o[path[path.length - 1]] = rd(v); else delete o[path[path.length - 1]];
+    for (j = up.length - 1; j >= 0; j--) if (!Object.keys(up[j][0][up[j][1]]).length) delete up[j][0][up[j][1]];
   }
-  function cyMvTog(ok, id) {
-    cyMv = cyMv && cyMv.ok === ok && cyMv.id === id ? null : { ok: ok, id: id };
-    if (lastR) renderZone(lastR);
-    var b = cyBlk(ok, id), f = b && b.querySelector(':scope > .cy-r > ' + (cyMv ? '.cy-mv button:not(:disabled)' : '.cy-gr'));
-    if (f) f.focus({ preventScroll: true });
+  /* 끌기 · ←→ 결과 적용 : 역타 = 시차 칸 값, 나머지 = 겹침 */
+  function cyOvCommit(b, val, kb) {
+    var key = b.getAttribute('data-ov'), fsel = kb ? '.cy-b[data-ov="' + key + '"]' : null;
+    if (key === 'lag') { cyCommit(b.getAttribute('data-ed'), val, fsel); return; }
+    if (Math.abs(val - (+b.getAttribute('data-o') || 0)) < 1e-9) { if (lastR) renderZone(lastR); cyFocusSel(fsel); return; }
+    cyApply(function () { ovSet(key, val); }); cyFocusSel(fsel);
   }
-  ACT.cyMv = function (el) {
-    var blk = el.closest('.cy-blk'), sb = cySibs(blk), i0 = sb.list.indexOf(blk), d = +el.getAttribute('data-d'), i1 = Math.max(0, Math.min(sb.list.length - 1, i0 + d));
-    cyMove(sb.ok, sb.list.map(function (x) { return x.getAttribute('data-id'); }), i0, i1, '.cy-mv button[data-d="' + d + '"]');
-  };
-  /* ▲▼ 밖을 누르면 닫음 (다시 그리지 않고 단추만 걷음 — 같은 클릭의 다른 동작이 그대로 돌게) */
-  document.addEventListener('click', function (e) {
-    var t = e.target;
-    if (!cyMv || !t || !t.closest || !t.isConnected || t.closest('.cy-mv, .cy-gr')) return;
-    cyMv = null; $$('#zone .cy-mv').forEach(function (x) { x.remove(); }); $$('#zone .cy-blk.mv').forEach(function (x) { x.classList.remove('mv'); });
-  });
+  /* 바 끌기 (마우스 · 터치) : 끄는 동안 사슬을 엔진 규칙대로 다시 쌓고 (착수 = 앞 공종이 모두 끝나는 때 − 겹침) 겹친 구간 빗금 · 숫자, 놓으면 다시 계산 */
+  function cyPlace(el, s, N) { el.style.setProperty('--s', cyF(s, N)); }
+  function cyOvShow(b, o, base) {
+    var x = b.querySelector('.cy-o'); if (!x) return;
+    x.hidden = !(o > 0.001); x.style.setProperty('--o', (base > 0 ? Math.min(1, o / base) : 0).toFixed(4)); x.firstChild.textContent = r1(o);
+  }
   document.addEventListener('pointerdown', function (e) {
-    var gr = e.target.closest && e.target.closest('#zone .cy-gr'); if (!gr || e.button > 0) return;
-    var blk = gr.closest('.cy-blk'), sb = cySibs(blk); if (!sb.ok || sb.list.length < 2) return;
-    e.preventDefault(); try { gr.setPointerCapture(e.pointerId); } catch (er) { /* 무시 */ }
-    var i0 = sb.list.indexOf(blk);
-    cyDr = { pid: e.pointerId, y: e.clientY, dy: 0, blk: blk, ok: sb.ok, i0: i0, i: i0, rs: sb.list.map(function (x) { var r = x.getBoundingClientRect(); return { el: x, id: x.getAttribute('data-id'), m: r.top + r.height / 2, h: r.height }; }) };
-    blk.classList.add('cy-drag'); document.body.classList.add('dragging');
+    var b = e.target.closest && e.target.closest('#zone .cy-b.dr'); if (!b || e.button > 0 || !lastR) return;
+    var cy = b.closest('.cy'), W = b.parentNode.getBoundingClientRect().width, N = +cy.getAttribute('data-n'); if (!(W > 0) || !(N > 0)) return;
+    e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* 무시 */ }
+    var ch = b.getAttribute('data-ch'), num = function (q, k) { return +q.getAttribute(k) || 0; };
+    var chain = $$('#zone .cy-b[data-ch="' + ch + '"]').map(function (q) { return { el: q, ci: num(q, 'data-ci'), d: num(q, 'data-d'), o: num(q, 'data-o'), at: q.hasAttribute('data-at'), lag: num(q, 'data-lag') }; })
+      .sort(function (p, q) { return p.ci - q.ci; });
+    cyDg = { pid: e.pointerId, x: e.clientX, b: b, k: N / W, N: N, s0: num(b, 'data-s'), d: num(b, 'data-d'), pe: num(b, 'data-pe'), mx: num(b, 'data-mx'), lag: num(b, 'data-lag'), z: num(b, 'data-z'),
+      lmx: Math.max(num(b, 'data-z'), num(b, 'data-lg')), val: null, moved: false, chain: chain };
   });
   document.addEventListener('pointermove', function (e) {
-    var d = cyDr; if (!d || e.pointerId !== d.pid) return;
-    var dy = e.clientY - d.y, me = d.rs[d.i0], c = me.m + dy, i = 0;
-    d.dy = Math.max(d.dy, Math.abs(dy));
-    d.rs.forEach(function (q, k) { if (k !== d.i0 && q.m < c) i++; });
-    d.i = i;
-    d.rs.forEach(function (q, k) { var sh = k === d.i0 ? dy : (k > d.i0 && k <= i ? -me.h : k < d.i0 && k >= i ? me.h : 0); q.el.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+    var g = cyDg; if (!g || e.pointerId !== g.pid) return;
+    if (!g.moved) { if (Math.abs(e.clientX - g.x) < 3) return; g.moved = true; g.b.classList.add('ing'); document.body.classList.add('dragging'); }
+    var ds = (e.clientX - g.x) * g.k, o;
+    if (g.lag) {
+      var L = Math.max(0, Math.min(g.lmx, Math.round((g.s0 + ds) / g.lag * 2) / 2)); g.val = L; o = Math.max(0, g.z - L);
+      g.chain.forEach(function (q) { if (!q.lag) return; cyPlace(q.el, q.lag * L, g.N); cyOvShow(q.el, o, g.z); });
+    } else {
+      o = Math.min(g.mx, Math.max(0, Math.round((g.pe - g.s0 - ds) * 2) / 2)); g.val = o;
+      /* 사슬 다시 쌓기 : fr = 앞 공종이 모두 끝나는 때, pe = 바로 앞 공종 끝 (덧붙임 at 은 그 끝에 붙고 fr 에는 안 셈) */
+      var fr = 0, pe = 0;
+      g.chain.forEach(function (q) {
+        var s = q.at ? pe : Math.max(0, fr - (q.el === g.b ? o : q.o));
+        if (!q.at) { pe = s + q.d; fr = Math.max(fr, pe); }
+        cyPlace(q.el, s, g.N);
+      });
+      cyOvShow(g.b, o, g.d);
+    }
+    g.b.setAttribute('aria-valuenow', r1(o));
   });
-  function cyDrEnd(e) {
-    var d = cyDr; if (!d || (e && e.pointerId !== d.pid)) return; cyDr = null; document.body.classList.remove('dragging');
-    d.rs.forEach(function (q) { q.el.style.transform = ''; }); d.blk.classList.remove('cy-drag');
-    if (e && e.type === 'pointercancel') return;
-    if (d.dy < 4) cyMvTog(d.ok, d.rs[d.i0].id);   /* 끌지 않고 누름 = ▲▼ 단추 */
-    else cyMove(d.ok, d.rs.map(function (q) { return q.id; }), d.i0, d.i);
+  function cyDgEnd(e) {
+    var g = cyDg; if (!g || (e && e.pointerId !== g.pid)) return; cyDg = null;
+    document.body.classList.remove('dragging'); g.b.classList.remove('ing');
+    if (!g.moved) return;
+    if (e.type === 'pointercancel' || g.val == null) { if (lastR) renderZone(lastR); return; }
+    cyOvCommit(g.b, g.val, false);
   }
-  document.addEventListener('pointerup', cyDrEnd); document.addEventListener('pointercancel', cyDrEnd);
+  document.addEventListener('pointerup', cyDgEnd); document.addEventListener('pointercancel', cyDgEnd);
+  /* 키보드 : 바에 포커스 → ← 겹침 늘림 (앞당김) · → 줄임, 역타는 ← 시차 줄임 */
   document.addEventListener('keydown', function (e) {
-    /* ▲▼ 가 열려 있으면 Esc = 닫고 손잡이로 */
-    if (e.key === 'Escape' && cyMv && e.target.closest && e.target.closest('#zone .cy-mv, #zone .cy-gr')) { e.preventDefault(); cyMvTog(cyMv.ok, cyMv.id); return; }
-    var gr = e.target.closest && e.target.closest('#zone .cy-gr'); if (!gr) return;
-    var blk = gr.closest('.cy-blk'), sb = cySibs(blk), i0 = sb.list.indexOf(blk);
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cyMvTog(sb.ok, blk.getAttribute('data-id')); return; }
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    var i1 = Math.max(0, Math.min(sb.list.length - 1, i0 + (e.key === 'ArrowUp' ? -1 : 1)));
-    e.preventDefault(); cyMove(sb.ok, sb.list.map(function (x) { return x.getAttribute('data-id'); }), i0, i1, '.cy-gr');
+    var b = e.target.closest && e.target.closest('#zone .cy-b.dr'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    var dir = e.key === 'ArrowLeft' ? 1 : -1, mx = +b.getAttribute('data-mx') || 0, o = +b.getAttribute('data-o') || 0, v;
+    if (b.getAttribute('data-ov') === 'lag') { var z = +b.getAttribute('data-z') || 0, L = b.hasAttribute('data-lg') ? +b.getAttribute('data-lg') : Math.max(0, z - o); v = Math.max(0, Math.min(Math.max(z, L), (dir > 0 ? Math.ceil(L * 2 - 1e-6) / 2 - 0.5 : Math.floor(L * 2 + 1e-6) / 2 + 0.5))); }
+    else v = Math.max(0, Math.min(mx, dir > 0 ? Math.floor(o * 2 + 1e-6) / 2 + 0.5 : Math.ceil(o * 2 - 1e-6) / 2 - 0.5));
+    cyOvCommit(b, v, true);
   });
+
+  /* ───────── 조닝 판 Zone 산정 근거 (숫자 위주 짧게, 자세한 식은 title) — 엔진 식 그대로 (기초 = 1회 타설 체적, 바닥 = 면적 × 가정 두께, DC = 체적 ÷ 1회 타설) */
+  function zbLine(html, title) { return '<span class="zb" title="' + esc(title) + '">' + html + '</span>'; }
+  function zbAdv(R) { return (R.inp && R.inp.adv) || {}; }
+  function zbFound(R) {
+    var f = R.found, zIn = parseFloat(zbAdv(R).zoneV), zv = Math.max(300, Math.min(2000, isFinite(zIn) ? zIn : LIB.found.zoneV)), za = f.Af / Math.max(1, f.nZ), pile = R.fType !== 'MAT';
+    /* 범위 (800 ~ 900㎥) 는 기본 기준일 때만 — 입력 · 라이브러리로 바꾸면 그 값만 */
+    return zbLine('1회 타설 ≈ <b>' + fmt(zv) + '</b>㎥ ' + (isFinite(zIn) ? '(입력)' : zv >= 800 && zv <= 900 ? '(800 ~ 900㎥)' : '') + ' ÷ 매트 <b>' + r1(f.t) + '</b>m<br>→ Zone ≈ <b>' + fmt(za) + '</b>㎡ · <b>' + fmt(f.vZ) + '</b>㎥ / 회',
+      '기초 ' + fmt(f.Af) + '㎡ × 매트 ' + r1(f.t) + 'm' + (pile ? ' × 0.6 (파일 기초)' : '') + ' × 1.1 (할증) = ' + fmt(f.V) + '㎥ ÷ 1회 타설 ' + fmt(zv) + '㎥ = ' + r1(f.V / zv) + ' → ' + f.nZ + ' Zone (올림) · Zone 당 ' + fmt(f.vZ) + '㎥ · ' + fmt(za) + '㎡');
+  }
+  /* 바닥 (지하 · 지상 일반) : Zone 기준 면적 × 가정 슬래브 두께 (LIB slabT, 계산에는 안 씀) = 1회 타설 */
+  function zbSlab(L, area, NZ, lab, k) {
+    var za = L.zoneA, t = L.slabT || 0.3, A = area * (k || 1);
+    return zbLine('Zone 기준 <b>' + fmt(za) + '</b>㎡ × 슬래브 <b>' + t + '</b>m (가정)<br>→ 1회 타설 ≈ <b>' + fmt(za * t) + '</b>㎥' + (za * t >= 250 && za * t <= 300 ? ' (250 ~ 300㎥)' : ''),
+      lab + ' ' + fmt(area) + '㎡' + (k && k !== 1 ? ' × 바닥 몫 ' + r2(k) : '') + ' ÷ ' + fmt(za) + '㎡ = ' + r1(A / za) + ' → ' + NZ + ' Zone (반올림) · Zone ≈ ' + fmt(A / Math.max(1, NZ)) + '㎡ × ' + t + 'm ≈ ' + fmt(A / Math.max(1, NZ) * t) + '㎥');
+  }
+  function zbBase(R, NZ) {
+    var bs = R.base, b = R.basic, g = R.geo;
+    if (bs.td) {
+      var za = LIB.td.f1ZoneA;
+      return zbLine('Zone ≈ <b>' + fmt(g.Adeep / Math.max(1, NZ)) + '</b>㎡ (기준 ' + fmt(za) + '㎡ · 2 ~ 4 Zone)', '굴착 면적 ' + fmt(g.Adeep) + '㎡ ÷ ' + fmt(za) + '㎡ = ' + r1(g.Adeep / za) + ' → ' + NZ + ' Zone (반올림, 2 ~ 4) · 기준층 슬래브 Zone 순환 → 아래층 같은 Zone');
+    }
+    var A = bs.partial ? g.AdnEff : Math.max(g.AdnEff, b.nB > 0 ? g.bldg : 0);
+    return zbSlab(LIB.base, A, NZ, bs.partial ? '지하 바닥' : '1F 바닥');
+  }
+  function zbUp(R) {
+    var fr = R.frame, ty = fr.typ, A = zbAdv(R), zIn = GE.parseSpec(A.zSpec).up[ty.n] != null;
+    if (ty.dc) {
+      var P = ty.dc.P;
+      return zbLine((zIn ? 'Zone 수 입력 · ' : '') + '체적 ≈ <b>' + fmt(P.V) + '</b>㎥ ÷ 1회 <b>' + fmt(LIB.dc.pourV) + '</b>㎥', '기둥 · 보 · 슬래브 체적 ' + fmt(P.V) + '㎥' + (zIn ? ' · Zone 수 입력 ' + P.N : ' ÷ 1회 타설 ' + fmt(LIB.dc.pourV) + '㎥ = ' + r1(P.V / LIB.dc.pourV) + ' → ' + P.N + ' Zone (올림)') + ' · Zone 당 ≈ ' + fmt(P.V / Math.max(1, P.N)) + '㎥');
+    }
+    var sl = ty.slab, hasCore = !!ty.core, Au = fr.Atyp, cA = +A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : 0, k = hasCore ? (cA ? Math.max(0.4, 1 - cA / Au) : LIB.frame.core.slabShare) : 1;
+    if (zIn) return zbLine('Zone 수 입력 · Zone ≈ <b>' + fmt(Au * k / Math.max(1, sl.Z)) + '</b>㎡', ty.n + 'F Zone 수 입력 ' + sl.Z + ' · 기준층 ' + fmt(Au) + '㎡' + (k !== 1 ? ' × 바닥 몫 ' + r2(k) : '') + ' ÷ ' + sl.Z);
+    return zbSlab(LIB.frame, Au, sl.Z, '기준층', k);
+  }
+  function zbCore(R) {
+    var ty = R.frame.typ, A = zbAdv(R), zIn = +A.coreZ > 0;
+    if (ty.dc) {
+      var C = ty.dc.C;
+      return zbLine((zIn ? 'Zone 수 입력 · ' : '') + '체적 ≈ <b>' + fmt(C.V) + '</b>㎥ ÷ 1회 <b>' + fmt(LIB.dc.pourV) + '</b>㎥', '코어 벽체 · 바닥 체적 ' + fmt(C.V) + '㎥' + (zIn ? ' · Zone 수 입력 ' + C.N : ' ÷ 1회 타설 ' + fmt(LIB.dc.pourV) + '㎥ = ' + r1(C.V / LIB.dc.pourV) + ' → ' + C.N + ' Zone (올림)'));
+    }
+    if (!ty.core) return '';
+    var Au = R.frame.Atyp, cA = +A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : 0, ca = cA || Au * LIB.frame.core.ratio, za = LIB.frame.core.zoneA;
+    if (zIn) return zbLine('Zone 수 입력 · Zone ≈ <b>' + fmt(ca / ty.core.Z) + '</b>㎡', '코어 Zone 수 입력 ' + ty.core.Z);
+    return zbLine('Zone 기준 <b>' + fmt(za) + '</b>㎡ · 코어 ≈ <b>' + fmt(ca) + '</b>㎡', '코어 ' + fmt(ca) + '㎡' + (cA ? '' : ' (기준층 × ' + LIB.frame.core.ratio + ')') + ' ÷ ' + fmt(za) + '㎡ = ' + r1(ca / za) + ' → ' + ty.core.Z + ' Zone (반올림' + (cA ? '' : ', 최소 2') + ')');
+  }
 
   /* ───────── 조닝 : 아이소메트릭 적층 (기준층 · 지하골조 · 기초, 같은 축척) */
   /* 지상 코어 : 면적 = 코어 비율 (DC 는 엔진 코어 면적), 모양은 깊이 ≤ 단변 0.6 의 직사각형.
@@ -1559,6 +1653,7 @@
       var tzF = Math.max(7, Math.min(28, g.tMat * s * 4));
       oF = row('기초 · ' + GE.FOUND_N[R.fType].replace(/ \(.*\)/, ''), '기초', Af, dF, [
         '<b>' + f.nZ + '</b> Zone · 매트 <b>' + r1(g.tMat) + '</b>m',
+        zbFound(R),
         teamCtl('fTeams', '철근팀', f.teams, R.team && R.team.f),
         f.nPit ? 'PIT <b>' + f.nPit + '</b> Zone · 코어 아래 (점선)' : ''
       ], isoPlate({ Lp: dF.L, Bp: dF.B, Lr: dF.L, Br: dF.B, cells: cellsF, tz: tzF, tLab: 't=' + r1(g.tMat) + 'm', ghostCores: gsAll.map(function (q) { return coreOn(q, dF.L, dF.B); }), aria: '기초 조닝 평면 (아이소메트릭) · 매트 ' + r1(g.tMat) + 'm · 점선 = 지상 코어 자리' }, s, FW, 2), cyFound(R));
@@ -1571,6 +1666,7 @@
       if (bs.td) { NZ = Math.max(2, Math.min(4, Math.round(g.Adeep / LIB.td.f1ZoneA))); NT = NZ; sub = ['역타 슬래브 <b>' + NZ + '</b> Zone 순환']; }
       else if (bs.partial) { NZ = Math.max(1, Math.round(Ab / LIB.base.zoneA)); NT = Math.ceil(NZ / LIB.base.zpt - 1e-9); sub = ['바닥 <b>' + NZ + '</b> Zone · <b>' + NT + '</b>팀', '점선 = 기초 외곽']; }
       else { var r0 = bs.rows[bs.rows.length - 1]; NZ = r0.Z; NT = r0.T; sub = ['바닥 <b>' + NZ + '</b> Zone · <b>' + NT + '</b>팀']; }
+      sub.splice(1, 0, zbBase(R, NZ));
       maxT = Math.max(maxT, NT);
       var tb = zteams(NZ, NT), ghost = Ab < Af * 0.97;
       var Ldb = ghost ? dF : dB;
@@ -1604,8 +1700,10 @@
       var cs = gs[selCore], totA = gs.reduce(function (t, q) { return t + q.Ac; }, 0);
       oU = row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상골조', Au, dU, [
         '<i class="dot" style="background:var(--t1)"></i>외주부 <b>' + NP + '</b> Zone',
+        zbUp(R),
         teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
         NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
+        NC ? zbCore(R) : '',
         NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
         gs.length ? '<span class="core-n">코어 <b>' + gs.length + '</b>개 · ' + Math.round(totA / gs[0].Au * 100) + '% · ' + fmt(Math.round(totA)) + '㎡' +
           (gs.length < CORE_MAX ? '<button type="button" class="tm-o core-add" data-act="coreAdd" title="코어 추가 (최대 ' + CORE_MAX + '개)">+ 코어</button>' : '') + '</span>' : '',
@@ -1868,6 +1966,276 @@
     $('#in-gfa').value = ah.gfa ? fmt(ah.gfa) + ' ㎡' : '';
   }
 
+  /* ───────── 저장 · 불러오기 · PDF (맨 위 줄 오른쪽 #tb-act)
+     파일 = JSON : 앱 이름 · 형식 · 버전 · 저장 시각 · 결과 요약 (총 공기 · 대공종 합계 · 마일스톤) + 입력 S 전체 (adv · libOv · 코어 · 팀수 · 사이클 편집).
+     불러올 때는 입력 (inp) 과 사례 표시 (preset) 만 쓴다. 보관함 = 이 브라우저 localStorage (키 따로 · 최대 30개 · 최신순 · 같은 이름은 덮어씀) */
+  var FILE_APP = '공기산정 에이전트', FILE_FMT = 'gonggi-agent/o7', FILE_VER = 1, KEEP_KEY = 'gonggi-agent-o7-saves', KEEP_MAX = 30;
+  var FA = { armT: null, toastT: null };
+  var FICO = {
+    save: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6v7.6M4.9 7.2 8 10.3l3.1-3.1M2.8 12.9h10.4"/></svg>',
+    open: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.4 12.6V3.6h4l1.4 1.6h5.8v7.4z"/><path d="M8 11V7.4M6.4 8.9 8 7.3l1.6 1.6"/></svg>',
+    keep: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.3 2.6h7.4v10.8L8 10.9l-3.7 2.5z"/></svg>',
+    pdf: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 6V2.6h6.8V6M4.6 11.6H2.6V6h10.8v5.6h-2"/><path d="M4.6 9.6h6.8v3.8H4.6z"/></svg>'
+  };
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function dDay(d) { return d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()); }
+  function dTime(d) { return dDay(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+  function hasR() { return !!(lastR && isFinite(lastR.total)); }
+  function isPreset(k) { return typeof k === 'string' && Object.prototype.hasOwnProperty.call(PRESETS, k); }
+  function presetName(k) { var b = isPreset(k) && $('#presets [data-p="' + k + '"]'); return b ? b.getAttribute('title') || '' : ''; }
+  function initFile() {
+    var bar = $('#tb-act'); if (!bar || $('#fa-file')) return;
+    bar.innerHTML = '<div class="fa" role="group" aria-label="저장 · 불러오기">' +
+      '<button type="button" class="fa-b" data-act="fSave" title="지금 입력 · 검토 상태를 파일 (JSON) 로 내려받기">' + FICO.save + '<span>저장</span></button>' +
+      '<button type="button" class="fa-b" data-act="fOpen" title="저장한 파일 (JSON) 불러오기">' + FICO.open + '<span>불러오기</span></button>' +
+      '<button type="button" class="fa-b" data-act="fList" aria-haspopup="dialog" aria-expanded="false" aria-controls="fa-pop" title="이 브라우저에 이름 붙여 보관 · 불러오기 · 삭제">' + FICO.keep + '<span>보관함</span><b class="fa-n" id="fa-n" hidden></b></button>' +
+      '</div><button type="button" class="fa-b fa-pdf" data-act="fPdf" title="A4 인쇄 · PDF 저장 (요약 세로 · Master Schedule · 단면 · 조닝 가로)">' + FICO.pdf + '<span>PDF</span></button>' +
+      '<input type="file" id="fa-file" accept=".json,application/json" data-actc="fFile" hidden tabindex="-1" aria-hidden="true">' +
+      '<div class="fa-pop" id="fa-pop" role="dialog" aria-label="보관함" hidden></div>';
+    var t = document.createElement('div'); t.className = 'fa-toast'; t.id = 'fa-toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); t.hidden = true;
+    document.body.appendChild(t);
+    /* 보관함 창 : 바깥 누르기 · Esc = 닫기 */
+    document.addEventListener('pointerdown', function (e) { var p = $('#fa-pop'); if (!p || p.hidden || p.contains(e.target) || (e.target.closest && e.target.closest('[data-act="fList"]'))) return; popClose(false); }, true);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#fa-pop') && !$('#fa-pop').hidden) { e.stopPropagation(); popClose(true); } }, true);
+    keepCount();
+  }
+  function toast(msg, err) {
+    var t = $('#fa-toast'); if (!t) return;
+    t.textContent = msg; t.classList.toggle('er', !!err); t.hidden = false; t.classList.remove('fa-on'); void t.offsetWidth; t.classList.add('fa-on');
+    clearTimeout(FA.toastT);
+    FA.toastT = setTimeout(function () { t.classList.remove('fa-on'); FA.toastT = setTimeout(function () { t.hidden = true; }, 240); }, err ? 3800 : 2600);
+  }
+  /* 결과 요약 (파일 안 참고용 — 불러올 때는 다시 계산) */
+  function fileSum() {
+    if (!hasR()) return null;
+    var R = lastR, o = { name: S.name || '', total: r2(R.total), text: m2(R.total) + '개월' };
+    try { o.title = GK.title(R); } catch (e) {}
+    try { var g = GK.cpGroups(R); o.groups = {}; Object.keys(g).forEach(function (k) { o.groups[k] = r2(g[k]); }); } catch (e) {}
+    try { o.milestones = GK.milestones(R).map(function (x) { return { k: x.k, m: r2(x.m) }; }); } catch (e) {}
+    if (R.sens && isFinite(R.sens.lo) && isFinite(R.sens.hi)) o.range = { lo: r2(R.sens.lo), hi: r2(R.sens.hi) };
+    if (S.start) o.start = S.start;
+    return o;
+  }
+  function fileName(d) {
+    var nm = String(S.name || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || '프로젝트';
+    return '공기산정_' + nm + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.json';
+  }
+  /* 내려받기 : 실행 환경의 downloads 기능이 있으면 그것으로, 없으면 링크 내려받기 */
+  function fileDown(name, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    if (downloads && downloads.save) return downloads.save({ filename: name, data: blob });
+    return new Promise(function (res) {
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+      res();
+    });
+  }
+  ACT.fSave = function () {
+    popClose(false);
+    var d = new Date(), name = fileName(d), txt;
+    try { txt = JSON.stringify({ app: FILE_APP, format: FILE_FMT, version: FILE_VER, savedAt: d.toISOString(), preset: current || '', summary: fileSum(), inp: S }, null, 2); } catch (e) { toast('저장하지 못했습니다', 1); return; }
+    fileDown(name, txt).then(function () { toast('저장 : ' + name); }, function (e) { toast(e && e.code === 'declined' ? '저장을 취소했습니다' : '저장하지 못했습니다', 1); });
+  };
+  ACT.fOpen = function () { popClose(false); var f = $('#fa-file'); if (f) { f.value = ''; f.click(); } };
+  ACTC.fFile = function (el) {
+    var f = el.files && el.files[0]; if (!f) return;
+    if (f.size > 5e6) { el.value = ''; toast('파일이 너무 큽니다 (5MB 이하)', 1); return; }
+    var rd = new FileReader();
+    rd.onload = function () { el.value = ''; fileApply(String(rd.result || ''), f.name); };
+    rd.onerror = function () { el.value = ''; toast('파일을 읽지 못했습니다', 1); };
+    rd.readAsText(f);
+  };
+  /* 형식 확인 : 이 앱이 저장한 JSON (앱 이름 또는 형식) + 입력 객체 */
+  function fileParse(txt) {
+    var o; try { o = JSON.parse(String(txt).replace(/^\uFEFF/, '')); } catch (e) { return null; }
+    if (!o || typeof o !== 'object' || Array.isArray(o) || (o.format !== FILE_FMT && o.app !== FILE_APP)) return null;
+    return o.inp && typeof o.inp === 'object' && !Array.isArray(o.inp) ? o : null;
+  }
+  function fileApply(txt, fname) {
+    var o = fileParse(txt);
+    if (!o) { toast('공기산정 저장 파일 (JSON) 이 아닙니다', 1); return; }
+    if (!stateLoad(o.inp, o.preset)) { toast('불러오지 못했습니다 — 파일 내용을 확인하세요', 1); return; }
+    toast('불러옴 : ' + (S.name || fname) + (hasR() ? ' · ' + m2(lastR.total) + '개월' : ''));
+  }
+  /* 불러온 입력 다듬기 : 코어 목록은 객체만 (최대 CORE_MAX) — 손으로 고친 파일에서도 판 그리기가 깨지지 않게 */
+  function fileSane(inp) {
+    var a = inp.adv;
+    if (a && typeof a === 'object' && !Array.isArray(a) && a.cores != null) {
+      var cs = Array.isArray(a.cores) ? a.cores.filter(function (c) { return c && typeof c === 'object' && !Array.isArray(c); }).slice(0, CORE_MAX) : [];
+      if (cs.length) a.cores = cs; else delete a.cores;
+    }
+    return inp;
+  }
+  /* 입력 교체 → 화면 · 시트 채우고 다시 계산 (사례 표시는 저장 당시 그대로). 계산 오류가 나는 입력이면 앞 상태로 되돌리고 false */
+  function stateLoad(inp, preset) {
+    var s; try { s = norm(fileSane(GK.clone(inp))); } catch (e) { return false; }
+    var s0 = S, p0 = current, g0 = lastGround, r0 = lastR;
+    S = s; lastGround = S.ground;
+    markPreset(isPreset(preset) ? preset : '');
+    GK.fill(document, S); syncUI(); recompute();
+    if (lastR === r0 && /^계산 오류/.test($('#warns').textContent)) { S = s0; lastGround = g0; markPreset(p0); GK.fill(document, S); syncUI(); recompute(); return false; }
+    return true;
+  }
+  /* 보관함 (이 브라우저) */
+  function keepRead() {
+    try { var a = JSON.parse(localStorage.getItem(KEEP_KEY) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return x && x.id && x.inp && typeof x.inp === 'object'; }) : []; } catch (e) { return []; }
+  }
+  function keepWrite(a) { try { localStorage.setItem(KEEP_KEY, JSON.stringify(a.slice(0, KEEP_MAX))); return true; } catch (e) { return false; } }
+  function keepCount(a) { var n = $('#fa-n'); if (!n) return; a = a || keepRead(); n.textContent = a.length || ''; n.hidden = !a.length; }
+  function keepDraw(focus) {
+    var p = $('#fa-pop'), a = keepRead(); keepCount(a);
+    if (!p || p.hidden) return;
+    var ni = $('#fp-name'), val = ni ? ni.value : (S.name || '');
+    p.innerHTML = '<div class="fp-h"><b>보관함</b><span>이 브라우저 · <i>' + a.length + '</i> / ' + KEEP_MAX + '</span></div>' +
+      '<div class="fp-new"><input id="fp-name" type="text" maxlength="60" autocomplete="off" spellcheck="false" placeholder="보관할 이름" aria-label="보관할 이름"><button type="button" class="fp-k" data-act="fKeep">지금 상태 보관</button></div>' +
+      (a.length ? '<ul class="fp-l">' + a.map(function (x) {
+        var d = new Date(x.at), when = isFinite(d) ? dTime(d) : '', pn = presetName(x.preset);
+        return '<li><button type="button" class="fp-o" data-act="fGet" data-id="' + esc(x.id) + '" title="불러오기 : ' + esc(x.name) + '"><b>' + esc(x.name) + '</b><span><i>' + esc(when) + '</i>' + (pn ? ' · ' + esc(pn) : '') + '</span>' +
+          (isFinite(x.total) && x.total != null ? '<em>' + m2(x.total) + '<small>개월</small></em>' : '') + '</button>' +
+          '<button type="button" class="fp-x" data-act="fDel" data-id="' + esc(x.id) + '" title="삭제" aria-label="' + esc(x.name) + ' 삭제">×</button></li>';
+      }).join('') + '</ul>' : '<p class="fp-e">보관한 검토가 없습니다</p>');
+    ni = $('#fp-name'); ni.value = val;
+    ni.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ACT.fKeep(); } });
+    if (focus === 'name' || (focus === 'auto' && window.matchMedia && matchMedia('(hover: hover)').matches)) { try { ni.focus({ preventScroll: true }); } catch (er) { ni.focus(); } ni.select(); }
+    else if (focus === 'list') { var f = $('#fa-pop .fp-o') || ni; try { f.focus({ preventScroll: true }); } catch (er) { f.focus(); } }
+  }
+  function popClose(fb) {
+    var p = $('#fa-pop'); if (!p || p.hidden) return;
+    p.hidden = true; var b = $('[data-act="fList"]');
+    if (b) { b.setAttribute('aria-expanded', 'false'); if (fb) b.focus(); }
+  }
+  ACT.fList = function (el) {
+    var p = $('#fa-pop'); if (!p) return;
+    if (!p.hidden) { popClose(true); return; }
+    p.innerHTML = ''; p.hidden = false; el.setAttribute('aria-expanded', 'true'); keepDraw('auto');
+  };
+  ACT.fKeep = function () {
+    var ni = $('#fp-name'), nm = String(ni && ni.value || '').replace(/\s+/g, ' ').trim().slice(0, 60) || S.name || '이름 없음';
+    var a = keepRead(), had = a.some(function (x) { return x.name === nm; }), rest = a.filter(function (x) { return x.name !== nm; }), cut = rest.length >= KEEP_MAX;
+    rest.unshift({ id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: nm, at: new Date().toISOString(), total: hasR() ? r2(lastR.total) : null, preset: current || '', inp: GK.clone(S) });
+    if (!keepWrite(rest)) { toast('브라우저 저장 공간이 부족합니다 — 파일로 저장하세요', 1); return; }
+    if (ni) ni.value = nm;
+    keepDraw('list'); toast((had ? '덮어씀 : ' : '보관 : ') + nm + (cut ? ' · 가장 오래된 1개 정리' : ''));
+  };
+  ACT.fGet = function (el) {
+    var id = el.getAttribute('data-id'), x = keepRead().filter(function (q) { return q.id === id; })[0];
+    if (!x) { keepDraw('auto'); return; }
+    popClose(false);
+    if (!stateLoad(x.inp, x.preset)) { toast('불러오지 못했습니다', 1); return; }
+    toast('불러옴 : ' + x.name + (hasR() ? ' · ' + m2(lastR.total) + '개월' : ''));
+  };
+  /* 삭제 = 두 번 누르기 (첫 번째에 '삭제' 로 바뀜, 3초 안에 한 번 더) */
+  ACT.fDel = function (el) {
+    var id = el.getAttribute('data-id');
+    if (!el.classList.contains('arm')) {
+      $$('#fa-pop .fp-x.arm').forEach(function (b) { b.classList.remove('arm'); b.textContent = '×'; });
+      el.classList.add('arm'); el.textContent = '삭제'; clearTimeout(FA.armT);
+      FA.armT = setTimeout(function () { if (el.isConnected) { el.classList.remove('arm'); el.textContent = '×'; } }, 3000);
+      return;
+    }
+    var a = keepRead(), x = a.filter(function (q) { return q.id === id; })[0];
+    /* 다시 그린 뒤 초점 = 이름 칸 (터치 기기는 자판이 뜨지 않게 초점 없이) */
+    keepWrite(a.filter(function (q) { return q.id !== id; })); keepDraw('auto');
+    if (x) toast('삭제 : ' + x.name);
+  };
+
+  /* ───────── PDF (인쇄) : A4 — 1쪽 요약 (세로) · Master Schedule · 가정 단면 · 조닝 (가로, 한 판에 한 쪽).
+     beforeprint (또는 print 미디어) → html.pr + 1쪽 머리 · 주요 가정사항 · 확인 사항을 1쪽으로 옮김 → 도면을 인쇄 폭으로 다시 그리고 넘치면 zoom.
+     afterprint → 제자리 · 화면 폭으로 다시 그림 */
+  var PR = { on: false, fired: false, mv: [], title: null, y: 0 }, MM = 96 / 25.4, PG = { ph: 272, lh: 185 };
+  ACT.fPdf = function () {
+    popClose(false); PR.fired = false;
+    try { window.print(); } catch (e) {}
+    /* 인쇄 창이 막힌 환경 (미리보기 틀 등) 이면 안내 */
+    setTimeout(function () { if (!PR.fired) toast('이 화면에서는 인쇄 창이 열리지 않습니다 — 파일을 브라우저에서 열어 주세요', 1); }, 900);
+  };
+  function cssQ(s) { return '"' + String(s).replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ') + '"'; }
+  function prTitle(R) {
+    var cond = [], pn = presetName(current);
+    if (R) {
+      try { cond.push(GK.title(R)); } catch (e) {}
+      if (R.ground && R.ground.name) cond.push('지반 ' + R.ground.name.replace(/ 입력$/, '') + (R.ground.assumed ? ' (가정)' : ''));
+      if (R.basic && R.basic.nB > 0 && GE.WALL_N[R.basic.wall]) cond.push(GE.WALL_N[R.basic.wall].replace(/ \(.*\)$/, '') + ' · ' + (GE.SUP_N[R.basic.sup] || '').replace(/ \(.*\)$/, ''));
+      if (R.inp && R.inp.start) cond.push(GK.ym(GK.addM(R.inp.start, 0)) + ' 착공');
+    }
+    return '<div class="pr-t1"><span>공기산정 에이전트 · 공기 검토</span><span>검토일 <b class="n">' + dDay(new Date()) + '</b></span></div>' +
+      '<h1 class="pr-nm">' + esc(S.name || '프로젝트') + '</h1>' +
+      '<p class="pr-cd">' + (pn ? '<b>' + esc(pn) + '</b>' : '') + esc(cond.join(' · ')) + '</p>';
+  }
+  function prOn() {
+    PR.fired = true;
+    if (PR.on) return; PR.on = true;
+    try {
+      popClose(false); hideTip();
+      PR.y = window.pageYOffset || 0;   /* 인쇄 배치로 문서 높이가 바뀌어도 끝나면 보던 자리로 */
+      /* PDF 로 저장할 때 기본 파일 이름 = 문서 제목 → '공기산정_<프로젝트명>_<YYYYMMDD>' (끝나면 되돌림) */
+      var d = new Date(); PR.title = document.title;
+      document.title = '공기산정_' + String(S.name || '프로젝트').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate());
+      var st = document.getElementById('pr-pg');
+      if (!st) { st = document.createElement('style'); st.id = 'pr-pg'; document.head.appendChild(st); }
+      st.textContent = '@page { @top-left { content: ' + cssQ('공기산정 · ' + (S.name || '프로젝트')) + '; } @top-right { content: ' + cssQ((hasR() ? '총 공기 ' + m2(lastR.total) + '개월 · ' : '') + dDay(new Date())) + '; } }' +
+        ' @page :first { @top-left { content: none; } @top-right { content: none; } }';
+      var tb = $('#tbar'), t = document.createElement('header'); t.id = 'pr-t'; t.className = 'pr-t'; t.innerHTML = prTitle(lastR);
+      tb.parentNode.insertBefore(t, tb);
+      var ms = $('.t-ms'), hold = document.createElement('div'); hold.id = 'pr-x'; hold.className = 'pr-x';
+      ms.parentNode.insertBefore(hold, ms.nextSibling);
+      PR.mv = [];
+      ['sec-kf', 'sec-warn'].forEach(function (id) { var el = document.getElementById(id); if (!el) return; PR.mv.push({ el: el, p: el.parentNode, n: el.nextSibling }); hold.appendChild(el); });
+      /* 계산 전 (입력 대기) 이면 1쪽만 — 빈 가로 판은 내지 않음 */
+      document.documentElement.classList.add('pr'); document.documentElement.classList.toggle('pr-0', !hasR());
+      prFit();
+    } catch (e) { if (window.console) console.error(e); }
+  }
+  function prOff() {
+    if (!PR.on) return; PR.on = false;
+    try {
+      document.documentElement.classList.remove('pr', 'pr-0'); if (!document.documentElement.className) document.documentElement.removeAttribute('class');
+      if (PR.title != null) { document.title = PR.title; PR.title = null; }
+      PR.mv.slice().reverse().forEach(function (m) { if (m.n && m.n.parentNode === m.p) m.p.insertBefore(m.el, m.n); else m.p.appendChild(m.el); });
+      PR.mv = [];
+      ['pr-t', 'pr-x'].forEach(function (id) { var el = document.getElementById(id); if (el) el.remove(); });
+      $$('[data-prz]').concat($('.wrap')).forEach(function (el) { el.style.removeProperty('--prz'); el.style.removeProperty('--prz1'); el.removeAttribute('data-prz'); if (!el.getAttribute('style')) el.removeAttribute('style'); });
+      prDraw([renderMs, renderGantt, renderSection, renderZone]);
+      window.scrollTo(window.pageXOffset || 0, PR.y || 0);
+    } catch (e) { if (window.console) console.error(e); }
+  }
+  function prDraw(fns) { if (!lastR) return; fns.forEach(function (fn) { try { fn(lastR); } catch (e) { if (window.console) console.error(e); } }); widths.ms = $('#ms-flow').clientWidth; }
+  /* 1쪽 : 제목 ~ 확인 사항이 한 쪽에 들어가게 (확인 사항이 길면 주요 가정사항까지만 맞추고 이어서 다음 쪽). 가로 판 : 한 쪽 높이에 맞춰 zoom (최소 배율까지) */
+  function prFit() {
+    var wrap = $('.wrap'), AP = PG.ph * MM - 10, AL = PG.lh * MM - 6, z = 1, Z1 = 0.74;
+    for (var i = 0; i < 3; i++) {
+      wrap.style.setProperty('--prz1', String(z)); prDraw([renderMs]);
+      var top = $('#pr-t').getBoundingClientRect().top, b = $('#sec-kf') || $('.t-ms'), hAll = $('#pr-x').getBoundingClientRect().bottom - top;
+      var h = hAll * Z1 / z <= AP ? hAll : b.getBoundingClientRect().bottom - top;
+      if (h <= AP || z <= Z1) break;
+      z = Math.max(Z1, Math.floor(z * AP / h * 1000) / 1000);
+    }
+    prFitTile('#sec-gantt', renderGantt, AL, 0.55, 1.2);
+    prFitTile('#sec-sec', renderSection, AL, 0.6, 1);
+    prFitTile('#sec-zone', renderZone, AL, 0.6, 1);
+  }
+  /* 넘치면 줄이고 (zmin 까지), 공종이 적어 쪽이 많이 남으면 조금 키움 (zmax — Master Schedule 만) */
+  function prFitTile(sel, fn, AH, zmin, zmax) {
+    var el = $(sel), z = 1; if (!el) return;
+    el.setAttribute('data-prz', '');
+    for (var i = 0; i < 4; i++) {
+      el.style.setProperty('--prz', String(z)); prDraw([fn]);
+      var h = el.getBoundingClientRect().height, nz;
+      if (h > AH) { if (z <= zmin) break; nz = Math.max(zmin, Math.floor(z * AH / h * 1000) / 1000); }
+      else if (i === 0 && zmax > 1 && h < AH * 0.9) nz = Math.min(zmax, Math.floor(z * AH / h * 0.97 * 1000) / 1000);
+      else break;
+      z = nz;
+    }
+  }
+  function initPrint() {
+    window.addEventListener('beforeprint', prOn);
+    window.addEventListener('afterprint', prOff);
+    var mq = window.matchMedia && matchMedia('print'), f = function (e) { if (e.matches) prOn(); else prOff(); };
+    if (mq) { if (mq.addEventListener) mq.addEventListener('change', f); else if (mq.addListener) mq.addListener(f); }
+  }
+
   /* ───────── 사례 · 시트 · 초기화 */
   function loadPreset(k) {
     if (!PRESETS[k]) return;
@@ -1936,6 +2304,7 @@
         bx.addEventListener('click', async function () { if (!lastR) return; bx.disabled = true; var t0 = bx.textContent; bx.textContent = '파일 준비 중…'; try { bx.textContent = await GK.exportX(lastR, downloads); } catch (e) { bx.textContent = '저장 실패'; } setTimeout(function () { bx.textContent = t0; bx.disabled = false; }, 2200); });
       }
     });
+    initFile(); initPrint();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   window.__agent = { get R() { return lastR; }, loadPreset: loadPreset, recompute: recompute, get state() { return S; } };

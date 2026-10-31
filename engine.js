@@ -31,15 +31,17 @@
       /* PHC : v2.8 12본/일 검토 → 사례 C 토공 5.5 → 4.3개월 (실적과 어긋남) → 8본/일 유지. 본수 기초면적 ÷ 8㎡ 는 사례 C 도면 계수 2,599본과 일치 (v2.8 교점 × 9 = 1,989본) */
       pile: { PHC: { areaPer: 8, rate: 8, teamArea: 5000, maxTeams: 4 }, BORED: { areaPer: 25, rate: 1.0, setPer: 80, maxSets: 4 } },
       found: { zoneV: 850, rebar: 0.15, crew: 20, tPerMD: 0.8, prep: 4, tail: 3, pitAdd: 6, pitRatio: 0.12, teamV: 4500, maxTeams: 6, lag: 3, cureCD: 14 },
-      base: { liftAnchor: 3.0, liftOther: 4.5, liftWD: 10, liftRef: 3.0, slabD: 3.25, zoneA: 900, zpt: 4.5, minSlab: 6, backfill: 20 },
+      /* slabT : 바닥 Zone 근거 표시용 가정 슬래브 두께 (m) — Zone 900㎡ × 0.3m ≈ 1회 타설 270㎥ (250 ~ 300㎥). 계산에는 쓰지 않음 */
+      base: { liftAnchor: 3.0, liftOther: 4.5, liftWD: 10, liftRef: 3.0, slabD: 3.25, zoneA: 900, zpt: 4.5, minSlab: 6, backfill: 20, slabT: 0.3 },
       td: { f1Zone: 13, f1Lag: 4.5, f1CureCD: 7, f1ZoneA: 1400, setup: 3, slabF: 0.8, startOffsetM: 2.5, preF: 1.25, vertFirst: 20, vertNext: 12, coreShare: 0.4, d1: 2.5, limTot1: 25, limTot2: 32 },
       frame: {
         d: { RC: 3.25, SRC: 3.5, SC: 4.0, COMP: 3.5 }, minTact: { RC: 6, SRC: 7, SC: 6, COMP: 8 }, ptAdd: 0.25,
         zoneDur: { RC: 8, SRC: 9, SC: 10, COMP: 18 }, zoneA: 900, zonesPerTeam: { RC: 4.5, SRC: 4.5, SC: 2, COMP: 4.5 }, lag: 5,
         core: { ACS: 4.0, GANG: 6.0, ratio: 0.2, zoneA: 300, perTeam: 3, liftMax: 6.0, slabShare: 0.82 },
         hRef: 4.7, hK: 0.15, roofF: 1.5,
-        /* '26.10.28 일반 RC 바닥 (코어 없는 RC · SRC) 도 층고 split m 이상이면 수직재 2회 타설 : 층 사이클 × (1 − vShare + vShare × 회수), 층고 보정은 1회 높이 기준 */
-        split: 6.5, vShare: 0.3,
+        /* '26.10.28 일반 RC 바닥 (코어 없는 RC · SRC) 도 층고 split m 이상이면 수직재 2회 타설 : 층 사이클 × (1 − vShare + vShare × 회수), 층고 보정은 1회 높이 기준
+         slabT = 바닥 Zone 근거 표시용 가정 슬래브 두께 (계산에는 쓰지 않음) */
+        split: 6.5, vShare: 0.3, slabT: 0.3,
         learnSlab: [2.0, 1.625, 1.5, 1.375, 1.25], learnCore: [1.875, 1.625, 1.5, 1.375], sysF: 1.75, acsSetup: 15, setFloor: 1.4, gangFirst: 1.15, firstF: 1.25
       },
       /* DC 층 사이클 (체적 Zone · 코어 / 외주부 분리 타설) — 사내 적정공기 가이드라인 v2.8 DC 로직을 참고해 옮김
@@ -399,15 +401,20 @@
     var reb = vZ * rebR, tpd = crew * fl.tPerMD * hF, Rr0 = Math.max(1, Math.ceil(reb / tpd - 1e-9)), Rr = num(A.fRwd, 0) > 0 ? clamp(num(A.fRwd, 0), 0.5, 200) : Rr0, Rpit = Rr + pitW;
     var teamsF = num(A.fTeams, 0) > 0 ? clamp(Math.round(num(A.fTeams, 0)), 1, 10) : clamp(Math.ceil(Vf / fl.teamV), 1, fl.maxTeams);
     var nSlopeZ = open && partial ? Math.min(nZ - nDeep, Math.ceil(slopeA * teq / zoneV)) : 0;
+    /* Zone 안 공종 겹침 (adv.fOv = { r : 준비 ↔ 철근, t : 철근 ↔ 형틀 · 타설 } WD — 화면 사이클 표에서 막대를 끌어 정함, 0 ≤ 겹침 ≤ 앞 공종 일수)
+       철근 착수 = 준비 끝 − r (준비 대기 줄어듦) · 형틀 · 타설 = 앞 공종 (준비 · 철근) 이 모두 끝나는 때 − t · 타설일 = 가장 늦은 끝 (PIT 도 같은 규칙). 없으면 순차 그대로 */
+    var fOv = A.fOv && typeof A.fOv === 'object' ? A.fOv : null;
+    var ovR = fOv ? clamp(num(fOv.r, 0), 0, prepW) : 0, ovT = fOv ? clamp(num(fOv.t, 0), 0, Rr) : 0, fOvOn = ovR > 0 || ovT > 0;
+    function zEnd(occ) { var fr = Math.max(prepW, prepW - ovR + occ); return Math.max(fr, fr - ovT + tailW); }
     function sim(avail) {
       var pit = {}; if (pitIn.length) pitIn.forEach(function (v) { pit[v] = true; }); else for (var j = 0; j < nPit; j++) pit[Math.min(nZ - 1, Math.floor((j + 0.5) * (nDeep > 0 ? nDeep : nZ) / nPit))] = true;
       var free = []; for (var q = 0; q < teamsF; q++) free.push(q * lagF);
       var pours = {}, Z = [], order = []; for (var i = 0; i < nZ; i++) order.push(i);
       order.sort(function (a, b) { return avail[a] - avail[b] || a - b; });
       order.forEach(function (i) {
-        var ready = avail[i] + prepW, best = 0, bs = Infinity;
+        var ready = avail[i] + prepW - ovR, best = 0, bs = Infinity;
         for (var q2 = 0; q2 < teamsF; q2++) { var st = Math.max(free[q2], ready); if (st < bs - 1e-9 || (Math.abs(st - bs) < 1e-9 && free[q2] < free[best])) { bs = st; best = q2; } }
-        var isP = !!pit[i], occ = isP ? Rpit : Rr, pd = Math.ceil(bs + occ + tailW - 1e-9);
+        var isP = !!pit[i], occ = isP ? Rpit : Rr, fr = Math.max(avail[i] + prepW, bs + occ), pd = Math.ceil((fOvOn ? Math.max(fr, fr - ovT + tailW) : bs + occ + tailW) - 1e-9);
         if (!isFinite(pd)) pd = 1e6;
         for (var guard = 0; pours[pd] && guard < 100000; guard++) pd++;
         pours[pd] = 1; free[best] = bs + occ;
@@ -425,13 +432,22 @@
       var wv = 0;
       hB.forEach(function (h) { wv += h * liftWD / L.base.liftRef; });
       var bf = open ? backfillRC : 0;
-      if (nSlopeZ > 0) { for (i2 = nZ - nSlopeZ; i2 < nZ; i2++) avail[i2] = deepDone + wv + bf; S1 = sim(avail); deepDone = 0; S1.Z.forEach(function (x) { if (x.deep) deepDone = Math.max(deepDone, x.pour + 1); }); }
+      /* 경로 공종 겹침 (adv.pOv = { bf : 외벽 ↔ 방수 · 되메우기, s : 앞 공종 ↔ 바닥 } WD, 0 ≤ 겹침 ≤ 앞 공종 일수)
+         바닥 착수 = 앞 공종 (외벽 · 방수 · 되메우기) 이 모두 끝나는 때 − s → 경로 = 가장 늦은 끝. 없으면 순차 그대로 */
+      var pOv = A.pOv && typeof A.pOv === 'object' ? A.pOv : null, ovBf = pOv && bf > 0 ? clamp(num(pOv.bf, 0), 0, wv) : 0;
+      if (nSlopeZ > 0) { for (i2 = nZ - nSlopeZ; i2 < nZ; i2++) avail[i2] = ovBf > 0 ? deepDone + Math.max(wv, wv - ovBf + bf) : deepDone + wv + bf; S1 = sim(avail); deepDone = 0; S1.Z.forEach(function (x) { if (x.deep) deepDone = Math.max(deepDone, x.pour + 1); }); }
       /* 지하부 바닥 : 지하 각 층 상부 슬래브 (B(n-1) ~ 1F) = 지하 층수만큼 */
       var Zs1 = Math.max(1, Math.round(AdnEff / bZoneA)), Ts1 = Math.ceil(Zs1 / zpt - 1e-9), sl1 = Math.max(minSlab, Math.ceil(Zs1 / Ts1 - 1e-9) * slabDB), slT = sl1 * nB;
       bPath = { start: deepDone, walls: wv, backfill: bf, backfillExt: open ? backfillWD : 0, slab: slT, slabPer: sl1, nSlab: nB, end: deepDone + wv + bf + slT };
+      var ovS = pOv ? clamp(num(pOv.s, 0), 0, bf > 0 ? bf : wv) : 0;
+      if (ovBf > 0 || ovS > 0) {
+        var bfE = bf > 0 ? wv - ovBf + bf : 0, frS = Math.max(wv, bfE), slE = frS - ovS + slT, span = Math.max(frS, slE);
+        bPath.ov = { bf: ovBf, s: ovS }; bPath.span = span; bPath.end = deepDone + span;
+      }
     }
     var fEndWD = S1.end;
     fz = { rebR: rebR, lag: lagF, Af: Af, t: tMat, teq: teq, V: Vf, nZ: nZ, vZ: vZ, nPit: nPit, reb: reb, R: Rr, R0: Rr0, Rpit: Rpit, prep: prepW, tail: tailW, cyc: Rr + prepW + tailW, cycPit: Rpit + prepW + tailW, teams: teamsF, crew: crew, tpd: tpd, sim: S1, nDeep: nDeep, nSlopeZ: nSlopeZ, bPath: bPath };
+    if (fOvOn) { fz.ov = { r: ovR, t: ovT }; fz.cyc = zEnd(Rr); fz.cycPit = zEnd(Rpit); }
     if (crew > 25) R.warn.push('철근팀 ' + crew + '명/팀 : 팀당 25명 초과는 작업 간섭으로 비권장 (기준 20명, 최대 25명)');
     var fM;
     if (seq === 'BU') {
@@ -460,10 +476,14 @@
         if (extra > 0.01) { var bm = MO(extra, rRC); act({ id: 'base', g: '골조', name: '지하골조 (' + bWho + ' 외벽' + (open ? ' · 방수 · 되메우기' : '') + ' · ' + (nB > 1 ? '지하 바닥 ~ 1F' : '1F 바닥') + ')', s: t, e: t + bm, cp: true, wd: extra, rate: 'rc', basis: '지하부 Zone 완료 후 외벽 ' + r1(bPath.walls) + 'WD' + (open ? ' + 방수·되메우기 ' + r1(bPath.backfillExt) + 'WD (토목, 골조 ' + r1(bPath.backfill) + 'WD 환산)' : '') + ' + 바닥 ' + nB + '개층 × ' + r1(bPath.slabPer) + 'WD (기초와 병행분 제외)' }); t += bm; }
         else R.notes.push('지하부 외벽 · 바닥은 기초 Zone 진행 중 병행 완료 (C.P 영향 없음)');
       } else {
+        /* 층 안 외벽 → 바닥 겹침 (adv.bOv = { B2 : WD, … }, 0 ≤ 겹침 ≤ 외벽 일수) → 층 WD = max(외벽, 바닥, 외벽 + 바닥 − 겹침). 없으면 외벽 + 바닥 */
+        var bOv = A.bOv && typeof A.bOv === 'object' ? A.bOv : null;
         for (k = nB; k >= 1; k--) {
           var h = hB[k - 1], lifts = Math.ceil(h / liftH2 - 1e-9), Vw = h * liftWD / L.base.liftRef;
           var Aslab = k === 1 ? Math.max(AdnEff, bldg) : AdnEff, Zs = Math.max(1, Math.round(Aslab / bZoneA)), Ts = Math.ceil(Zs / zpt - 1e-9), Sw = Math.max(minSlab, Math.ceil(Zs / Ts - 1e-9) * slabDB);
-          rows.push({ lv: 'B' + k, h: h, lifts: lifts, Vw: Vw, Z: Zs, T: Ts, Sw: Sw, slab: k === 1 ? '1F' : 'B' + (k - 1), wd: Vw + Sw }); wsum += Vw + Sw;
+          var ovB = bOv ? clamp(num(bOv['B' + k], 0), 0, Vw) : 0, rw = { lv: 'B' + k, h: h, lifts: lifts, Vw: Vw, Z: Zs, T: Ts, Sw: Sw, slab: k === 1 ? '1F' : 'B' + (k - 1), wd: Vw + Sw };
+          if (ovB > 0) { rw.ov = ovB; rw.wd = Math.max(Vw, Sw, Vw + Sw - ovB); }
+          rows.push(rw); wsum += rw.wd;
         }
         base = { partial: false, rows: rows, wd: wsum, liftH: liftH2 };
         var bm2 = MO(wsum, rRC);
@@ -569,9 +589,25 @@
       var Nc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(1, Math.ceil((Vw + Vcs) / DCL.pourV - 1e-9)), cIt = [];
       vert(Vw * DCL.rebSC, Nc, cIt);
       cIt.push(['코어 슬래브 형틀', DCL.coreForm / hF], ['코어 슬래브 철근', rb(Vcs * DCL.rebSC / Nc, DCL.crewC)], ['타설', pourD], ['양생', DCL.cure]);
+      /* 공종 사슬 겹침 (adv.dcOv = { P : { 키 : WD }, C : { … } } — 키 = 수직재 v0 ~ v4 (양중 · 철근 · 형틀 · 타설 · 해체, 회차마다 같은 값) · 이후 공종 a0, a1 …)
+         공종 착수 = 앞 공종이 모두 끝나는 때 − 겹침 (0 ≤ 겹침 ≤ 바로 앞 공종 일수 — 짧은 공종을 앞당겨도 뒤 공종은 긴 공종 끝을 기다림)
+         → Zone 1개 작업 = 가장 늦은 끝. 없으면 일수 합 그대로 */
+      var dcOvIn = A.dcOv && typeof A.dcOv === 'object' ? A.dcOv : null;
       function st(name, N, items, V, k) {
         var T0 = Math.ceil(N / DCL.zpt - 1e-9), T = k && k !== 1 ? clamp(Math.round(T0 * k), 1, N) : T0, nt = Math.ceil(N / T - 1e-9), z = items.reduce(function (s, x) { return s + x[1]; }, 0);
-        return { name: name, N: N, T: T, nt: nt, V: V, items: items, zone: z, gap: nt - 1, cyc: z + nt - 1 };
+        var lo = dcOvIn && dcOvIn[name === '외주부' ? 'P' : 'C'], ov = null, ss = null;
+        if (lo && typeof lo === 'object') {
+          var nv = lifts * 5, fr = 0, any = false; ov = []; ss = [];
+          items.forEach(function (x, i) {
+            var o = i > 0 ? clamp(num(lo[i < nv ? 'v' + (i % 5) : 'a' + (i - nv)], 0), 0, items[i - 1][1]) : 0, s0 = Math.max(0, fr - o);
+            if (o > 0) any = true;
+            ov.push(o); ss.push(s0); fr = Math.max(fr, s0 + x[1]);
+          });
+          if (any) z = fr; else { ov = null; ss = null; }
+        }
+        var o2 = { name: name, N: N, T: T, nt: nt, V: V, items: items, zone: z, gap: nt - 1, cyc: z + nt - 1 };
+        if (ov) { o2.ov = ov; o2.ss = ss; }
+        return o2;
       }
       var P = st('외주부', Np, pIt, Vcol + Vbm + Vsl, uTin ? dcK() : 1), C = st('코어', Nc, cIt, Vw + Vcs, cTin ? dcKc() : 1);
       var gov = (dcFlow ? P.zone >= C.zone : P.cyc >= C.cyc) ? P : C;
