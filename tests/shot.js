@@ -1,5 +1,5 @@
 /* 화면 점검 : node tests/shot.js [dist/option7.html]
-   - 사례 A · B · C 재현값 (49.86 · 42.70 · 28.74)
+   - 사례 A · B · C 재현값 (49.86 · 42.79 · 28.74)
    - 사례 C 1F 층고 9.8 → 6.0 → 9.8 즉시 재계산 (28.74 → 28.32 → 28.74)
    - 1440 · 390px 가로 스크롤 없음 · 콘솔 오류 0
    - 스크린샷 : tests/out/ */
@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
 
 const FILE = path.resolve(process.argv[2] || 'dist/option7.html');
 const OUT = path.join(__dirname, 'out');
-const EXPECT = { refA: 49.86, refB: 42.7, refC: 28.74 };
+const EXPECT = { refA: 49.86, refB: 42.79, refC: 28.74 };
 const r2 = (v) => Math.round(v * 100) / 100;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

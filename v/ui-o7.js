@@ -277,7 +277,7 @@
     }
     return '';
   }
-  var GRP = { mob: '준비', wall: '토목', scw: '토목', prd: '토목', geo: '토목', pile: '토목', exc1: '토목', f1: '토목', exc: '토목', fin: '마감', tc: '마감' };
+  var GRP = { mob: '준비', demo: '준비', demoB: '준비', wall: '토목', scw: '토목', prd: '토목', geo: '토목', pile: '토목', exc1: '토목', f1: '토목', exc: '토목', fin: '마감', tc: '마감' };
   var GCOL = { 준비: ['var(--g-prep)', 'var(--ink)'], 토목: ['var(--g-civ)', 'var(--ink)'], 골조: ['var(--g-frame)', '#fff'], 마감: ['var(--g-fin)', '#fff'] };
   function renderMs(R) {
     var ms = GK.milestones(R), tot = Math.max(0.01, R.total), st = R.inp.start;
@@ -1166,9 +1166,9 @@
     cyBegin('base', null, ['bOv']);
     var t2 = 0, rb = [], lE = liftEff(S.adv && S.adv.liftWD), ci = 0;
     bs.rows.forEach(function (x) {
-      var kw = x.h / (hF * lr), per = Math.ceil(x.Z / x.T - 1e-9), o = x.ov || 0, we = t2 + x.Vw;
+      var kw = x.h / (hF * lr) * (x.wK || 1), per = Math.ceil(x.Z / x.T - 1e-9), o = x.ov || 0, we = t2 + x.Vw;   /* 외벽 WD = 층고 × liftWD ÷ liftRef × 외벽팀 계수 (엔진 wK, 입력 없으면 1) */
       rb.push(cyRow(x.lv + ' 외벽', t2, x.Vw, { k: 'w', ed: edAdv('b.w.' + x.lv, x.lv + ' 외벽', 'liftWD', x.Vw, kw, liftEff, { min: kw, max: 60 * kw }), ch: 'b', ci: ci++, lock: '층 첫 공종 (아래층 완료 후)',
-        tip: r1(x.h) + 'm × ' + r2(lE) + 'WD / ' + lr + 'm · Lift ' + bs.liftH + 'm ' + x.lifts + '회' }));
+        tip: r1(x.h) + 'm × ' + r2(lE) + 'WD / ' + lr + 'm' + (x.wK && Math.abs(x.wK - 1) > 1e-9 ? ' × 외벽팀 ' + r2(x.wK) : '') + ' · Lift ' + bs.liftH + 'm ' + x.lifts + '회' }));
       rb.push(cyRow(x.slab + ' 바닥', we - o, x.Sw, { ed: edSlab('b.s.' + x.lv, x.slab + ' 바닥', x.Sw, per, hF, 1), ch: 'b', ci: ci++,
         tip: x.Z + ' Zone ÷ ' + x.T + '팀 → ' + per + ' Zone × ' + r2(LIB.base.slabD / hF) + 'WD', ov: { key: 'b.' + x.lv, pe: we, mx: x.Vw, o: o } }));
       t2 += x.wd;

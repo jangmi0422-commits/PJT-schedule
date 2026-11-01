@@ -42,6 +42,8 @@
     var b = R.basic;
     switch (a.id) {
       case 'mob': return 'MOB';
+      case 'demo': return '지상 해체';
+      case 'demoB': return '지하 해체';
       case 'wall': return '흙막이 · ' + ({ CIP: 'CIP', SW: 'Slurry Wall', HP: 'H-Pile', SCW: 'SCW', SP: 'Sheet Pile' }[b.wall] || '');
       case 'scw': return '차수 SCW';
       case 'prd': return 'PRD · SPS 기둥';
@@ -70,7 +72,7 @@
   function cpParts(R) { return R.cpLine.filter(function (c) { return c.d > 0.005; }).map(function (c) { return { id: c.id, label: cpShort(c, R), d: c.d, e: c.e }; }); }
   function cpLineHTML(R) { return '<b>C.P</b> : ' + esc(cpParts(R).map(function (p) { return p.label + ' ' + m1(p.d); }).join(' + ')) + ' = <b>' + m2(R.total) + '개월</b>'; }
   /* C.P를 대공종 4묶음으로 (준비 · 토목 · 골조 · 마감) */
-  var GROUP_OF = { mob: '준비', wall: '토목', scw: '토목', prd: '토목', geo: '토목', pile: '토목', exc1: '토목', f1: '토목', exc: '토목', found: '골조', base: '골조', vert: '골조', tdwait: '골조', frame: '골조', fin: '마감', tc: '마감' };
+  var GROUP_OF = { mob: '준비', demo: '준비', demoB: '준비', wall: '토목', scw: '토목', prd: '토목', geo: '토목', pile: '토목', exc1: '토목', f1: '토목', exc: '토목', found: '골조', base: '골조', vert: '골조', tdwait: '골조', frame: '골조', fin: '마감', tc: '마감' };
   function cpGroups(R) {
     var o = { 준비: 0, 토목: 0, 골조: 0, 마감: 0 };
     R.cpLine.forEach(function (c) { o[GROUP_OF[c.id] || '골조'] += c.d; });
@@ -92,11 +94,11 @@
   function title(R) { var b = R.basic; return GE.USE_H[b.use].name + ' · 지하 ' + b.nB + '층 / 지상 ' + b.nUp + '층' + (b.nPH ? ' + 옥탑 ' + b.nPH : '') + ' · ' + SEQ_N[b.seq] + ' · ' + GE.STRUCT_N[b.struct].replace(/ \(.*\)$/, ''); }
 
   /* ── Master Schedule 바차트 */
-  var ORDER = ['mob', 'wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'f1', 'exc', 'found', 'base', 'vert', 'tdwait', 'frameA', 'frame', 'core', 'fin', 'tc'];
-  var CIV = ['wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'f1', 'exc'];
+  var ORDER = ['mob', 'demo', 'demoB', 'wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'f1', 'exc', 'found', 'base', 'vert', 'tdwait', 'frameA', 'frame', 'core', 'fin', 'tc'];
+  var CIV = ['wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'f1', 'exc'], PRE = ['mob', 'demo', 'demoB'];
   function ganttActs(R) {
     /* 토목 공종은 착수 순서대로 (순타 = 굴착 후 지열 · 바닥 파일, 역타 = 지열 · PRD 선행) */
-    var gkey = function (a) { var i = ORDER.indexOf(a.id); if (i < 0) i = 99; return CIV.indexOf(a.id) >= 0 ? [1, a.s, i] : [i === 0 ? 0 : 2, i, a.s]; };
+    var gkey = function (a) { var i = ORDER.indexOf(a.id); if (i < 0) i = 99; return CIV.indexOf(a.id) >= 0 ? [1, a.s, i] : [PRE.indexOf(a.id) >= 0 ? 0 : 2, i, a.s]; };
     return R.acts.slice().sort(function (a, b) { var p = gkey(a), q = gkey(b); return p[0] - q[0] || p[1] - q[1] || p[2] - q[2]; });
   }
   function gantt(R, W, o) {
@@ -164,7 +166,7 @@
   function cpTable(R) {
     var cpMap = {}; R.cpLine.forEach(function (c) { cpMap[c.id] = c; });
     var G = { 준비: [], 토목: [], 골조: [], 마감: [] };
-    var order = ['mob', 'wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'exc', 'f1', 'found', 'base', 'vert', 'tdwait', 'frameA', 'frame', 'core', 'fin', 'tc'];
+    var order = ['mob', 'demo', 'demoB', 'wall', 'scw', 'prd', 'geo', 'pile', 'exc1', 'exc', 'f1', 'found', 'base', 'vert', 'tdwait', 'frameA', 'frame', 'core', 'fin', 'tc'];
     R.acts.slice().sort(function (a, b) { return a.s - b.s || order.indexOf(a.id) - order.indexOf(b.id); }).forEach(function (a) { (G[a.g] || G['골조']).push(a); });
     var h = '<thead><tr><th>공종</th><th>물량</th><th>산출 근거</th><th class="n">WD</th><th class="n">C.P (개월)</th><th class="n">누계</th></tr></thead><tbody>';
     Object.keys(G).forEach(function (k) {
@@ -212,7 +214,10 @@
       return out;
     }
     out += '<div class="sheetbox"><span class="k">지상 기준층 사이클 (' + r1(typ.h) + 'm)</span><span class="big">' + m1(tact) + '<small>WD / 층</small></span><dl>' +
-      '<dt>바닥</dt><dd>' + typ.slab.Z + ' Zone ÷ ' + typ.slab.T + '팀 × ' + r2(fr.dS) + 'WD = ' + m1(typ.slab.wd) + '</dd>' +
+      (typ.slab.model === 'v28'
+        ? '<dt>바닥 (공종 사슬)</dt><dd>' + typ.slab.N + ' Zone · ' + typ.slab.T + '팀 (팀당 ' + typ.slab.nt + ') · Zone 1개 ' + m1(typ.slab.zone) + 'WD → 층간 ' + m1(typ.slab.wd) + '</dd>' +
+          '<dt>Zone 1개</dt><dd>' + typ.slab.items.map(function (x) { return esc(x.n) + ' ' + r1(x.wd); }).join(' · ') + '</dd>'
+        : '<dt>바닥</dt><dd>' + typ.slab.Z + ' Zone ÷ ' + typ.slab.T + '팀 × ' + r2(fr.dS) + 'WD = ' + m1(typ.slab.wd) + (typ.slab.lb && typ.slab.lb.on ? ' (c3 하한)' : '') + '</dd>') +
       (typ.core ? '<dt>코어 (' + (fr.sysC === 'ACS' ? 'ACS' : '갱폼') + ')</dt><dd>' + typ.core.Z + ' Zone ÷ ' + typ.core.T + '팀 = ' + m1(typ.core.wd) + '</dd>' : '') +
       '<dt>주공정</dt><dd>' + esc(fr.gov) + '</dd><dt>월 진도</dt><dd>' + r1(perM) + '개층 / 월</dd><dt>기준층 면적</dt><dd>' + fmt(fr.Atyp) + '㎡</dd></dl></div>';
     return out;
