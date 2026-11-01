@@ -1695,7 +1695,7 @@
     var e = 0.04, edge = cg.px < e || cg.px > 1 - e || cg.py < e || cg.py > 1 - e;
     return (cg.px < 0.3 ? '좌측' : cg.px > 0.7 ? '우측' : '중앙') + ' · ' + (edge ? '외주부 면함' : '내부');
   }
-  /* 바닥 Zone : 코어들을 뺀 빈 영역을 세로 띠로 쪼개 (같은 위아래 경계면 이어 붙임) 직사각형 목록 → 면적 비로 Zone 을 나눠 이어 번호 */
+  /* 빈 직사각형 : 코어들을 뺀 빈 영역을 세로 띠로 쪼개 (같은 위아래 경계면 이어 붙임) 직사각형 목록 (slabCells 번호 자리 찾기용) */
   function freeRects(L, B, holes) {
     var xs = [0, L]; holes.forEach(function (h) { xs.push(Math.max(0, Math.min(L, h.x0)), Math.max(0, Math.min(L, h.x0 + h.cw))); });
     xs = xs.sort(function (a, b) { return a - b; }).filter(function (v, i, a) { return !i || v - a[i - 1] > 0.05; });
@@ -1713,15 +1713,48 @@
     }
     return rects.filter(function (r) { return r[2] > 0.5 && r[3] > 0.5; });
   }
+  /* 바닥 Zone : 코어를 뺀 면적이 같도록 판을 길이 방향 띠로 나눔 (Zone 이 많으면 여러 줄 · 지그재그 순서 — zgridPlan 과 같은 줄 수).
+     띠 하나 = 코어 둘레까지 이어진 Zone 1개 (코어 가운데 · 2 Zone → ㄷ자 2개). 띠 직사각형을 그리고 코어 블록이 그 위를 덮는다.
+     번호 = 띠 안에서 코어를 뺀 가장 큰 빈 직사각형 가운데 (LX · LY · LS) */
   function slabCells(L, B, holes, N, cellOf) {
     if (!holes || !holes.length) return zgridPlan(0, 0, L, B, N, cellOf);
-    var rs = freeRects(L, B, holes);
-    if (!rs.length) return [];
-    var n = splitBy(N, rs.map(function (r) { return r[2] * r[3]; }), false), out = [], base = 0;
-    rs.forEach(function (r, i) {
-      if (n[i] > 0) { var b0 = base; out = out.concat(zgridPlan(r[0], r[1], r[2], r[3], n[i], function (j) { return cellOf(b0 + j); })); base += n[i]; }
-      else { var nb = cellOf(Math.max(0, base - 1)); nb.t = ''; nb.X0 = r[0]; nb.X1 = r[0] + r[2]; nb.Y0 = r[1]; nb.Y1 = r[1] + r[3]; out.push(nb); }
-    });
+    if (!(N > 0) || !(L > 0) || !(B > 0)) return [];
+    var hs = holes.map(function (h) { return { x0: Math.max(0, h.x0), x1: Math.min(L, h.x0 + h.cw), y0: Math.max(0, h.y0), y1: Math.min(B, h.y0 + h.cd) }; })
+      .filter(function (h) { return h.x1 - h.x0 > 0.05 && h.y1 - h.y0 > 0.05; });
+    var rws = Math.max(1, Math.min(N, Math.round(Math.sqrt(N * B / Math.max(L, 1e-6))))), base = Math.floor(N / rws), extra = N % rws, ch = B / rws, out = [], i = 0;
+    /* 줄 [ya, yb] 에서 x 위치를 덮는 코어 깊이 (겹친 코어는 합집합) */
+    function occ(x, ya, yb) {
+      var iv = hs.filter(function (h) { return h.x0 <= x && h.x1 > x; }).map(function (h) { return [Math.max(ya, h.y0), Math.min(yb, h.y1)]; })
+        .filter(function (v) { return v[1] > v[0]; }).sort(function (a, b) { return a[0] - b[0]; });
+      var t = 0, e = -1e9;
+      iv.forEach(function (v) { var s0 = Math.max(v[0], e); if (v[1] > s0) t += v[1] - s0; e = Math.max(e, v[1]); });
+      return t;
+    }
+    for (var r = 0; r < rws; r++) {
+      var ya = r * ch, yb = ya + ch, nc = base + (r < extra ? 1 : 0), xs = [0, L];
+      hs.forEach(function (h) { xs.push(h.x0, h.x1); });
+      xs = xs.sort(function (a, b) { return a - b; }).filter(function (v, k, a) { return !k || v - a[k - 1] > 1e-6; });
+      var seg = [], tot = 0;
+      for (var k = 0; k + 1 < xs.length; k++) { var d = Math.max(0, ch - occ((xs[k] + xs[k + 1]) / 2, ya, yb)); seg.push({ a: xs[k], b: xs[k + 1], d: d, A0: tot }); tot += d * (xs[k + 1] - xs[k]); }
+      var xAt = function (Aq) {
+        for (var q = 0; q < seg.length; q++) { var sg = seg[q]; if (Aq <= sg.A0 + sg.d * (sg.b - sg.a) + 1e-9) return sg.d > 0 ? sg.a + (Aq - sg.A0) / sg.d : sg.a; }
+        return L;
+      };
+      var cuts = [0];
+      for (k = 1; k < nc; k++) cuts.push(tot > 0 ? xAt(tot * k / nc) : L * k / nc);
+      cuts.push(L);
+      for (var c = 0; c < nc; c++, i++) {
+        var cc = r % 2 ? nc - 1 - c : c, x0 = cuts[cc], x1 = cuts[cc + 1], o = cellOf(i);
+        o.X0 = x0; o.X1 = x1; o.Y0 = ya; o.Y1 = yb;
+        var inB = hs.filter(function (h) { return h.x1 > x0 && h.x0 < x1 && h.y1 > ya && h.y0 < yb; }).map(function (h) {
+          var a0 = Math.max(x0, h.x0), b0 = Math.max(ya, h.y0); return { x0: a0 - x0, cw: Math.min(x1, h.x1) - a0, y0: b0 - ya, cd: Math.min(yb, h.y1) - b0 };
+        });
+        var fr = inB.length ? freeRects(x1 - x0, ch, inB) : [[0, 0, x1 - x0, ch]];
+        var bg = fr.reduce(function (m, f) { return !m || f[2] * f[3] > m[2] * m[3] ? f : m; }, null);
+        if (bg) { o.LX = x0 + bg[0] + bg[2] / 2; o.LY = ya + bg[1] + bg[3] / 2; o.LS = Math.min(bg[2], bg[3]); } else o.t = '';
+        out.push(o);
+      }
+    }
     return out;
   }
   function zgridPlan(X0, Y0, w, h, N, cellOf) {
@@ -1752,7 +1785,7 @@
       var c = '', t = '';
       list.forEach(function (q) {
         c += Pg([P(q.X0, q.Y0, Z), P(q.X1, q.Y0, Z), P(q.X1, q.Y1, Z), P(q.X0, q.Y1, Z)], ' fill="' + q.fill + '" fill-opacity="' + q.op + '" stroke="' + (q.stroke || '#fff') + '" stroke-width="' + (q.sw || 1.2) + '" stroke-linejoin="round"');
-        var m = P((q.X0 + q.X1) / 2, (q.Y0 + q.Y1) / 2, Z), sz = Math.min(q.X1 - q.X0, q.Y1 - q.Y0) * s;
+        var m = q.LX != null ? P(q.LX, q.LY, Z) : P((q.X0 + q.X1) / 2, (q.Y0 + q.Y1) / 2, Z), sz = (q.LS != null ? q.LS : Math.min(q.X1 - q.X0, q.Y1 - q.Y0)) * s;
         if (q.t !== '' && q.t != null && sz >= (q.minSz || 12)) t += T(m[0], m[1] + 4, q.t, { a: 'middle', fs: sz > 26 ? 12.5 : 11, w: 700, c: q.tc || 'var(--ink)', cls: 'n', halo: q.halo || 'rgba(255,255,255,.85)' });
       });
       return c + t;
