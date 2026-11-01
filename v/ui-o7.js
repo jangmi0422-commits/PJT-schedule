@@ -34,6 +34,15 @@
   var EMPTY = { name: '', use: '', site: '', bldg: '', gfaUp: '', aDn: '', nB: '', nUp: '', nPH: '', ground: '', strata: [null, null, null, null], gwl: '', seq: '', tdBase: 0, wall: '', support: '', scw: false, found: '', geo: '',
     struct: '', pt: false, coreSys: '', lim: '', lim2: '', mob: '', demo: '', demoB: '', fin: '', tc: '', rExt: '', rRC: '', rInt: '', hours: '', link: false, start: '', adv: {} };
   PRESETS.blank = EMPTY;
+  var POUR_K = ['SIM', 'PRE', 'POST'];
+  /* 저장 상태 (자동 저장 · 파일 · 보관함) 의 사례 표시가 A · B · C 인데 팀 키가 없으면 (옛 저장 — 예 : v6 에는 tdTeams · bTeams · wTeams 없음)
+     화면 최적 팀이 빈 칸을 채워 사례 값이 바뀐다 → 다시 계산하기 전에 그 사례의 팀 키 중 없는 것만 채움 */
+  function caseTeams(s, preset) {
+    if (!s || typeof preset !== 'string' || !/^ref/.test(preset) || !PRESETS[preset]) return s;
+    var pa = PRESETS[preset].adv || {}; s.adv = s.adv || {};
+    Object.keys(pa).forEach(function (k) { if (/Teams$/.test(k) && (s.adv[k] == null || s.adv[k] === '')) s.adv[k] = pa[k]; });
+    return s;
+  }
   function norm(p) {
     var src = p || EMPTY, s = GK.normInp(src);
     KEEP_EMPTY.forEach(function (k) { if (src[k] == null || src[k] === '') s[k] = ''; });
@@ -41,7 +50,9 @@
     if (s.name == null) s.name = '';
     s.adv = s.adv || {}; if (!s.adv.dcCycle) s.adv.dcCycle = 'AUTO'; if (!s.adv.dcFlow) s.adv.dcFlow = 'ZONE';
     /* 골조 · 지하 사이클 방식 선택 칸 (엔진 기본과 같은 값) · 해체 개월 (0 · 빈 값 · 이상한 값 = 빈 칸 = 행 없음) */
-    [['frChain', 'AUTO', ['AUTO', 'ON', 'OFF']], ['rcFlow', 'ZONE', ['ZONE', 'FLOOR']], ['bChain', 'AUTO', ['AUTO', 'OFF']]].forEach(function (q) { if (q[2].indexOf(s.adv[q[0]]) < 0) s.adv[q[0]] = q[1]; });
+    /* 지하 v2.8 사슬 (bChain) 은 'ON' 일 때만 켬 (엔진 기본 끔 — 옛 'AUTO' 저장값도 끔) · 타설 순서 : 자동 = 키 없음 */
+    [['frChain', 'AUTO', ['AUTO', 'ON', 'OFF']], ['rcFlow', 'ZONE', ['ZONE', 'FLOOR']], ['bChain', 'OFF', ['OFF', 'ON']]].forEach(function (q) { if (q[2].indexOf(s.adv[q[0]]) < 0) s.adv[q[0]] = q[1]; });
+    if (POUR_K.indexOf(s.adv.pourSeq) < 0) delete s.adv.pourSeq;
     ['demo', 'demoB'].forEach(function (k) { var v = parseFloat(s[k]); s[k] = isFinite(v) && v > 0 ? v : ''; });
     ['scw', 'pt', 'link'].forEach(function (k) { s[k] = !!s[k]; });
     if (s.seq === 'TD') s.support = 'SLAB'; else if (s.support === 'SLAB') s.support = 'ANCHOR';
@@ -71,7 +82,9 @@
     var td = S.seq === 'TD';
     $$('.td-only').forEach(function (el) { el.hidden = !td; });
     $$('[data-k="support"]').forEach(function (el) { el.disabled = td; });
-    $$('[data-k="coreSys"]').forEach(function (el) { el.disabled = !(S.struct === 'SC' || S.struct === 'COMP'); });
+    /* 코어 거푸집 : 코어선행 (코어가 따로 오름 — RC 포함) 일 때만 씀. 계산 전에는 골조로 어림 (철골 · 강합성 = 자동 코어선행이 많음) */
+    var pre = lastR && lastR.frame && lastR.frame.seq ? lastR.frame.seq === 'PRE' : (S.struct === 'SC' || S.struct === 'COMP');
+    $$('[data-k="coreSys"]').forEach(function (el) { el.disabled = !pre; el.title = pre ? '' : '코어선행일 때만 씀 (동시타설 · 코어후행 · DC 는 안 씀)'; });
     $('#scw-wrap').hidden = !(!td && S.support === 'OPEN');
     $('#strata-in').hidden = S.ground !== 'CUSTOM';
   }
@@ -84,6 +97,8 @@
     if (k === 'use') { var dc = val === 'dc'; if (S.fin === (dc ? 8 : 6) && S.tc === (dc ? 2 : 3)) { S.fin = dc ? 6 : 8; S.tc = dc ? 3 : 2; } }
     if (k === 'cov') { if (S.site > 0 && S.cov > 0) S.bldg = r2(S.site * S.cov / 100); }
     if (k === 'bldg') S.cov = null;
+    /* 타설 순서 : 자동 (빈 값) = 키 삭제 — 주요 가정사항 칸과 입력 시트 칸이 같은 값 */
+    if (k === 'adv.pourSeq' && S.adv && POUR_K.indexOf(val) < 0) delete S.adv.pourSeq;
     /* 입력 시트 '코어 바닥면적' (adv.coreA = 엔진 입력) : 코어 목록 (S.adv.cores) 이 있으면 그 면적도 같은 합계로 (지금 비율 유지, 비우면 기본 몫) —
        안 그러면 엔진은 시트 값, 조닝 · PIT · 단면 띠는 옛 코어 면적을 써서 서로 어긋남. 자릿수를 남겨 한 글자씩 칠 때도 비율이 유지되게 */
     if (k === 'adv.coreA' && S.adv && Array.isArray(S.adv.cores) && S.adv.cores.length) {
@@ -131,7 +146,7 @@
   }
   /* 경로마다 쓰는 줄만 : v2.8 사슬이면 옛 바닥 Zone당 WD 줄 숨김 · v28 줄 보임 */
   function libVis(R) {
-    var fr = R && R.frame, v8 = fr && fr.v28 || {}, up = fr && fr.model === 'v28', bs = !!(R && R.base && R.base.model === 'v28'), any = !!(v8.on || v8.base || v8.lb || v8.guard);
+    var fr = R && R.frame, v8 = fr && fr.v28 || {}, up = fr && (fr.model === 'v28' || fr.model === 'post'), bs = !!(R && R.base && R.base.model === 'v28'), any = !!(v8.on || v8.up || v8.base || v8.lb || v8.guard);
     $$('#libtbl tr[data-lr]').forEach(function (tr) {
       var p = tr.getAttribute('data-lr');
       tr.hidden = p === 'frame.d.RC' || p === 'frame.d.SRC' ? up : p === 'base.slabD' ? bs : tr.classList.contains('l28') ? !any : false;
@@ -158,7 +173,28 @@
       if (el !== document.activeElement) el.value = v == null ? '' : v;
       el.classList.toggle('ov', hasOv(p)); el.title = hasOv(p) ? '기본 ' + libDef(p) : '';
     });
+    /* 입력 시트 '상세 조정' 의 라이브러리 칸 (타설 순서 자동 기준 · 철골 코어선행 하한) : 고친 값만 보이고 빈 칸 = 기본값 (placeholder) */
+    $$('#sheet [data-lib]').forEach(function (el) {
+      var p = el.getAttribute('data-lib'), v = getP(LIB, p.split('.')), on = hasOv(p);
+      if (el.tagName === 'SELECT') el.value = String(v == null ? libDef(p) : v);
+      else { el.placeholder = String(libDef(p)); if (el !== document.activeElement) el.value = on ? String(v) : ''; }
+      el.classList.toggle('ov', on);
+    });
   }
+  /* 상세 조정 라이브러리 칸 : 선택 (켬 / 끔) · 숫자 (정수, 빈 칸 = 기본값) → S.libOv */
+  function libAt(el) { var p = el.getAttribute('data-lib'); return p && libDef(p) != null ? p : null; }
+  ACTC.libSel = function (el) {
+    var p = libAt(el), v = parseFloat(el.value); if (!p || !isFinite(v)) return;
+    setLib(p, v); if (current) markPreset(''); recompute();
+  };
+  ACTC.libNum = function (el) {
+    var p = libAt(el), raw = String(el.value).trim(), v = parseFloat(raw), lo = +(el.getAttribute('min') || 0); if (!p) return;
+    /* 칸에 포커스가 남아 있어도 (Enter) 적용한 값 (정수) · 되돌린 값이 보이게 */
+    if (raw === '') { if (!hasOv(p)) return; delOv(p); }
+    else if (isFinite(v) && v >= lo) { setLib(p, Math.round(v)); el.value = String(Math.round(v)); }
+    else { el.value = hasOv(p) ? String(getP(LIB, p.split('.'))) : ''; fillLib(); return; }
+    if (current) markPreset(''); recompute();
+  };
   /* 표에서 고치면 S.libOv 에 기록 (기본값과 같으면 지움, 빈 칸 = 기본값) */
   function readLib(el, fin) {
     var p = el.getAttribute('data-path'), x = parseFloat(el.value);
@@ -217,7 +253,7 @@
     var steps = [renderHead, renderHero, renderMs, renderGantt, renderSection, renderZone, renderKf, renderWarns, renderHints, renderZin];
     steps.forEach(function (fn) { try { fn(R); } catch (e) { if (window.console) console.error(e); } });
     widths.ms = $('#ms-flow').clientWidth;
-    GK.fill(document, S); syncFloors(); rateSrc(); fitHero();
+    GK.fill(document, S); syncUI(); syncFloors(); rateSrc(); fitHero();
   }
   /* 입력 대기 (D. 직접입력 처음) : 공기 0.0, 나머지 판은 무엇을 넣어야 하는지만 */
   function renderEmpty(miss) {
@@ -233,6 +269,12 @@
     $('#warns').innerHTML = '<li>필요한 입력 : ' + esc(miss.join(' · ')) + '</li>'; var wc = $('#w-ct'); if (wc) { wc.textContent = miss.length + '건'; wc.classList.remove('ok'); }
     $('#notes').innerHTML = ''; $('#notes-g').hidden = true;
     var rg = $('#rv-g'); if (rg) { rg.hidden = true; $('#rv-l').innerHTML = ''; }
+    /* 입력 시트 자동값 (앞 계산 — 예 : 사례 A 의 '자동 = 코어선행' · '옛 식' · '역타' · PRD 공수) 도 비움 — D 직접입력 = 빈 칸 · 선택 없음 */
+    $$('[data-auto]').forEach(function (el) { el.textContent = ''; });
+    $$('[data-dp]').forEach(function (el) { el.textContent = ''; });
+    ['#gbar', '#gcap'].forEach(function (q) { var e = $(q); if (e) e.innerHTML = ''; });
+    var gf = $('#in-gfa'); if (gf) gf.value = '';
+    var ps = $('#in-pourSeq'); if (ps) { $$('option', ps).forEach(function (o) { o.disabled = false; if (!o.value) o.textContent = '자동'; }); ps.title = ''; }
     footSync();
     widths = {};
     GK.fill(document, S); syncUI(); syncFloors(); rateSrc(); fitHero();
@@ -292,10 +334,33 @@
     $('#h-foot').innerHTML = (ds ? '<span class="dt">착공<b>' + GK.ym(ds) + '</b></span><span class="dt">준공<b>' + GK.ym(de) + '</b></span>' : '<button class="link" type="button" data-open="in-start">착공월 입력</button>') +
       '<a class="wchip' + (w ? '' : ' ok') + '" href="#sec-warn">' + (w ? '확인 사항 ' + w + '건' : '확인 사항 없음') + '</a>';
   }
+  /* 엔진 문구 → 화면 문구 : 내부 키 (frChain OFF) 는 상세 조정 칸 이름 ('골조 사이클 방식 = 옛 팀 분할') 으로 */
+  function uiTx(t) { return String(t == null ? '' : t).replace(/상세 조정 frChain OFF( \(옛 식\))?/g, '상세 조정 골조 사이클 방식 = 옛 팀 분할').replace(/frChain OFF( \(옛 식\))?/g, '골조 사이클 = 옛 팀 분할'); }
+  /* '자동 · …' 선택지 · 표시용 타설 순서 이름 : 괄호가 겹치지 않게 ('분리 타설 (DC)' → 'DC', 잠금 문구가 아래에 따로) */
+  function pourNm(t) { return /\(DC\)$/.test(t || '') ? 'DC' : String(t || '').replace(/ \(([^()]*)\)$/, ' $1'); }
+  /* 타설 순서 한 마디 : '코어선행 (자동)' · '코어후행 (선택)' · DC = '분리 타설 (DC)' */
+  function pourTxt(R) {
+    var p = R && R.frame && R.frame.pour; if (!p || !p.name) return '';
+    return p.name + (p.used === 'DC' || (p.lock && !(p.opts || []).length) ? '' : (p.sel && p.sel !== 'AUTO' ? ' (선택)' : ' (자동)'));
+  }
+  /* v2.8 공종 사슬 한 줄 : '사슬 13 WD × 2회 타설 1.3 · 9 Zone · 팀당 3 Zone (Zone 연속)' — 코어 c1 은 수직재 회수 */
+  function chainTxt(x, flow, lab) {
+    if (!x || !(x.zone > 0)) return '';
+    var f = (x.lk > 1.001 ? ' × 2회 타설 ' + r2(x.lk) : x.lk == null && x.lifts > 1 ? ' × 수직재 ' + x.lifts + '회' : '') + (x.hf > 1.001 ? ' × 층고 ' + r2(x.hf) : '');
+    return (lab ? lab + ' ' : '') + '사슬 ' + r1(x.zone) + ' WD' + f + ' · ' + x.N + ' Zone · 팀당 ' + x.nt + ' Zone (' + ((flow || x.flow) === 'FLOOR' ? '층 완결' : 'Zone 연속') + ')';
+  }
+  /* 지상 골조 사이클 근거 (사슬 경로) : 동시타설 c4 · c5 = 바닥 사슬, 코어선행 RC = 바닥 c2 + 코어, 코어후행 = 긴 쪽 (외주부 · 코어) */
+  function frameTxt(R) {
+    var ty = R.frame.typ, sl = ty.slab, pst = ty.post;
+    if (pst) { var gv = pst.gov === '코어' ? pst.C : pst.P; return chainTxt(gv, pst.flow, gv.name) + ' → ' + pst.gov + ' 지배'; }
+    if (sl && sl.model === 'v28') return chainTxt(sl, sl.flow, ty.core ? '바닥' : '') + (sl.bind === 'steel' ? ' · 선행 ' + r1(sl.lead) + ' WD 지배' : '') + (ty.core ? ' · 코어 ' + ty.core.Z + ' Zone ' + r1(ty.core.wd) + ' WD' : '');
+    return '';
+  }
   function whyCtx(p, R) {
     var g = R.geo, f = R.found, b = R.basic;
     switch (p.id) {
-      case 'frame': return '기준층 ' + m1(GK.tactOf(R)) + ' WD/층 × 지상 ' + b.nUp + '개층' + (R.frame.typ.dc ? ' · DC 사이클' : ' · 바닥 ' + R.frame.typ.slab.Z + ' Zone ÷ ' + R.frame.typ.slab.T + '팀');
+      case 'frame': var ft = R.frame.typ.dc ? '' : frameTxt(R);
+        return '기준층 ' + m1(GK.tactOf(R)) + ' WD/층 × 지상 ' + b.nUp + '개층' + (pourTxt(R) && !R.frame.typ.dc ? ' · ' + pourTxt(R) : '') + (R.frame.typ.dc ? ' · DC 사이클' : ft ? ' · ' + ft : ' · 바닥 ' + R.frame.typ.slab.Z + ' Zone ÷ ' + R.frame.typ.slab.T + '팀');
       case 'exc': return '굴착 ' + fmt(R.exc.Vtot || g.Vtot) + '㎥ · GL−' + r1(g.H) + 'm' + (R.exc.ns ? ' · ' + GE.SUP_N[b.sup] + ' ' + R.exc.ns + '단' : '');
       case 'found': return f.nZ + ' Zone · 철근 ' + f.teams + '팀 · Zone당 ' + r1(f.cyc) + ' WD';
       case 'base': return '지하 ' + b.nB + '개층 골조';
@@ -541,6 +606,8 @@
       if (!dp && bt.substr(ci, 3) === ' · ') { bs.push(cur); cur = ''; ci += 2; } else cur += ch;
     }
     bs.push(cur); bs = bs.filter(Boolean);
+    /* 지상골조 : 산출 근거 맨 앞에 타설 순서 (엔진 근거 문장에 없는 경우 — 동시타설 c4 · 철골 코어선행 옛 경로) */
+    if (/^frame/.test(a.id) && pourTxt(R)) { var pn = R.frame.pour.name; if (bt.indexOf(pn) < 0) bs.unshift('타설 순서 ' + pourTxt(R)); }
     return '<div class="gt-h"><b>' + esc(nm) + '</b><span class="n">M+' + m1(a.s) + ' ~ ' + m1(a.e) + '</span></div>' +
       (a.name !== nm ? '<div class="gt-nm">' + esc(a.name) + '</div>' : '') +
       '<div class="gt-bar">' + bar + '</div><div class="gt-seg">' + seg.join('<span>·</span>') + '<em>개월</em></div>' +
@@ -1083,7 +1150,7 @@
   function teamNow(k) {
     var R = lastR, ty = R.frame.typ, tk = (R.teamKeys || []).filter(function (q) { return q.key === k; })[0];
     if (tk && tk.now > 0) return tk.now;
-    return k === 'fTeams' ? R.found.teams : k === 'uTeams' ? (ty.dc ? ty.dc.P.T : ty.slab.T) : k === 'cTeams' ? (ty.dc ? ty.dc.C.T : ty.core ? ty.core.T : 0) : 0;
+    return k === 'fTeams' ? R.found.teams : k === 'uTeams' ? (ty.dc ? ty.dc.P.T : ty.post ? ty.post.P.T : ty.slab.T) : k === 'cTeams' ? (ty.dc ? ty.dc.C.T : ty.post ? ty.post.C.T : ty.core ? ty.core.T : 0) : 0;
   }
   function pinTeams(keys) { (keys || []).forEach(function (k) { if (hasTeam(k) || !lastR) return; var v = teamNow(k); if (!(v > 0)) return; jSet(k, v); S.cyPin = Object.assign({}, S.cyPin); S.cyPin[k] = v; }); }
   function unpinTeams(keys) { (keys || []).forEach(function (k) { if (!S.cyPin || !Object.prototype.hasOwnProperty.call(S.cyPin, k)) return; jReset(k, S.cyPin[k]); S.cyPin = Object.assign({}, S.cyPin); delete S.cyPin[k]; }); }
@@ -1140,18 +1207,31 @@
   /* DC 공종 → 라이브러리 키 (철근 · 테이블폼은 물량 ÷ 생산성 자동 계산이라 고치지 않음) */
   var DCMAP = { '양중': 'lift', '형틀': 'form', '해체': 'strip', '타설': 'pour', '비계 · 안전망': 'scaf', '비계 · 동바리': 'scaf', 'M&E': 'me', '양생': 'cure', '양생 · 해체': 'cure', '보 형틀': 'bform', '코어 슬래브 형틀': 'coreForm' };
   var DCRO = '물량 ÷ 생산성 (자동 계산)';
+  /* 사이클 표 이름 칸 (좁은 칸 74px 에 한 줄로) — 원래 이름은 title */
+  var CYSHORT = { '코어 슬래브 형틀': '코어 바닥 형틀', '코어 슬래브 철근': '코어 바닥 철근', '슬래브 · 보 철근': '슬래브·보 철근' };
   function edDC(id, nm, cur) { var p = DCMAP[nm]; return p ? edLin('u.dc.' + id, nm, 'dc.' + p, cur) : ''; }
-  /* v2.8 사슬 공종 (R.frame.typ.slab.items · R.base.rows[i].items) 의 일수 칸.
+  /* v2.8 사슬 공종 (R.frame.typ.slab.items · typ.post.P · C .items · R.base.rows[i].items) 의 일수 칸.
      고정 공종 (양중 · 형틀 · 타설 …) = 라이브러리 일수 (v28.lift 등) — 화면 = 일수 ÷ 작업시간 (타설은 고정).
-     작업량 공종 (철근 · 테이블폼 · DECK) = ⌈물량 q ÷ (생산성 p × [철근 t/인·일] × 작업시간)⌉ (+ PT 일수) → 넣은 WD 가 나오는 p (인원 · 장/일 · ㎡/일) 로 역산.
-     정수 올림이라 0.5 단위 대신 1 WD 씩 (▲ = 올림 · ▼ = 내림). 라이브러리 키는 지상 · 지하 사슬이 같이 쓴다 */
-  var V28U = { 'v28.crewW': '인', 'v28.crewU': '인', 'v28.crewCS': '인', 'v28.table': '장/일', 'v28.deck': '㎡/일', 'v28.steelPc': 'pcs/일' };
+     작업량 공종 (철근 · 테이블폼 · DECK · 철골) = ⌈물량 q ÷ (생산성 p × [철근 t/인·일] × 작업시간)⌉ (+ PT · 볼팅 일수) → 넣은 WD 가 나오는 p (인원 · 장/일 · ㎡/일 · pcs/일) 로 역산.
+     정수 올림이라 0.5 단위 대신 1 WD 씩 (▲ = 올림 · ▼ = 내림).
+     라이브러리 키 (v28.*) 는 지상 · 지하 사슬이 같이 쓴다 → 고친 표 (차트 id) 를 S.cyOwn 에 적어 두고, 되돌리기는 그 표가 바꾼 키만 */
+  var V28U = { 'v28.crewW': '인', 'v28.crewU': '인', 'v28.crewCS': '인', 'v28.crewS': '인', 'v28.table': '장/일', 'v28.deck': '㎡/일', 'v28.steelPc': 'pcs/일' };
   function v28Lib(R) { return (R.frame.v28 && R.frame.v28.lib) || LIB.v28 || {}; }
+  function ownOf(path) { return S.cyOwn && Object.prototype.hasOwnProperty.call(S.cyOwn, path) ? S.cyOwn[path] : null; }
+  function ownSet(path, id) { S.cyOwn = Object.assign({}, S.cyOwn); if (id) S.cyOwn[path] = id; else delete S.cyOwn[path]; if (!Object.keys(S.cyOwn).length) delete S.cyOwn; }
+  var CYNM = { typ: '지상', baseZ: '지하 바닥' };
+  /* 지상 · 지하 사슬이 함께 보이는지 (지하 v2.8 사슬 켬 + 지상 사슬 경로) — 같은 키를 쓰는 칸에 '공용' 표시 */
+  function v28Shared(R) { return !!(R.base && R.base.model === 'v28' && R.frame.v28 && R.frame.v28.up); }
   function edItem(key, it, R) {
-    var hF = R.basic.hF || 1, path = it.lib || '';
+    var hF = R.basic.hF || 1, path = it.lib || '', id = cyCur, sh = v28Shared(R);
     if (!/^v28\./.test(path) || !(libDef(path) > 0)) return '';
-    if (it.fixed) return edLin(key, it.n, path, it.wd, { k: path === 'v28.pour' || path === 'v28.c3End' ? 1 : 1 / hF });
-    var V8 = v28Lib(R), q = +it.q, ex = (it.pt || 0) / hF, m = it.u === 't' ? +V8.tPerMD : 1, pd = libDef(path), cur = it.wd;
+    var shTip = sh ? '지상 · 지하 공용 (' + path + ')' + (ownOf(path) && ownOf(path) !== id ? ' — ' + (CYNM[ownOf(path)] || '다른') + ' 표에서 바꿈' : '') : '';
+    if (it.fixed) {
+      var k0 = edLin(key, it.n, path, it.wd, { k: path === 'v28.pour' || path === 'v28.c3End' ? 1 : 1 / hF });
+      if (k0) { var e0 = CYED[k0], s0 = e0.set, r0 = e0.reset; e0.lib = path; e0.shared = shTip; e0.set = function (v) { s0(v); ownSet(path, id); }; e0.reset = function () { r0(); ownSet(path, null); }; }
+      return k0;
+    }
+    var V8 = v28Lib(R), q = +it.q, ex = (it.pt || 0) / hF + (path === 'v28.steelPc' ? (+V8.bolt || 0) / hF : 0), m = it.u === 't' ? +V8.tPerMD : 1, pd = libDef(path), cur = it.wd;
     if (!(q > 0) || !(m > 0) || !(V8[path.slice(4)] > 0)) return '';
     var wdOf = function (p) { return Math.ceil(q / (p * m * hF) - 1e-9) + ex; };
     /* q 는 엔진이 반올림한 값 (소수 1 ~ 2자리) → 앞뒤 여유를 두고도 같은 WD 가 되는 값 중 가장 둥근 값 (정수 → 0.5 → 0.1 → 구간 가운데) */
@@ -1162,45 +1242,57 @@
       for (var i = 0; i < cs.length; i++) if (ok(cs[i])) return rd(cs[i]);
       return rd(cs[3]);
     };
-    return addEd(key, { lab: it.n, cur: cur, def: hasOv(path) ? wdOf(pd) : cur, on: hasOv(path), min: 1 + ex, max: edMax(wdOf(pd)), step1: true,
-      set: function (v) { var W = Math.max(1, v > cur ? Math.ceil(v - ex - 1e-9) : Math.floor(v - ex + 1e-9)); if (Math.abs(wdOf(pd) - ex - W) < 1e-9) delOv(path); else setLib(path, pFor(W)); },
-      reset: function () { delOv(path); } });
+    return addEd(key, { lab: it.n, cur: cur, def: hasOv(path) ? wdOf(pd) : cur, on: hasOv(path), min: 1 + ex, max: edMax(wdOf(pd)), step1: true, lib: path, shared: shTip,
+      set: function (v) { var W = Math.max(1, v > cur ? Math.ceil(v - ex - 1e-9) : Math.floor(v - ex + 1e-9)); if (Math.abs(wdOf(pd) - ex - W) < 1e-9) { delOv(path); ownSet(path, null); } else { setLib(path, pFor(W)); ownSet(path, id); } },
+      reset: function () { delOv(path); ownSet(path, null); } });
   }
+  /* 되돌리기 대상 : 공용 라이브러리 키는 이 표가 바꾼 것 (또는 누가 바꿨는지 모르는 것) 만 */
+  function edMine(e, id) { return !e.lib || !ownOf(e.lib) || ownOf(e.lib) === id; }
   /* 공종 한 줄 근거 (title) */
   function itTip(it, R) {
     var V8 = v28Lib(R), hF = R.basic.hF || 1, hs = hF !== 1 ? ' ÷ 작업시간 ' + r2(hF) : '', p = it.lib ? V8[it.lib.slice(4)] : null;
     if (it.fixed) return '고정 ' + r1(p != null ? p : it.wd) + 'WD' + (it.lib === 'v28.pour' || it.lib === 'v28.c3End' ? '' : hs) + ' (' + it.lib + ')';
     if (!(it.q > 0)) return '물량 0 (코어 · 벽체 없음)';
-    var tq = it.u === 't';
-    return 'Zone 1개 ' + (tq ? r2(it.q) : fmt(it.q)) + it.u + ' ÷ (' + (tq ? fmt(p) + '인 × ' + r2(V8.tPerMD) + 't/인·일' : fmt(p) + (V28U[it.lib] || '')) + ')' + hs + ' → 올림' + (it.pt ? ' + PT ' + r1(it.pt) + '일' : '') + ' (' + it.lib + (tq ? ' · v28.tPerMD' : '') + ')';
+    var tq = it.u === 't', bolt = it.lib === 'v28.steelPc' ? +V8.bolt || 0 : 0;
+    return 'Zone 1개 ' + (tq ? r2(it.q) : fmt(it.q)) + it.u + ' ÷ (' + (tq ? fmt(p) + '인 × ' + r2(V8.tPerMD) + 't/인·일' : fmt(p) + (V28U[it.lib] || '')) + ')' + hs + ' → 올림' + (it.pt ? ' + PT ' + r1(it.pt) + '일' : '') + (bolt ? ' + 볼팅 ' + r1(bolt) + '일' : '') + ' (' + it.lib + (tq ? ' · v28.tPerMD' : '') + ')';
   }
-  /* 사슬 겹침 기본 (라이브러리 v28.ov*) : ov1 = v2.8 · ov3 · ov4 · ov5 = 사례 B 보정 (가정) */
+  /* 사슬 겹침 기본 : c4 (rc · bc) = 라이브러리 v28.ov* (ov1 = v2.8 · ov3 · ov4 · ov5 = 사례 B 보정 (가정)),
+     새 사슬 (adv.seqOv.c1 · c2 · c3 · c5) = 엔진 코드 상수 (v2.8 간격) — c5 a1 = 양중 전부 (∥) 라 겹침 상한까지 */
   var OV28N = { 1: 'v2.8 (벽체 철근 ∥ 양중)', 3: '사례 B 보정 (가정)', 4: '사례 B 보정 (가정)', 5: '사례 B 보정 (가정)' };
+  var SEQOV0 = { c1: [0, 0, 0, 0, 0, 0], c2: [0, 1, 1, 1, 1, 0], c3: [0, 0, 0, 0, 0], c5: [0, 99, 1, 0, 0] };
   function ovNote(i, user) {
     var d = +(LIB.v28 && LIB.v28['ov' + i]) || 0, u = user && typeof user === 'object' && user['a' + i] != null && isFinite(parseFloat(user['a' + i]));
     return u ? '입력 (기본 ' + r1(d) + (d > 0 && OV28N[i] ? ' · ' + OV28N[i] : '') + ')' : d > 0 ? '기본 겹침 ' + r1(d) + ' WD = ' + (OV28N[i] || '라이브러리') : '';
   }
-  /* v2.8 공종 사슬 표 (Zone 1개) : 공종 줄 (끌기 겹침 → S.adv.rcOv · bcOv) + 층 사이클 환산 (2회 타설 · 층고 · 하루 1 Zone 하한) 점선 줄 */
-  function c4Rows(R, x, ch, ovp, user) {
-    var rows = [], e = 0, its = x.items || [];
+  /* v2.8 공종 사슬 표 (Zone 1개) : 공종 줄 (끌기 겹침) + 층 사이클 환산 (2회 타설 · 층고 · 하루 1 Zone 하한) 점선 줄.
+     o = { ch : 끌기 사슬 id (차트 안에서 하나), ovp : 겹침 저장 머리 (rc · bc → adv.rcOv · bcOv, c1 · c2 · c3 · c5 → adv.seqOv.*), edp : 일수 칸 키 머리, user : 지금 겹침 입력, takt }
+     엔진 items 의 s (착수) · pe (겹침 기준 시점) · ovMax (겹침 상한, 0 = 잠금) 를 그대로 — c3 의 철골 · DECK · 철근은 0 에서 동시 착수, M&E · 타설은 바로 앞 공종 끝 기준 */
+  function chRows(R, x, o) {
+    var rows = [], e = 0, its = x.items || [], c3 = o.ovp === 'c3', d0 = SEQOV0[o.ovp], u = o.user && typeof o.user === 'object' ? o.user : null;
     its.forEach(function (it, i) {
-      var ed = edItem(ch + '.' + it.k, it, R), nt = i ? ovNote(i, user) : '';
-      /* 이름 칸이 좁아 '(PT 1일)' 은 '+PT' 로 줄임 (일수는 title) */
-      rows.push(cyRow(it.pt ? it.n.replace(/ \(PT [\d.]+일\)$/, ' +PT') : it.n, it.s, it.wd, { ed: ed, ro: ed ? '' : itTip(it, R), ch: ch, ci: i, lock: LOCK0, tip: itTip(it, R),
-        ov: i ? { key: ovp + '.a' + i, pe: e, mx: its[i - 1].wd, o: it.ov || 0, note: nt } : null }));
-      e = Math.max(e, it.s + it.wd);
+      var ed = edItem(o.edp + '.' + it.k, it, R), mx = it.ovMax != null ? it.ovMax : (i ? its[i - 1].wd : 0), pe = it.pe != null ? it.pe : e, s = it.s != null ? it.s : Math.max(0, pe - (it.ov || 0));
+      var pm = c3 ? (mx > 0 ? 'p' : 'z') : '', dv = d0 ? Math.min(mx, d0[i] || 0) : null, nt = '';
+      if (i && mx > 0) nt = d0 ? (u && u['a' + i] != null && isFinite(parseFloat(u['a' + i])) ? '입력 (기본 ' + r1(dv) + ')' : dv > 0 ? 'v2.8 기본 겹침 ' + r1(dv) + ' WD' : '') : ovNote(i, u);
+      var lock = !i ? LOCK0 : mx > 0 ? '' : c3 ? '동시 착수 (철골 · DECK · 철근) — 겹침 없음' : '겹침 없음 (앞 공종 0 WD)';
+      /* 이름 칸이 좁아 '(PT 1일)' 은 이름 뒤 작은 'PT' 로 (일수는 title — 원래 이름 그대로) */
+      rows.push(cyRow(it.n, s, it.wd, { ed: ed, ro: ed ? '' : itTip(it, R), ch: o.ch, ci: i, lock: lock, tip: itTip(it, R), pm: pm,
+        dn: it.pt ? it.n.replace(/ \(PT [\d.]+일\)$/, '') : '', tag: it.pt ? { l: 'PT', t: 'PT 슬래브 ' + r1(it.pt) + '일 포함' } : null,
+        ov: i && mx > 0 ? { key: o.ovp + '.a' + i, pe: pe, mx: mx, o: it.ov || 0, note: nt, dv: dv } : null }));
+      e = Math.max(e, s + it.wd);
     });
-    var zf = x.zoneF != null ? x.zoneF : x.zone;
-    if (zf > x.zone + 0.05) rows.push(cyRow('층 환산', 0, zf, { k: 'gh', sub: true, ro: '사슬 ' + r1(x.zone) + ' × 2회 타설 ' + r2(x.lk || 1) + ' × 층고 ' + r2(x.hf || 1),
-      tip: 'Zone 1개 사슬 ' + r1(x.zone) + 'WD × 2회 타설 계수 ' + r2(x.lk || 1) + ((x.pl != null ? x.pl : x.lifts) > 1 ? ' (' + (x.pl != null ? x.pl : x.lifts) + '회 타설)' : '') + ' × 층고 보정 ' + r2(x.hf || 1) + ' = ' + r1(zf) + 'WD', lock: '계산값 — 층고는 단면 층고 칸에서' }));
-    if (x.lb && x.lb.on) rows.push(cyRow('하루 1 Zone 하한', 0, x.lb.v, { k: 'gh', sub: true, ro: '팀당 ' + x.nt + ' Zone × ' + r1(x.takt) + 'WD',
-      tip: '팀당 ' + x.nt + ' Zone × 하루 1 Zone (' + r1(x.takt) + 'WD) = ' + r1(x.lb.v) + 'WD > 사슬 ' + r1(zf) + 'WD → 층간 하한 (가정)', lock: '팀 수를 늘리면 풀림' }));
+    var zf = x.zoneF != null ? x.zoneF : x.zone, lifts = x.pl != null ? x.pl : x.lifts, tk = x.takt != null ? x.takt : o.takt != null ? o.takt : 1;
+    var fk = x.lk != null ? '2회 타설 ' + r2(x.lk || 1) : '수직재 ' + (lifts || 1) + '회';
+    if (zf > x.zone + 0.05) rows.push(cyRow('층 환산', 0, zf, { k: 'gh', sub: true, ro: '사슬 ' + r1(x.zone) + ' × ' + fk + ' × 층고 ' + r2(x.hf || 1),
+      tip: 'Zone 1개 사슬 ' + r1(x.zone) + 'WD × ' + (x.lk != null ? '2회 타설 계수 ' + r2(x.lk || 1) + (lifts > 1 ? ' (' + lifts + '회 타설)' : '') : '수직재 ' + (lifts || 1) + '회') + ' × 층고 보정 ' + r2(x.hf || 1) + ' = ' + r1(zf) + 'WD', lock: '계산값 — 층고는 단면 층고 칸에서' }));
+    if (x.lb && x.lb.on) rows.push(cyRow('하루 1 Zone 하한', 0, x.lb.v, { k: 'gh', sub: true, ro: '팀당 ' + x.nt + ' Zone × ' + r1(tk) + 'WD',
+      tip: '팀당 ' + x.nt + ' Zone × 하루 1 Zone (' + r1(tk) + 'WD) = ' + r1(x.lb.v) + 'WD > 사슬 ' + r1(zf) + 'WD → 층간 하한 (가정)', lock: '팀 수를 늘리면 풀림' }));
     return rows;
   }
   /* 사슬 아래 한 줄 : Zone 연속 · 팀당 nt Zone → 맨 위층 (지하는 1F 바닥) + (nt − 1) */
-  function c4Foot(x, top) {
-    var g = Math.max(0, (x.nt || 1) - 1) * (x.takt != null ? x.takt : 1);
-    return (x.flow === 'FLOOR' ? '층 완결 · 팀당 <b>' + x.nt + '</b> Zone (하루 1 Zone) → 층마다 + ' + r1(g) : 'Zone 연속 · 팀당 <b>' + x.nt + '</b> Zone (하루 1 Zone) → ' + top + ' + ' + r1(g)) + ' WD';
+  function c4Foot(x, top, flow, tk) {
+    tk = x.takt != null ? x.takt : tk != null ? tk : 1;
+    var g = Math.max(0, (x.nt || 1) - 1) * tk;
+    return ((flow || x.flow) === 'FLOOR' ? '층 완결 · 팀당 <b>' + x.nt + '</b> Zone (하루 1 Zone) → 층마다 + ' + r1(g) : 'Zone 연속 · 팀당 <b>' + x.nt + '</b> Zone (하루 1 Zone) → ' + top + ' + ' + r1(g)) + ' WD';
   }
   function needTip(x) { return x.need ? '참고 : v2.8 소요 작업조 ' + x.need + ' (v2.8 간격 사슬 ' + r1(x.zone28 != null ? x.zone28 : x.zone) + 'WD 기준, 계산에는 안 씀)' : ''; }
 
@@ -1211,7 +1303,7 @@
   function cyRow(n, s, d, o) {
     o = o || {};
     return { n: n, s: s, d: d, ed: o.ed || '', ro: o.ro || '', k: o.k || '', ov: o.ov || null, lock: o.lock || '', tip: o.tip || '', segs: o.segs || null, ghost: o.ghost || null,
-      ch: o.ch || '', ci: o.ci != null ? o.ci : -1, at: !!o.at, sub: !!o.sub };
+      ch: o.ch || '', ci: o.ci != null ? o.ci : -1, at: !!o.at, sub: !!o.sub, pm: o.pm || '', dn: o.dn || '', tag: o.tag || null };
   }
   var LOCK0 = '첫 공종 — 뒤 공종 바를 끌어 겹침 지정';
   function cyFound(R) {
@@ -1306,13 +1398,43 @@
       out.push({ id: 'baseZ', lab: '바닥 사슬', tot: Math.max(rep.zone, rep.zoneF || 0, rep.lb ? rep.lb.v : 0), v: m1(rep.zone), u: 'WD / Zone', x: '', foot: c4Foot(rep, '1F 바닥'),
         lanes: [{ name: rep.slab + ' 바닥 · Zone 1개', info: rep.N + ' Zone · ' + rep.T + '팀', hd: true, gov: true,
           tip: [needTip(rep), oth.length ? '다른 층 : ' + oth.map(function (x) { return x.slab + ' ' + x.N + ' Zone · 사슬 ' + r1(x.zone) + 'WD'; }).join(' · ') : ''].filter(Boolean).join(' · '),
-          rows: c4Rows(R, rep, 'bc', 'bc', zbAdv(R).bcOv) }] });
+          rows: chRows(R, rep, { ch: 'bc', ovp: 'bc', edp: 'bc', user: zbAdv(R).bcOv }) }] });
     }
     return out;
   }
+  /* 지상 기준층 사이클 표 — 타설 순서 (R.frame.pour.used) 에 따라 lane 구성 :
+     동시타설 = 한 줄 (RC c4 · 철골 c5, c5 는 위에 '선행' 읽기 전용 lane), 코어선행 = 코어 lane (옛 '팀당 n Zone' 막대) + 바닥 lane (RC = c2 사슬 · 철골 = 옛 막대),
+     코어후행 = 외주부 (c2 | c3) + 코어 (c1) 두 사슬 → 층간 = 긴 쪽. lane 머리 = C.P 경로 (gov · bind) */
+  function cpTag(t) { return t ? '<em class="cy-cp">' + esc(t) + '</em>' : ''; }
+  /* lane 머리 줄바꿈 : 숫자와 단위 ('9 Zone' · 'Zone 1개' · '6 WD' · '층간 16.9') 가 갈리지 않게 */
+  function nbsp(t) { return String(t || '').replace(/(\d) (Zone|WD|Lift)/g, '$1\u00a0$2').replace(/(Zone|층간|선행|수직재) (\d)/g, '$1\u00a0$2'); }
+  function oldCore(R, c, gov) {
+    var fr = R.frame, lockZ = 'Zone 단위 연속 작업 — 겹침 대신 일수만 고칩니다', c0 = c.lb && c.lb.on && c.wd0 != null ? c.wd0 : c.wd, nc = c.per * c.lifts, zc = c0 / Math.max(1, nc), sc = [];
+    for (var j = 0; j < nc; j++) sc.push({ s: j * zc, d: zc, lab: j + 1 });
+    var rc = [cyRow('팀당 ' + c.per + ' Zone', 0, c0, { segs: sc, ed: edLin('u.core', '코어 사이클', 'frame.core.' + fr.sysC, c0, { pin: ['cTeams'] }), lock: lockZ, tip: 'Zone ' + r2(zc) + 'WD × ' + nc + ' (' + (fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼') + ')' })];
+    if (c.lb && c.lb.on) rc.push(lbRow(c.lb, R));
+    return { name: '코어', info: c.Z + ' Zone · ' + c.T + '팀' + (c.lifts > 1 ? ' · ' + c.lifts + ' Lift' : ''), gov: gov, cp: gov ? 'C.P' : '', rows: rc };
+  }
   function cyTyp(R) {
-    var fr = R.frame, ty = fr.typ, tact = GK.tactOf(R);
+    var fr = R.frame, ty = fr.typ, tact = GK.tactOf(R), A = zbAdv(R), sl = ty.slab, pst = ty.post, so = A.seqOv || {};
     cyBegin('typ', ['uTeams', 'cTeams'], ['dcOv']);
+    if (pst) {
+      /* 코어후행 : 외주부 (RC c2 · 철골 c3) · 코어 (c1) — 겹침 = adv.seqOv.<사슬>, 층간 = max(외주부, 코어) */
+      cyBegin('typ', ['uTeams', 'cTeams'], ['seqOv.' + pst.P.ch, 'seqOv.c1']);
+      var pl = function (st, L) {
+        var x = Object.assign({}, st, { flow: pst.flow }), gv = pst.gov === st.name;
+        return { name: st.name + ' · ' + st.ch, info: st.N + ' Zone · ' + st.T + '팀 · 층간 ' + r1(st.int) + ' WD', gov: gv, cp: gv ? 'C.P' : '', tip: [chainTxt(st, pst.flow), needTip(st)].filter(Boolean).join(' · '),
+          rows: chRows(R, x, { ch: 'p' + L, ovp: st.ch, edp: 'p' + L, user: so[st.ch], takt: pst.takt }) };
+      };
+      var lp = [pl(pst.P, 'P'), pl(pst.C, 'C')];
+      /* 두 lane 이 같은 라이브러리 값 (v28.lift · pour · me …) 을 쓰는 칸 : '외주부 · 코어 공용' 표시 — 한쪽 ▲▼ 가 다른 lane 칸도 바꿈 */
+      var lbOf = function (st) { return (st.items || []).map(function (it) { return it.lib; }).filter(Boolean); }, lP = lbOf(pst.P), both = lbOf(pst.C).filter(function (q) { return lP.indexOf(q) >= 0; });
+      if (both.length) CYCH.typ.eds.forEach(function (k) { var e = CYED[k]; if (e && e.lib && both.indexOf(e.lib) >= 0) e.shared = (e.shared ? e.shared + ' · ' : '') + '외주부 · 코어 공용 (' + e.lib + ') — 바꾸면 두 lane 이 같이 바뀜'; });
+      /* 인쇄 : C.P 가 아닌 lane 은 머리 한 줄 (Zone · 팀 · 층간) 로 접음 */
+      lp.forEach(function (l) { l.pf = !l.gov; });
+      return { id: 'typ', tot: Math.max(pst.P.zone, pst.C.zone, pst.P.zoneF || 0, pst.C.zoneF || 0, pst.P.lb && pst.P.lb.on ? pst.P.lb.v : 0, pst.C.lb && pst.C.lb.on ? pst.C.lb.v : 0), v: m1(tact), u: 'WD / 층', x: '코어후행',
+        foot: '층간 = max(외주부 <b>' + m1(pst.P.int) + '</b>, 코어 <b>' + m1(pst.C.int) + '</b>) = <b>' + m1(pst.wd) + '</b> WD · ' + c4Foot(pst.gov === '코어' ? pst.C : pst.P, '맨 위층', pst.flow, pst.takt), lanes: lp };
+    }
     if (ty.dc) {
       /* DC : 외주부 · 코어 공종 사슬 (겹침 = adv.dcOv.P · C, 키 = 수직재 v0 ~ v4 · 이후 a0 …) → 착수 = 앞 공종이 모두 끝나는 때 − 겹침, Zone 1개 작업 = 가장 늦은 끝 */
       var d = ty.dc, nv = (d.lifts || 1) * 5;
@@ -1320,51 +1442,68 @@
         var rows = [], e = 0;
         st.items.forEach(function (it, i) {
           var nm = it[0], s = st.ss ? st.ss[i] : e, ed = edDC(L + i, nm.replace(/ \d\/\d차$/, ''), it[1]), key = i < nv ? 'v' + (i % 5) : 'a' + (i - nv);
-          rows.push(cyRow(nm, s, it[1], { ed: ed, ro: ed ? '' : DCRO, ch: 'dc' + L, ci: i, lock: LOCK0,
+          rows.push(cyRow(nm, s, it[1], { ed: ed, ro: ed ? '' : DCRO, ch: 'dc' + L, ci: i, lock: LOCK0, dn: CYSHORT[nm] || '',
             ov: i ? { key: 'dc' + L + '.' + key, pe: e, mx: st.items[i - 1][1], o: st.ov ? st.ov[i] : 0 } : null }));
           e = Math.max(e, s + it[1]);
         });
-        return { name: st.name, info: st.N + ' Zone · ' + st.T + '팀', gov: d.gov === st.name, rows: rows };
+        return { name: st.name, info: st.N + ' Zone · ' + st.T + '팀', gov: d.gov === st.name, cp: d.gov === st.name ? 'C.P' : '', rows: rows };
       };
       return { id: 'typ', tot: Math.max(d.P.zone, d.C.zone), v: m1(tact), u: 'WD / 층', x: '', lanes: [lane(d.P, 'P'), lane(d.C, 'C')] };
     }
-    var sl = ty.slab;
-    if (sl.model === 'v28' && sl.items && sl.items.length) {
-      /* 일반 RC · SRC (v2.8 c4 동시 RC) : Zone 1개 공종 사슬 (끌기 겹침 = adv.rcOv · 키 a1 …) → 층간 = 사슬 × 2회 타설 · 층고, 팀은 Zone 연속 꼬리 · 하루 1 Zone 하한만 */
-      cyBegin('typ', ['uTeams', 'cTeams'], ['rcOv']);
-      var rw = c4Rows(R, sl, 'rc', 'rc', zbAdv(R).rcOv), n28 = Math.max(sl.zone, sl.zoneF || 0, sl.lb ? sl.lb.v : 0);
-      return { id: 'typ', tot: n28, v: m1(tact), u: 'WD / 층', x: '', foot: c4Foot(sl, '맨 위층'),
-        lanes: [{ name: '외주부 · 코어 일체 · Zone 1개', info: sl.N + ' Zone · ' + sl.T + '팀', hd: true, gov: true, tip: needTip(sl), rows: rw }] };
+    var n28 = Math.max(sl.zone || 0, sl.zoneF || 0, sl.lb && sl.lb.on ? sl.lb.v : 0, sl.lead || 0);
+    if (sl.model === 'v28' && sl.items && sl.items.length && ty.core) {
+      /* RC · SRC 코어선행 : 코어 (옛 coreT 막대) + 바닥 c2 사슬 (adv.seqOv.c2) — 바닥 n층 = 코어 n + rcLag 층 완료 후 */
+      cyBegin('typ', ['uTeams', 'cTeams'], ['seqOv.c2']);
+      var gc = /^코어/.test(fr.gov), lag = fr.pour && fr.pour.rule ? fr.pour.rule.rcLag : 3;
+      var lb = { name: '바닥 · c2 · Zone 1개', info: sl.N + ' Zone · ' + sl.T + '팀', gov: !gc, cp: !gc ? 'C.P' : '', tip: [chainTxt(sl), needTip(sl)].filter(Boolean).join(' · '),
+        rows: chRows(R, sl, { ch: 'c2', ovp: 'c2', edp: 'b2', user: so.c2 }) };
+      return { id: 'typ', tot: Math.max(n28, ty.core.wd), v: m1(tact), u: 'WD / 층', x: '코어선행', foot: '바닥 n층 = 코어 n+<b>' + lag + '</b>층 완료 후 · ' + c4Foot(sl, '바닥 끝'), lanes: [oldCore(R, ty.core, gc), lb] };
     }
-    /* 일반 지상 (옛 식) · 철골 · 강합성 : 팀당 Zone 연속 (Zone 단위라 겹침 없음 — 일수만). v2.8 사슬 하한 (바닥 c3 · 코어 c1) 이 걸리면 점선 줄 */
-    var lockZ = 'Zone 단위 연속 작업 — 겹침 대신 일수만 고칩니다';
+    if (sl.model === 'v28' && sl.items && sl.items.length) {
+      var c5 = sl.ch === 'c5', ln = [];
+      if (c5) {
+        /* 동시타설 철골 · 강합성 (c5) : 선행 (철골 + 볼팅 · DECK, 읽기 전용 — 첫 층 앞 1회 · 이후 아래층 타설 중) + 사슬 (adv.seqOv.c5) */
+        cyBegin('typ', ['uTeams', 'cTeams'], ['seqOv.c5']);
+        var st = sl.bind === 'steel', li = sl.leadItems || [];
+        ln.push({ name: '선행 · 철골 · DECK', info: 'Zone 1개 ' + r1(sl.lead) + ' WD · 층간 ≥ 선행', gov: st, cp: st ? 'C.P · 선행 지배' : '', tip: '철골 · DECK 선행 — 첫 층 앞 1회, 이후 층은 아래층 타설 중 선행 (층간 ≥ 선행 ' + r1(sl.lead) + ' WD)',
+          rows: li.map(function (it, i) { return cyRow(it.n.replace(/ \(선행\)$/, ''), it.s, it.wd, { ro: itTip(it, R), tip: itTip(it, R), lock: '선행 — 읽기 전용 (일수는 라이브러리 v28.steelPc · deck)' }); }) });
+        var rw5 = chRows(R, sl, { ch: 'c5', ovp: 'c5', edp: 'e5', user: so.c5 });
+        if (st) rw5.push(cyRow('선행 지배', 0, sl.lead, { k: 'gh', sub: true, ro: '선행 ' + r1(sl.lead) + ' WD > 사슬 → 층간 = 선행', tip: '철골 · DECK 선행 ' + r1(sl.lead) + ' WD 가 사슬보다 길어 층간을 정함', lock: '선행 (철골 · DECK) 일수가 정함' }));
+        ln.push({ name: '동시 · c5 · Zone 1개', info: sl.N + ' Zone · ' + sl.T + '팀', hd: true, gov: !st, cp: !st ? (sl.bind === 'takt' ? 'C.P · 하루 1 Zone 하한' : 'C.P') : '', tip: needTip(sl), rows: rw5 });
+      } else {
+        /* 동시타설 RC · SRC (v2.8 c4) : Zone 1개 공종 사슬 (끌기 겹침 = adv.rcOv · 키 a1 …) → 층간 = 사슬 × 2회 타설 · 층고, 팀은 Zone 연속 꼬리 · 하루 1 Zone 하한만 */
+        cyBegin('typ', ['uTeams', 'cTeams'], ['rcOv']);
+        ln.push({ name: '외주부 · 코어 일체 · Zone 1개', info: sl.N + ' Zone · ' + sl.T + '팀', hd: true, gov: true, cp: sl.bind === 'takt' ? 'C.P · 하루 1 Zone 하한' : 'C.P', tip: needTip(sl),
+          rows: chRows(R, sl, { ch: 'rc', ovp: 'rc', edp: 'rc', user: A.rcOv }) });
+      }
+      return { id: 'typ', tot: n28, v: m1(tact), u: 'WD / 층', x: c5 ? '동시타설' : '', foot: c4Foot(sl, '맨 위층'), lanes: ln };
+    }
+    /* 옛 식 (철골 · 강합성 코어선행 · 벽식 · 사슬 끔) : 팀당 Zone 연속 (Zone 단위라 겹침 없음 — 일수만). v2.8 사슬 하한 (바닥 c3 · 코어 c1) 이 걸리면 점선 줄 */
+    var lockZ = 'Zone 단위 연속 작업 — 겹침 대신 일수만 고칩니다', gcO = ty.core ? /^코어/.test(fr.gov) : false;
     var w0 = sl.lb && sl.lb.on && sl.wd0 != null ? sl.wd0 : sl.wd, per = sl.per, zs = w0 > 0 ? Math.min(w0, per * fr.dS * (sl.lk || 1) * (sl.hf || 1)) / per : 0, lanes = [], segs = [];
     for (var i = 0; i < per; i++) segs.push({ s: i * zs, d: zs, lab: i + 1 });
     var tot = sl.wd, rs = [cyRow('팀당 ' + per + ' Zone', 0, w0, { segs: segs, ed: edFrame('u.slab', R, sl, w0), lock: lockZ, ghost: w0 > per * zs + 0.05 ? { s: per * zs, d: w0 - per * zs, lab: '최소' } : null, tip: 'Zone ' + r2(zs) + 'WD × ' + per })];
     if (sl.lb && sl.lb.on) rs.push(lbRow(sl.lb, R));
-    lanes.push({ name: ty.core ? '외주부' : '외주부 · 코어 일체', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !ty.core || sl.wd >= ty.core.wd, rows: rs });
-    if (ty.core) {
-      var c = ty.core, c0 = c.lb && c.lb.on && c.wd0 != null ? c.wd0 : c.wd, nc = c.per * c.lifts, zc = c0 / Math.max(1, nc), sc = [];
-      for (var j = 0; j < nc; j++) sc.push({ s: j * zc, d: zc, lab: j + 1 });
-      var rc = [cyRow('팀당 ' + c.per + ' Zone', 0, c0, { segs: sc, ed: edLin('u.core', '코어 사이클', 'frame.core.' + fr.sysC, c0, { pin: ['cTeams'] }), lock: lockZ, tip: 'Zone ' + r2(zc) + 'WD × ' + nc })];
-      if (c.lb && c.lb.on) rc.push(lbRow(c.lb, R));
-      lanes.push({ name: '코어', info: c.Z + ' Zone · ' + c.T + '팀' + (c.lifts > 1 ? ' · ' + c.lifts + ' Lift' : ''), gov: c.wd > sl.wd, rows: rc });
-      tot = Math.max(tot, c.wd);
-    }
-    return { id: 'typ', tot: tot, v: m1(tact), u: 'WD / 층', x: '', lanes: lanes };
+    if (ty.core) lanes.push(oldCore(R, ty.core, gcO));
+    lanes.push({ name: ty.core ? '바닥' : '외주부 · 코어 일체', info: sl.Z + ' Zone · ' + sl.T + '팀' + (sl.lifts > 1 ? ' · 수직재 ' + sl.lifts + '회' : ''), gov: !gcO, cp: ty.core && !gcO ? 'C.P' : '', rows: rs });
+    if (ty.core) tot = Math.max(tot, ty.core.wd);
+    return { id: 'typ', tot: tot, v: m1(tact), u: 'WD / 층', x: ty.core && fr.seq === 'PRE' ? '코어선행' : '', foot: ty.core && fr.struct === 'SC' && fr.seq === 'PRE' ? '철골 n층 = 코어 n+3층 완료 후' : '', lanes: lanes };
   }
   /* 철골 · 강합성 하한 (v2.8 c3 바닥 · c1 코어 사슬) : 점선 줄 — 근거 = 사슬 공종 (title) */
   function lbRow(lb, R) {
     var its = (lb.items || []).map(function (it) { return it.n + ' ' + r1(it.wd); }).join(' · ');
     var why = lb.k === 'c1' ? 'v2.8 c1 코어 사슬 (' + lb.Z + ' Zone) ' + r1(lb.zone) + 'WD × 수직재 ' + (lb.lifts || 1) + '회' : 'v2.8 c3 철골 바닥 사슬 (' + lb.Z + ' Zone · 해석) ' + r1(lb.zone) + 'WD';
-    return cyRow('하한 (v2.8 사슬)', 0, lb.v, { k: 'gh', sub: true, ro: why, tip: why + ' = ' + r1(lb.v) + 'WD · ' + its, lock: '하한 — 기준 층고 ' + r1(R.frame.v28 ? R.frame.v28.hQ : 4.5) + 'm 물량 (층고를 올려도 줄지 않음)' });
+    return cyRow('하한 (v2.8 사슬)', 0, lb.v, { k: 'gh', sub: true, dn: 'v2.8 하한', ro: why, tip: why + ' = ' + r1(lb.v) + 'WD · ' + its, lock: '하한 — 기준 층고 ' + r1(R.frame.v28 ? R.frame.v28.hQ : 4.5) + 'm 물량 (층고를 올려도 줄지 않음)' });
   }
   /* 일수 칸 : 숫자 입력 + ▲▼ (0.5 WD). 바뀐 값 = 코발트. ri = 표 안 자리 (다시 그린 뒤 포커스) */
   function cyMin(e) { return e.zero ? 0 : Math.max(0.5, e.min || 0); }
   function cyStepper(key, lab, ri, small) {
     var e = CYED[key]; if (!e) return '';
     var mn = cyMin(e), at = ' data-ck="' + esc(key) + '" data-ri="' + esc(ri) + '"', sd = e.step1 ? '1' : '0.5';
-    return '<span class="cy-sp' + (e.on ? ' on' : '') + (small ? ' sm' : '') + '" title="' + esc(e.on ? '바뀐 값 · 기본 ' + m1(e.def) + ' WD' : e.step1 ? '직접 입력 · ▲▼ 1 WD (물량 ÷ 생산성 올림 → 생산성으로 역산)' : '직접 입력 · ▲▼ 0.5 WD') + '">' +
+    var tt = (e.on ? '바뀐 값 · 기본 ' + m1(e.def) + ' WD' : e.step1 ? '직접 입력 · ▲▼ 1 WD (물량 ÷ 생산성 올림 → 생산성으로 역산, 소수는 정수로)' : '직접 입력 · ▲▼ 0.5 WD') + (e.shared ? ' · ' + e.shared : '');
+    /* 작업량 공종 (정수 WD) = 칸 왼쪽 밖에 '±1' (▲▼ 1 WD 단위 — 칸 폭은 모든 행이 같음) · 같은 라이브러리 값을 쓰는 칸 = 작은 고리 (sh) */
+    return (e.step1 ? '<i class="cy-u1" title="▲▼ 1 WD 단위 (물량 ÷ 생산성 올림)">±1</i>' : '') +
+      '<span class="cy-sp' + (e.on ? ' on' : '') + (e.step1 ? ' s1' : '') + (e.shared ? ' sh' : '') + (small ? ' sm' : '') + '" data-sk="' + esc(key) + '"' + (e.lib ? ' data-lib="' + esc(e.lib) + '"' : '') + ' title="' + esc(tt) + '">' +
       '<input class="cy-in" type="number" inputmode="decimal" step="' + sd + '" min="' + mn + '"' + (e.max ? ' max="' + r2(e.max) + '"' : '') + ' value="' + (+e.cur).toFixed(1) + '" data-actc="cyIn"' + at + ' aria-label="' + esc(lab + ' 일수 (WD)') + '">' +
       '<span class="cy-ar"><button type="button" class="cy-st up" data-act="cyStep" data-d="1"' + at + ' aria-label="' + esc(lab) + ' +' + sd + ' WD"></button>' +
       '<button type="button" class="cy-st dn" data-act="cyStep" data-d="-1"' + at + ' aria-label="' + esc(lab) + ' −' + sd + ' WD"' + (cyShown(e) <= mn + 1e-9 ? ' disabled' : '') + '></button></span></span>';
@@ -1377,21 +1516,24 @@
       r.segs.forEach(function (q) { var k = q.k != null ? q.k : r.k; h += '<i class="cy-b' + (k ? ' ' + k : '') + '" style="--s:' + cyF(q.s, N) + ';--w:' + cyF(q.d, N) + '" title="' + esc(q.t || r.lock) + '">' + (q.lab != null ? '<span>' + q.lab + '</span>' : '') + '</i>'; });
     } else {
       var v = r.ov, base = v && v.lag ? v.z : r.d, o = v ? Math.max(0, v.o || 0) : 0;
-      var dat = ' data-s="' + rd(r.s) + '" data-d="' + rd(r.d) + '"' + (r.at ? ' data-at="1"' : '') + (v && v.lag ? ' data-lag="' + v.lag + '"' : '');
+      var dat = ' data-s="' + rd(r.s) + '" data-d="' + rd(r.d) + '"' + (r.at ? ' data-at="1"' : '') + (r.pm ? ' data-pm="' + r.pm + '"' : '') + (v && v.lag ? ' data-lag="' + v.lag + '"' : '');
       if (v) {
         var mx = v.lag ? v.z : v.mx, ttl = '좌우로 끌어 겹침 지정 (0.5 WD) · 지금 ' + m1(o) + ' WD (0 ~ ' + m1(mx) + ')' + (v.lag ? ' · 시차 ' + m1(v.L) : '') + (v.note ? ' · ' + v.note : '');
-        dat += ' data-ov="' + esc(v.key) + '" data-pe="' + rd(v.lag ? 0 : v.pe) + '" data-mx="' + rd(mx) + '" data-o="' + rd(o) + '"' + (v.lag ? ' data-z="' + rd(v.z) + '" data-lg="' + rd(v.L) + '" data-ed="' + esc(v.ed) + '"' : '') +
+        dat += ' data-ov="' + esc(v.key) + '" data-pe="' + rd(v.lag ? 0 : v.pe) + '" data-mx="' + rd(mx) + '" data-o="' + rd(o) + '"' + (v.dv != null ? ' data-dv="' + rd(v.dv) + '"' : '') + (v.lag ? ' data-z="' + rd(v.z) + '" data-lg="' + rd(v.L) + '" data-ed="' + esc(v.ed) + '"' : '') +
           ' tabindex="0" role="slider" aria-label="' + esc(r.n + ' 겹침 (WD)') + '" aria-valuemin="0" aria-valuemax="' + r1(mx) + '" aria-valuenow="' + r1(o) + '" title="' + esc(ttl) + '"';
       } else if (r.lock) dat += ' title="' + esc(r.lock) + '"';
       h += '<i class="cy-b' + (r.k ? ' ' + r.k : '') + (v ? ' dr' : '') + '" style="--s:' + cyF(r.s, N) + ';--w:' + cyF(r.d, N) + '"' + at + dat + '>' +
         (v ? '<b class="cy-o" style="--o:' + (base > 0 ? Math.min(1, o / base) : 0).toFixed(4) + '"' + (o > 0.001 ? '' : ' hidden') + '><span>' + r1(o) + '</span></b>' : '') + '</i>';
     }
-    if (r.ghost && r.ghost.d > 0.01) h += '<i class="cy-b gh" style="--s:' + cyF(r.ghost.s, N) + ';--w:' + cyF(r.ghost.d, N) + '" title="' + esc(r.ghost.t || '최소 사이클') + '"><span>' + esc(r.ghost.lab || '') + '</span></i>';
+    /* 점선 덧막대 (최소 사이클 · Zone 연속 꼬리) : 막대가 글자보다 좁으면 글자는 빼고 title 로 */
+    if (r.ghost && r.ghost.d > 0.01) { var gl = r.ghost.lab || '', gw = cyPx(N) * r.ghost.d; h += '<i class="cy-b gh" style="--s:' + cyF(r.ghost.s, N) + ';--w:' + cyF(r.ghost.d, N) + '" title="' + esc((r.ghost.t || '최소 사이클') + (gl && gw < tw(gl, 9.5) + 6 ? ' (' + gl + ')' : '')) + '">' + (gl && gw >= tw(gl, 9.5) + 6 ? '<span>' + esc(gl) + '</span>' : '') + '</i>'; }
     return h;
   }
   function cyRowHTML(r, N, ri) {
     var days = r.ed && CYED[r.ed] ? cyStepper(r.ed, r.n, ri) : '<span class="cy-ro"' + (r.ro ? ' title="' + esc(r.ro) + '"' : '') + '>' + m1(r.d) + '</span>';
-    return '<div class="cy-r' + (r.sub ? ' sub' : '') + '"><span class="cy-n"' + (r.tip ? ' title="' + esc(r.n + ' · ' + r.tip) + '"' : ' title="' + esc(r.n) + '"') + '>' + esc(r.n) + '</span>' +
+    /* 이름 칸 = 화면 이름 (dn — 좁은 칸에 들어가게 짧게) + 작은 표 (PT), title = 원래 이름 · 근거 */
+    var nm = esc(r.dn || r.n) + (r.tag ? '<i class="cy-pt" title="' + esc(r.tag.t) + '">' + esc(r.tag.l) + '</i>' : '');
+    return '<div class="cy-r' + (r.sub ? ' sub' : '') + '"><span class="cy-n"' + (r.tip ? ' title="' + esc(r.n + ' · ' + r.tip) + '"' : ' title="' + esc(r.n) + '"') + '>' + nm + '</span>' +
       '<span class="cy-d">' + days + '</span><span class="cy-t">' + cyBarHTML(r, N) + '</span></div>';
   }
   /* WD 눈금 머리 : 칸 = 1 WD, 숫자는 글자가 겹치지 않게 1 · 2 · 5 · 10 … 단위 (바차트 칸 폭 = 조닝 배치와 같은 식으로 어림) */
@@ -1411,8 +1553,8 @@
   }
   function cyChanged(id) {
     var ch = CYCH[id]; if (!ch) return false;
-    return ch.eds.some(function (k) { return CYED[k] && CYED[k].on; }) || (ch.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; }) ||
-      (ch.ovk || []).some(function (k) { var o = S.adv && S.adv[k]; return o && typeof o === 'object' && Object.keys(o).length > 0; });
+    return ch.eds.some(function (k) { return CYED[k] && CYED[k].on && edMine(CYED[k], id); }) || (ch.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; }) ||
+      (ch.ovk || []).some(function (k) { var o = getP(S.adv || {}, k.split('.')); return o && typeof o === 'object' && Object.keys(o).length > 0; });
   }
   function cyHTML(c) {
     if (!c) return '';
@@ -1420,11 +1562,11 @@
     var h = '<div class="cy-hd"><span>' + esc(c.lab || '사이클') + '</span><b>' + c.v + '</b><small>' + esc(c.u) + '</small>' + (c.x ? '<em>' + esc(c.x) + '</em>' : '') +
       (c.xe || []).map(function (q) { return q.ed && CYED[q.ed] ? '<span class="cy-x">' + esc(q.lab) + cyStepper(q.ed, q.lab, c.id + ':x', true) + '</span>' : ''; }).join('') +
       ((c.key || chg) ? '<span class="cy-hr">' + (c.key ? '<span class="cy-key">' + c.key.map(function (k) { return '<i class="' + k[0] + '"></i>' + esc(k[1]); }).join('') + '</span>' : '') +
-        (chg ? '<button type="button" class="cy-rsa" data-act="cyRsAll" data-cy="' + c.id + '" title="이 사이클에서 고친 일수 · 겹침을 기본으로">되돌리기</button>' : '') + '</span>' : '') + '</div>';
+        (chg ? '<button type="button" class="cy-rsa" data-act="cyRsAll" data-cy="' + c.id + '" title="' + esc('이 사이클에서 고친 일수 · 겹침을 기본으로' + (lastR && v28Shared(lastR) && (c.id === 'typ' || c.id === 'baseZ') ? ' — 지상 · 지하 공용 라이브러리 값 (v28.crewU 등) 은 이 표에서 바꾼 것만' : '')) + '">되돌리기</button>' : '') + '</span>' : '') + '</div>';
     h += '<div class="cy-tb">' + cyScale(N, st);
     c.lanes.forEach(function (ln) {
-      if (multi || ln.hd) h += '<div class="cy-ln' + (ln.gov ? ' gov' : '') + '"' + (ln.tip ? ' title="' + esc(ln.tip) + '"' : '') + '><b>' + esc(ln.name) + '</b><span>' + esc(ln.info) + '</span></div>';
-      h += '<div class="cy-g' + (multi && !ln.gov ? ' sub' : '') + '">' + ln.rows.map(function (r) { return cyRowHTML(r, N, c.id + ':' + (n++)); }).join('') + '</div>';
+      if (multi || ln.hd) h += '<div class="cy-ln' + (ln.gov ? ' gov' : '') + (ln.cp ? ' cp' : '') + (ln.pf ? ' pf' : '') + '"' + (ln.tip ? ' title="' + esc(ln.tip) + '"' : '') + '><b>' + esc(nbsp(ln.name)) + '</b>' + cpTag(ln.cp) + '<span>' + esc(nbsp(ln.info)) + '</span></div>';
+      h += '<div class="cy-g' + (multi && !ln.gov ? ' sub' : '') + (ln.pf ? ' pf' : '') + '">' + ln.rows.map(function (r) { return cyRowHTML(r, N, c.id + ':' + (n++)); }).join('') + '</div>';
     });
     /* 아래 한 줄 (v2.8 사슬 : Zone 연속 꼬리) — 표 안 (cy-tb) 마지막에 */
     if (c.foot) h += '<p class="cy-ft">' + c.foot + '</p>';
@@ -1450,19 +1592,32 @@
     var e = CYED[key]; if (fsel === undefined) fsel = cyFocusNow();
     if (!e) return;
     v = Math.min(e.max || Infinity, Math.max(cyMin(e), v));
+    var did = false;
     if (isFinite(v) && Math.abs(v - e.cur) > 1e-9) {
       var same = Math.abs(v - e.def) < 1e-6 || (v === +v.toFixed(1) && v === +e.def.toFixed(1));
-      if (same && e.on) cyApply(function () { cyReset1(e); });
-      else if (!same || Math.abs(e.cur - e.def) > 1e-9) cyApply(function () { e.set(v); }, e.pin);
+      if (same && e.on) { cyApply(function () { cyReset1(e); }); did = true; }
+      else if (!same || Math.abs(e.cur - e.def) > 1e-9) { cyApply(function () { e.set(v); }, e.pin); did = true; }
       else if (lastR) renderZone(lastR);
     } else if (lastR) renderZone(lastR);
     cyFocusSel(fsel);
+    cySnap(key, v, did);
+  }
+  /* 넣은 값과 계산 결과가 다르면 (정수 WD 공종에 4.5 → 4.0 등) 그 칸을, 같은 라이브러리 값을 쓰는 다른 칸 (공용 — 같이 바뀜) 은 바뀌었을 때 잠깐 표시 */
+  function cySnap(key, v, did) {
+    var n = CYED[key]; if (!n) return;
+    var all = $$('#zone .cy-sp[data-sk]'), fl = function (sp) { sp.classList.remove('snap'); void sp.offsetWidth; sp.classList.add('snap'); setTimeout(function () { if (sp.isConnected) sp.classList.remove('snap'); }, 1600); };
+    if (isFinite(v) && Math.abs(Math.round(+n.cur * 10) / 10 - Math.round(v * 10) / 10) >= 1e-9) {
+      var sp = all.filter(function (x) { return x.getAttribute('data-sk') === key; })[0];
+      if (sp) { fl(sp); sp.setAttribute('data-was', m1(v)); }
+    }
+    if (did && n.lib && n.shared) all.forEach(function (x) { if (x.getAttribute('data-lib') === n.lib && x.getAttribute('data-sk') !== key) fl(x); });
   }
   /* ▲▼ 는 화면에 보이는 값 (0.1 자리) 기준 — 역산 · 저장 반올림 (예 29.0002) 때문에 ▼ 가 같은 값에 머물지 않게 */
   function cyShown(e) { return Math.round(+e.cur * 10) / 10; }
   ACT.cyStep = function (el) {
     var k = el.getAttribute('data-ck'), e = CYED[k]; if (!e) return;
-    var c = cyShown(e), v = +el.getAttribute('data-d') > 0 ? Math.floor(c * 2 + 1e-6) / 2 + 0.5 : Math.ceil(c * 2 - 1e-6) / 2 - 0.5;
+    /* 작업량 공종 (정수 WD) 은 1 WD 씩 — 0.5 로 움직이면 올림 · 내림으로 값이 튀어 보임 */
+    var c = cyShown(e), up = +el.getAttribute('data-d') > 0, v = e.step1 ? c + (up ? 1 : -1) : up ? Math.floor(c * 2 + 1e-6) / 2 + 0.5 : Math.ceil(c * 2 - 1e-6) / 2 - 0.5;
     cyCommit(k, v, '.cy-st[data-ri="' + el.getAttribute('data-ri') + '"][data-d="' + el.getAttribute('data-d') + '"]');
   };
   /* 숫자 칸 : 바뀜 (칸 밖 · Enter) = 적용 — 다시 그리기는 이벤트가 끝난 뒤, 그 사이 사례를 바꿨으면 (S 교체) 버림 */
@@ -1481,21 +1636,24 @@
   });
   ACT.cyRsAll = function (el) {
     var id = el.getAttribute('data-cy'), c = CYCH[id], any = false; if (!c) return;
-    c.eds.forEach(function (k) { var e = CYED[k]; if (e && e.on) { e.reset(); any = true; } });
+    c.eds.forEach(function (k) { var e = CYED[k]; if (e && e.on && edMine(e, id)) { e.reset(); any = true; } });
     if ((c.pins || []).some(function (k) { return S.cyPin && S.cyPin[k] != null; })) { unpinTeams(c.pins); any = true; }
-    (c.ovk || []).forEach(function (k) { if (S.adv && S.adv[k] != null) { delete S.adv[k]; any = true; } });
+    (c.ovk || []).forEach(function (k) {
+      var ps = k.split('.'), par = ps.length > 1 ? getP(S.adv || {}, ps.slice(0, -1)) : S.adv, last = ps[ps.length - 1];
+      if (par && par[last] != null) { delete par[last]; any = true; if (ps.length > 1 && !Object.keys(par).length) delete S.adv[ps[0]]; }
+    });
     if (any) cyApply(function () {}); else if (lastR) renderZone(lastR);
   };
   /* 겹침 저장 : 키 → S.adv 경로 (0 이면 지우고 빈 묶음도 지움) */
-  var OVP = { f: ['fOv'], b: ['bOv'], p: ['pOv'], dcP: ['dcOv', 'P'], dcC: ['dcOv', 'C'], rc: ['rcOv'], bc: ['bcOv'] };
+  var OVP = { f: ['fOv'], b: ['bOv'], p: ['pOv'], dcP: ['dcOv', 'P'], dcC: ['dcOv', 'C'], rc: ['rcOv'], bc: ['bcOv'], c1: ['seqOv', 'c1'], c2: ['seqOv', 'c2'], c3: ['seqOv', 'c3'], c5: ['seqOv', 'c5'] };
   /* 기본 겹침 : 대부분 0, v2.8 사슬 (rc · bc, 키 a1 …) 은 라이브러리 v28.ov* (기본 1 WD 인 곳이 있어 0 도 따로 저장) */
   function ovDef(pre, sub) { return (pre === 'rc' || pre === 'bc') && /^a\d$/.test(sub) ? +(LIB.v28 && LIB.v28['ov' + sub.slice(1)]) || 0 : 0; }
-  function ovSet(key, v) {
+  function ovSet(key, v, dv) {
     var i = key.indexOf('.'), pre = key.slice(0, i), sub = key.slice(i + 1), path = (OVP[pre] || []).concat([sub]); if (path.length < 2) return;
     S.adv = S.adv || {};
     var o = S.adv, up = [];
     for (var j = 0; j < path.length - 1; j++) { var nx = Object.assign({}, o[path[j]] && typeof o[path[j]] === 'object' ? o[path[j]] : {}); o[path[j]] = nx; up.push([o, path[j]]); o = nx; }
-    if (Math.abs(v - ovDef(pre, sub)) > 1e-9) o[path[path.length - 1]] = rd(Math.max(0, v)); else delete o[path[path.length - 1]];
+    if (Math.abs(v - (dv != null && isFinite(dv) ? dv : ovDef(pre, sub))) > 1e-9) o[path[path.length - 1]] = rd(Math.max(0, v)); else delete o[path[path.length - 1]];
     for (j = up.length - 1; j >= 0; j--) if (!Object.keys(up[j][0][up[j][1]]).length) delete up[j][0][up[j][1]];
   }
   /* 끌기 · ←→ 결과 적용 : 역타 = 시차 칸 값, 나머지 = 겹침 */
@@ -1503,7 +1661,8 @@
     var key = b.getAttribute('data-ov'), fsel = kb ? '.cy-b[data-ov="' + key + '"]' : null;
     if (key === 'lag') { cyCommit(b.getAttribute('data-ed'), val, fsel); return; }
     if (Math.abs(val - (+b.getAttribute('data-o') || 0)) < 1e-9) { if (lastR) renderZone(lastR); cyFocusSel(fsel); return; }
-    cyApply(function () { ovSet(key, val); }); cyFocusSel(fsel);
+    var dv = b.hasAttribute('data-dv') ? +b.getAttribute('data-dv') : null;
+    cyApply(function () { ovSet(key, val, dv); }); cyFocusSel(fsel);
   }
   /* 바 끌기 (마우스 · 터치) : 끄는 동안 사슬을 엔진 규칙대로 다시 쌓고 (착수 = 앞 공종이 모두 끝나는 때 − 겹침) 겹친 구간 빗금 · 숫자, 놓으면 다시 계산 */
   function cyPlace(el, s, N) { el.style.setProperty('--s', cyF(s, N)); }
@@ -1516,7 +1675,7 @@
     var cy = b.closest('.cy'), W = b.parentNode.getBoundingClientRect().width, N = +cy.getAttribute('data-n'); if (!(W > 0) || !(N > 0)) return;
     e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* 무시 */ }
     var ch = b.getAttribute('data-ch'), num = function (q, k) { return +q.getAttribute(k) || 0; };
-    var chain = $$('#zone .cy-b[data-ch="' + ch + '"]').map(function (q) { return { el: q, ci: num(q, 'data-ci'), s: num(q, 'data-s'), d: num(q, 'data-d'), o: num(q, 'data-o'), at: q.hasAttribute('data-at'), lag: num(q, 'data-lag') }; })
+    var chain = $$('#zone .cy-b[data-ch="' + ch + '"]').map(function (q) { return { el: q, ci: num(q, 'data-ci'), s: num(q, 'data-s'), d: num(q, 'data-d'), o: num(q, 'data-o'), at: q.hasAttribute('data-at'), lag: num(q, 'data-lag'), pm: q.getAttribute('data-pm') || '' }; })
       .sort(function (p, q) { return p.ci - q.ci; });
     cyDg = { pid: e.pointerId, x: e.clientX, b: b, k: N / W, N: N, s0: num(b, 'data-s'), d: num(b, 'data-d'), pe: num(b, 'data-pe'), mx: num(b, 'data-mx'), lag: num(b, 'data-lag'), z: num(b, 'data-z'),
       lmx: Math.max(num(b, 'data-z'), num(b, 'data-lg')), val: null, moved: false, chain: chain };
@@ -1532,9 +1691,9 @@
       o = Math.min(g.mx, Math.max(0, Math.round((g.pe - g.s0 - ds) * 2) / 2)); g.val = o;
       /* 사슬 다시 쌓기 : fr = 앞 공종이 모두 끝나는 때, pe = 바로 앞 공종 끝 (덧붙임 at 은 그 끝에 붙고 fr 에는 안 셈).
          사슬 첫 공종 자리 = 그 바의 지금 시작 (보통 0 · 지하 대표 층은 아래층들이 끝난 뒤) */
-      var fr = g.chain.length ? Math.max(0, g.chain[0].s) : 0, pe = fr;
+      var f0 = g.chain.length ? Math.max(0, g.chain[0].s) : 0, fr = f0, pe = fr;
       g.chain.forEach(function (q) {
-        var s = q.at ? pe : Math.max(0, fr - (q.el === g.b ? o : q.o));
+        var oo = q.el === g.b ? o : q.o, s = q.at ? pe : q.pm === 'z' ? f0 : q.pm === 'p' ? Math.max(0, pe - oo) : Math.max(0, fr - oo);
         if (!q.at) { pe = s + q.d; fr = Math.max(fr, pe); }
         cyPlace(q.el, s, g.N);
       });
@@ -1561,7 +1720,8 @@
   });
 
   /* ───────── 조닝 판 Zone 산정 근거 (숫자 위주 짧게, 자세한 식은 title) — 엔진 식 그대로 (기초 = 1회 타설 체적, 바닥 = 면적 × 가정 두께, DC = 체적 ÷ 1회 타설) */
-  function zbLine(html, title) { return '<span class="zb" title="' + esc(title) + '">' + html + '</span>'; }
+  /* 숫자 + 단위 (<b>300</b>㎥) 는 한 덩어리로 (좁은 칸에서 단위만 다음 줄로 떨어지지 않게) */
+  function zbLine(html, title) { return '<span class="zb" title="' + esc(title) + '">' + html.replace(/(<b>[^<]*<\/b>)(㎥|㎡|m(?![a-zA-Z])|WD|개|팀)/g, '<span class="nw">$1$2</span>') + '</span>'; }
   function zbAdv(R) { return (R.inp && R.inp.adv) || {}; }
   function zbFound(R) {
     var f = R.found, zIn = parseFloat(zbAdv(R).zoneV), zv = Math.max(300, Math.min(2000, isFinite(zIn) ? zIn : LIB.found.zoneV)), za = f.Af / Math.max(1, f.nZ), pile = R.fType !== 'MAT';
@@ -1585,19 +1745,27 @@
     var A = bs.partial ? g.AdnEff : Math.max(g.AdnEff, b.nB > 0 ? g.bldg : 0);
     return zbSlab(LIB.base, A, NZ, bs.partial ? '지하 바닥' : '1F 바닥');
   }
-  /* v2.8 사슬 Zone : 체적 ÷ (1회 타설 × 펌프) → N Zone (올림) · Zone 4개당 1팀 — 물량은 기준 층고 (지상 4.5 · 지하 3.5m) 하나 */
-  function zb28(R, x, lab, T) {
-    var V8 = v28Lib(R), q = x.q || {}, pv = (V8.pourV || 300) * (V8.pump || 1), T0 = x.T0 || Math.max(1, Math.ceil(x.N / (V8.zpt || 4) - 1e-9));
-    var parts = '기둥 ' + q.nCol + '개 ' + fmt(q.Vcol) + ' + 보 ' + q.nBm + '개 ' + fmt(q.Vbeam) + ' + 슬래브 ' + fmt(q.Vslab) + (q.Vwall > 0 ? ' + 코어 벽 ' + fmt(q.Vwall) + ' + 코어 바닥 ' + fmt(q.Vcs) : '') + ' = ' + fmt(q.V) + '㎥';
-    var head = lab + ' ' + fmt(q.Au) + '㎡' + (q.Ac > 0 ? ' (코어 ' + fmt(q.Ac) + '㎡)' : '') + ' · 기준 층고 ' + r1(q.h) + 'm : ' + parts;
-    var team = ' · 팀 ' + (T || x.T) + (x.tIn ? ' (입력 · 자동 ⌈' + x.N + ' ÷ ' + (V8.zpt || 4) + '⌉ = ' + T0 + ')' : ' = ⌈' + x.N + ' ÷ ' + (V8.zpt || 4) + '⌉ (자동)');
-    if (x.zIn) return zbLine('Zone 수 입력 · 체적 ≈ <b>' + fmt(q.V) + '</b>㎥ ÷ <b>' + x.N + '</b> Zone<br>→ Zone 당 ≈ <b>' + fmt(q.V / Math.max(1, x.N)) + '</b>㎥', head + ' · Zone 수 입력 ' + x.N + ' (adv.zN)' + team);
-    return zbLine('체적 ≈ <b>' + fmt(q.V) + '</b>㎥ ÷ 1회 <b>' + fmt(V8.pourV) + '</b>㎥' + (V8.pump > 1 ? ' × 펌프 ' + V8.pump : '') + '<br>→ <b>' + x.N + '</b> Zone · Zone ' + (V8.zpt || 4) + '개당 1팀',
-      head + ' ÷ (' + fmt(V8.pourV) + '㎥ × 펌프 ' + (V8.pump || 1) + ') = ' + r1(q.V / pv) + ' → ' + x.N + ' Zone (올림)' + team);
+  /* v2.8 사슬 Zone : 체적 ÷ (1회 타설 × 펌프) → N Zone (올림) · Zone 4개당 1팀 — 물량은 기준 층고 (지상 4.5 · 지하 3.5m) 하나.
+     사슬마다 체적 구성 : c4 = 기둥 + 보 + 슬래브 + 코어 · c2 = 기둥 + 보 + 슬래브 · c3 = 기둥 + 슬래브 · c5 = 코어 + 기둥 + 슬래브 (1회 300㎥) · c1 = 코어 (1회 230㎥) */
+  var ZB_P = { c4: ['col', 'beam', 'slab', 'core'], c2: ['col', 'beam', 'slab'], c3: ['col', 'slab'], c5: ['core', 'col', 'slab'] };
+  var ZB_S = { c2: '기둥 + 보 + 슬래브', c3: '기둥 + 슬래브', c5: '코어 + 기둥 + 슬래브', c1: '코어 벽 + 바닥' };
+  function zb28(R, x, lab, T, ch) {
+    ch = ch || 'c4';
+    var V8 = v28Lib(R), q = x.q || {}, c1 = ch === 'c1', p1 = c1 ? (V8.pourVc || 230) : (V8.pourV || 300), pv = p1 * (V8.pump || 1), zpt = V8.zpt || 4, T0 = x.T0 || Math.max(1, Math.ceil(x.N / zpt - 1e-9));
+    var P = { col: q.nCol != null ? ['기둥 ' + q.nCol + '개 ' + fmt(q.Vcol), +q.Vcol || 0] : null, beam: q.nBm != null ? ['보 ' + q.nBm + '개 ' + fmt(q.Vbeam), +q.Vbeam || 0] : null, slab: q.Vslab != null ? ['슬래브 ' + fmt(q.Vslab), +q.Vslab || 0] : null,
+      core: q.Vwall > 0 ? ['코어 벽 ' + fmt(q.Vwall) + ' + 코어 바닥 ' + fmt(q.Vcs), (+q.Vwall || 0) + (+q.Vcs || 0)] : null };
+    var ps = (ZB_P[ch] || []).map(function (k) { return P[k]; }).filter(Boolean), V = c1 || !ps.length ? (x.V != null ? x.V : q.V) : ch === 'c4' && q.V != null ? q.V : ps.reduce(function (t, p) { return t + p[1]; }, 0);
+    var Ac = c1 ? (x.Ac || 0) : q.Ac, head = lab + ' ' + (c1 ? '코어 ' + fmt(Ac) + '㎡ × 벽 ' + (V8.coreWall || 0.24) + ' × 층고 + 바닥 ' + (V8.slabT || 0.15) + 'm' : fmt(q.Au) + '㎡' + (q.Ac > 0 ? ' (코어 ' + fmt(q.Ac) + '㎡)' : '')) + (q.h ? ' · 기준 층고 ' + r1(q.h) + 'm' : '') + ' : ' + (ps.length && !c1 ? ps.map(function (p) { return p[0]; }).join(' + ') + ' = ' : '') + fmt(V) + '㎥';
+    var team = ' · 팀 ' + (T || x.T) + (x.tIn ? ' (입력 · 자동 ⌈' + x.N + ' ÷ ' + zpt + '⌉ = ' + T0 + ')' : ' = ⌈' + x.N + ' ÷ ' + zpt + '⌉ (자동)');
+    var nm = ZB_S[ch] ? '(' + ZB_S[ch] + ') ' : '';
+    if (x.zIn) return zbLine('Zone 수 입력 · ' + nm + '≈ <b>' + fmt(V) + '</b>㎥ ÷ <b>' + x.N + '</b> Zone<br>→ Zone 당 ≈ <b>' + fmt(V / Math.max(1, x.N)) + '</b>㎥', head + ' · Zone 수 입력 ' + x.N + (c1 ? ' (adv.coreZ)' : ' (adv.zN)') + team);
+    return zbLine((nm ? nm + '≈ ' : '체적 ≈ ') + '<b>' + fmt(V) + '</b>㎥ ÷ 1회 <b>' + fmt(p1) + '</b>㎥' + (V8.pump > 1 ? ' × 펌프 ' + V8.pump : '') + '<br>→ <b>' + x.N + '</b> Zone · Zone ' + zpt + '개당 1팀',
+      head + ' ÷ (' + fmt(p1) + '㎥ × 펌프 ' + (V8.pump || 1) + ') = ' + r1(V / pv) + ' → ' + x.N + ' Zone (올림)' + team);
   }
   function zbUp(R) {
     var fr = R.frame, ty = fr.typ, A = zbAdv(R), zIn = GE.parseSpec(A.zSpec).up[ty.n] != null;
-    if (!ty.dc && ty.slab && ty.slab.model === 'v28' && ty.slab.q) return zb28(R, ty.slab, ty.n + 'F 기준층', ty.slab.T);
+    if (ty.post) return zb28(R, ty.post.P, ty.n + 'F 외주부', ty.post.P.T, ty.post.P.ch);
+    if (!ty.dc && ty.slab && ty.slab.model === 'v28' && ty.slab.q) return zb28(R, ty.slab, ty.n + 'F 기준층', ty.slab.T, ty.slab.ch);
     if (ty.dc) {
       var P = ty.dc.P;
       return zbLine((zIn ? 'Zone 수 입력 · ' : '') + '체적 ≈ <b>' + fmt(P.V) + '</b>㎥ ÷ 1회 <b>' + fmt(LIB.dc.pourV) + '</b>㎥', '기둥 · 보 · 슬래브 체적 ' + fmt(P.V) + '㎥' + (zIn ? ' · Zone 수 입력 ' + P.N : ' ÷ 1회 타설 ' + fmt(LIB.dc.pourV) + '㎥ = ' + r1(P.V / LIB.dc.pourV) + ' → ' + P.N + ' Zone (올림)') + ' · Zone 당 ≈ ' + fmt(P.V / Math.max(1, P.N)) + '㎥');
@@ -1612,10 +1780,12 @@
       var C = ty.dc.C;
       return zbLine((zIn ? 'Zone 수 입력 · ' : '') + '체적 ≈ <b>' + fmt(C.V) + '</b>㎥ ÷ 1회 <b>' + fmt(LIB.dc.pourV) + '</b>㎥', '코어 벽체 · 바닥 체적 ' + fmt(C.V) + '㎥' + (zIn ? ' · Zone 수 입력 ' + C.N : ' ÷ 1회 타설 ' + fmt(LIB.dc.pourV) + '㎥ = ' + r1(C.V / LIB.dc.pourV) + ' → ' + C.N + ' Zone (올림)'));
     }
+    if (ty.post) return zb28(R, ty.post.C, ty.n + 'F 코어', ty.post.C.T, 'c1');
     if (!ty.core) return '';
-    var Au = R.frame.Atyp, cA = +A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : 0, ca = cA || Au * LIB.frame.core.ratio, za = LIB.frame.core.zoneA;
+    /* 코어선행 코어 (옛 식) : 300㎡ Zone — 코어 면적 = 엔진 typ.core.Ac (RC 0.23 · 철골 0.2 × 기준층, adv.coreA 우선) */
+    var Au = R.frame.Atyp, cA = +A.coreA > 0 ? Math.min(+A.coreA, Au * 0.6) : 0, cr = R.frame.v28 && R.frame.v28.coreR > 0 ? R.frame.v28.coreR : LIB.frame.core.ratio, ca = ty.core.Ac > 0 ? ty.core.Ac : cA || Au * cr, za = LIB.frame.core.zoneA;
     if (zIn) return zbLine('Zone 수 입력 · Zone ≈ <b>' + fmt(ca / ty.core.Z) + '</b>㎡', '코어 Zone 수 입력 ' + ty.core.Z);
-    return zbLine('Zone 기준 <b>' + fmt(za) + '</b>㎡ · 코어 ≈ <b>' + fmt(ca) + '</b>㎡', '코어 ' + fmt(ca) + '㎡' + (cA ? '' : ' (기준층 × ' + LIB.frame.core.ratio + ')') + ' ÷ ' + fmt(za) + '㎡ = ' + r1(ca / za) + ' → ' + ty.core.Z + ' Zone (반올림' + (cA ? '' : ', 최소 2') + ')');
+    return zbLine('Zone 기준 <b>' + fmt(za) + '</b>㎡ · 코어 ≈ <b>' + fmt(ca) + '</b>㎡', '코어 ' + fmt(ca) + '㎡' + (cA ? '' : ' (기준층 × ' + cr + ')') + ' ÷ ' + fmt(za) + '㎡ = ' + r1(ca / za) + ' → ' + ty.core.Z + ' Zone (반올림' + (cA ? '' : ', 최소 2') + ')');
   }
 
   /* ───────── 조닝 : 아이소메트릭 적층 (기준층 · 지하골조 · 기초, 같은 축척) */
@@ -1648,7 +1818,7 @@
   function coresGeom(R) {
     var fr = R.frame, ty = fr.typ, Au = fr.Atyp;
     if (!(Au > 0)) return [];
-    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), integ = !(ty.dc || ty.core), list = coreList(), defA = coreDefA(R);
+    var L = Math.sqrt(Au * 1.6), B = Math.sqrt(Au / 1.6), integ = !(ty.dc || ty.core || ty.post), list = coreList(), defA = coreDefA(R);
     if (!(defA > 0)) return [];
     var c01 = function (v) { return v != null && v !== '' && isFinite(v) ? Math.max(0, Math.min(1, +v)) : 0.5; };
     /* 면적은 ㎡ 로 저장 → 기준층 면적이 줄면 합계가 60% 를 넘을 수 있음. 엔진은 합계 (adv.coreA) 를 기준층 60% 로 자르므로 판도 같은 비율로 줄인다 */
@@ -1825,9 +1995,10 @@
   function teamCtl(key, lab, cur, sw, o) {
     o = o || {};
     var opt = sw ? sw.opt : cur, max = sw ? sw.max : o.max || 10;
-    return '<span class="tm" data-team="' + key + '" data-max="' + max + '"><span class="tm-k">' + esc(lab) + '</span>' +
+    /* − n 팀 + 는 한 묶음 (줄바꿈 없음) — 좁으면 이름 · '최적' 칩만 따로 줄을 바꿈 */
+    return '<span class="tm" data-team="' + key + '" data-max="' + max + '"><span class="tm-k">' + esc(lab) + '</span><span class="tm-c">' +
       '<button type="button" class="tm-b" data-tstep="-1" aria-label="' + esc(lab) + ' 줄이기"' + (cur <= 1 ? ' disabled' : '') + '>−</button><b class="tm-v">' + cur + '</b><span class="tm-u">팀</span>' +
-      '<button type="button" class="tm-b" data-tstep="1" aria-label="' + esc(lab) + ' 늘리기"' + (cur >= max ? ' disabled' : '') + '>+</button>' +
+      '<button type="button" class="tm-b" data-tstep="1" aria-label="' + esc(lab) + ' 늘리기"' + (cur >= max ? ' disabled' : '') + '>+</button></span>' +
       (!sw ? '' : cur === opt ? '<span class="tm-o on" title="최단 공기와 ' + OPT_TOL + '개월 이내인 가장 적은 팀수">최적</span>' :
         '<button type="button" class="tm-o" data-topt="' + opt + '" title="최단 공기와 ' + OPT_TOL + '개월 이내인 가장 적은 팀수 — 누르면 적용 (공기 ' + m2(sw.totals[opt - 1]) + '개월)">최적 ' + opt + '팀 · ' + dM(sw.totals[opt - 1] - (lastR ? lastR.total : sw.totals[opt - 1])) + '</button>') + (o.tail || '') + '</span>';
   }
@@ -1905,11 +2076,15 @@
       oB = row('지하 ' + b.nB + '개층', '지하골조', Ab, dB, sub, isoPlate({ Lp: Ldb.L, Bp: Ldb.B, Lr: dB.L, Br: dB.B, ghost: ghost, cells: cellsB, cores: coresB, aria: '지하골조 조닝 평면 (아이소메트릭)' }, s, FW, 1), cyBase(R));
     } else oB = '<div class="iso-none">지하 ' + b.nB + '개층 · 지하 연면적이나 건축면적을 넣으면 지하골조 평면이 그려집니다.</div>';
     /* 지상골조 (기준층) : 외주부 (RC = 형틀팀 · 철골 = 철골팀) 와 코어 (RC 코어 = 형틀팀) 를 따로. RC 는 코어 일체 타설 */
-    var ty = fr.typ, NP, TP, NC = 0, TC = 0;
+    /* 타설 순서별 : 코어후행 = 외주부 Zone + 코어 띠 (c1) · 코어선행 = 바닥 Zone + 코어 띠 (선행) · 동시타설 = 바닥 Zone (코어 일체 — 철골 c5 는 코어 체적 포함) */
+    var ty = fr.typ, pst = ty.post, NP, TP, NC = 0, TC = 0, c5 = !pst && !ty.dc && ty.slab.ch === 'c5';
     if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; }
+    else if (pst) { NP = pst.P.N; TP = pst.P.T; NC = pst.C.N; TC = pst.C.T; }
     else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; } }
+    var tkOf = function (k) { return (R.teamKeys || []).filter(function (q) { return q.key === k; })[0]; }, tkU = tkOf('uTeams'), tkC = tkOf('cTeams');
     if (Au > 0) {
-      var gs = gsAll, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = steel ? '철골팀' : '형틀팀';
+      var gs = gsAll, tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null, oTrade = tkU && tkU.label ? tkU.label.replace(/^지상 /, '').replace(/ \(.*\)$/, '') : steel ? '철골팀' : '형틀팀', cTrade = tkC && tkC.label ? tkC.label.replace(/^코어 (?=\S)/, '') : '형틀팀';
+      var pLab = pst ? '외주부 · ' + pst.P.ch : ty.core ? '바닥' : c5 ? '바닥 (코어 포함)' : '외주부', cLab = pst ? '코어 · c1 (후행)' : ty.core && fr.seq === 'PRE' ? '코어 (선행)' : '코어';
       if (selCore >= gs.length) selCore = Math.max(0, gs.length - 1);
       var cellsU = slabCells(dU.L, dU.B, gs, NP, function (i) { var q = tp(i); return { fill: 'var(--t1)', op: 0.36 + 0.2 * (q.team % 3), t: q.ord }; });
       /* 코어 Zone 은 코어 면적 비로 나눠 이어 번호 */
@@ -1921,12 +2096,12 @@
       });
       var cs = gs[selCore], totA = gs.reduce(function (t, q) { return t + q.Ac; }, 0);
       oU = row('지상 ' + b.nUp + '개층 · 기준층 ' + ty.n + 'F', '지상골조', Au, dU, [
-        '<i class="dot" style="background:var(--t1)"></i>외주부 <b>' + NP + '</b> Zone',
+        '<i class="dot" style="background:var(--t1)"></i>' + pLab + ' <b>' + NP + '</b> Zone',
         zbUp(R),
         teamCtl('uTeams', oTrade, TP, R.team && R.team.u),
-        NC ? '<i class="dot" style="background:var(--navy)"></i>코어 <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (외주부 형틀팀)',
+        NC ? '<i class="dot" style="background:var(--navy)"></i>' + cLab + ' <b>' + NC + '</b> Zone' : '<i class="dot" style="background:var(--navy)"></i>코어 일체 타설 (' + (c5 ? '바닥 Zone 안' : '외주부 ' + oTrade) + ')',
         NC ? zbCore(R) : '',
-        NC ? teamCtl('cTeams', '형틀팀', TC, R.team && R.team.c) : '',
+        NC ? teamCtl('cTeams', cTrade, TC, R.team && R.team.c) : '',
         gs.length ? '<span class="core-n">코어 <b>' + gs.length + '</b>개 · ' + Math.round(totA / gs[0].Au * 100) + '% · ' + fmt(Math.round(totA)) + '㎡' +
           (gs.length < CORE_MAX ? '<button type="button" class="tm-o core-add" data-act="coreAdd" title="코어 추가 (최대 ' + CORE_MAX + '개)">+ 코어</button>' : '') + '</span>' : '',
         gs.length > 1 ? '<span class="core-pick" role="group" aria-label="코어 고르기">' + gs.map(function (q) { return '<button type="button" data-act="coreSel" data-i="' + q.i + '" class="' + (q.i === selCore ? 'on' : '') + '" aria-pressed="' + (q.i === selCore) + '">' + (q.i + 1) + '</button>'; }).join('') +
@@ -1955,13 +2130,19 @@
   function renderZone(R) {
     var box = $('#zone'), fk = zoneFocus(document.activeElement), z = zoning(R, box.clientWidth || 520);
     box.innerHTML = z.html; $('#z-lg').innerHTML = z.legend; $('#z-lg').hidden = !box.querySelector('.iso-fig'); widths.zone = box.clientWidth;
+    /* 사이클 표 : 이름이 두 줄로 꺾인 행이 있으면 그 표의 모든 행을 두 줄 높이로 (.n2 — 좁은 칸 · 인쇄 규칙) */
+    $$('.cy', box).forEach(function (cy) {
+      /* 한 줄 높이 = 머리 'Activity' 칸 (배율 zoom 이 걸려도 같은 비로 비교) */
+      var hd = $('.cy-sc > .cy-n', cy), one = hd ? hd.getBoundingClientRect().height : 0;
+      cy.classList.toggle('n2', one > 0 && $$('.cy-r:not(.cy-sc) > .cy-n', cy).some(function (e) { return e.offsetParent && e.getBoundingClientRect().height > one * 1.6; }));
+    });
     for (var i = 0; fk && i < fk.length; i++) { var f = box.querySelector(fk[i]); if (f) { try { f.focus({ preventScroll: true }); } catch (er) { f.focus(); } break; } }
   }
 
   /* ───────── 주요 가정사항 및 조건 : 영향 큰 6개 = 같은 크기 카드 (2열 3행), 나머지 = 한 줄 표.
      칸을 누르면 그 자리에서 편집 (선택 · 숫자) → S 갱신 → 다시 계산. Esc = 취소 · Enter / 바깥 클릭 = 적용.
      계산값 (기준층 사이클 · 분할 타설 · 기초 Zone) 은 편집 대신 관련 입력 (조닝 · 단면 층고) 으로 이동 */
-  var KF_N = 6, KF_ORD = ['sup', 'found', 'cyc', 'split', 'lim', 'H', 'wall', 'ground', 'fq', 'mat', 'gwl', 'core', 'fz', 'pile', 'scw'];
+  var KF_N = 6, KF_ORD = ['pour', 'sup', 'found', 'cyc', 'split', 'lim', 'H', 'wall', 'ground', 'fq', 'mat', 'gwl', 'core', 'fz', 'pile', 'scw'];
   var KF_SUP = { ANCHOR: '어스앵커', STRUT: '스트럿', RAKER: '레이커', OPEN: '오픈컷', SLAB: '역타 슬래브 지지' };
   var KI_ED = '<svg class="ki" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.3 3.2l2.5 2.5-6.7 6.7-3.2.7.7-3.2zM9 4.5l2.5 2.5"/></svg>';
   var KI_GO = '<svg class="ki" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 3.6 10.6 8l-4.4 4.4"/></svg>';
@@ -1974,14 +2155,19 @@
   /* 골조 가정 (fq) : v2.8 일반 사슬의 물량 · Zone · 인원 — R.frame.assume 의 path 로 편집 (adv.* = S.adv, v28.* = S.libOv).
      규칙 · 사례 보정 같은 '가정' 은 title 에만 (화면 문구 최소) */
   var FQ_K = [['spanL', '스팬 장변', 0.1, 3], ['spanS', '스팬 단변', 0.1, 3], ['colA', '기둥 단면', 0.01, 0.01], ['beamA', '보 단면', 0.01, 0.01], ['slabT', '슬래브 두께', 0.01, 0.05], ['pourV', '1회 타설', 10, 10], ['crewU', '바닥 철근', 1, 1]];
-  function fqOf(fr, A) {
+  /* 엔진 가정 행 이름을 화면 칸 이름에 맞춤 (lbSC 는 RC 코어선행 코어에도 걸림) */
+  var ASN = { lbSC: '코어선행 v2.8 하한 (1 켬 · 0 끔)' };
+  function fqOf(fr, A, R0) {
     var as = fr && Array.isArray(fr.assume) ? fr.assume : null; if (!as || !as.length) return null;
     var by = {}; as.forEach(function (a) { if (a && a.k) by[a.k] = a; });
     var its = FQ_K.map(function (q) { var a = by[q[0]]; return a && a.path ? { a: a, q: q } : null; }).filter(Boolean);
     if (its.length < 2 || !its.some(function (x) { return x.a.on; })) return null;
     function val(k) { return by[k] && isFinite(+by[k].v) ? +(+by[k].v).toFixed(3) : '-'; }
-    var md = fr.model, v28 = fr.v28 || {}, lb = v28.lib || {};
-    var head = md === 'v28' ? 'v2.8 공종 사슬 물량 · Zone (기준 층고 ' + r1(v28.hQ || 4.5) + 'm)' : md === 'dc' ? 'DC 분할 하한 (일반 사이클) 물량 — DC 사이클 슬래브 두께는 상세 조정' : 'v2.8 하한 (코어 c1 · 바닥 c3) 물량 — 층 사이클은 팀당 Zone (옛 식)';
+    var md = fr.model, v28 = fr.v28 || {}, lb = v28.lib || {}, up = md === 'v28' || md === 'post', bs = !!(R0 && R0.base && R0.base.model === 'v28'), lbOn = !!(v28.lb || v28.guard);
+    /* 어디에 쓰는 물량인지 : 지상 사슬 = '골조 가정' · 지상 옛 식이면 하한 (철골 코어선행 c1 · c3 / DC 분할) · 지하 (v2.8 지하 바닥 사슬) 를 이름에 */
+    var where = up ? [] : [lbOn ? '하한' : '', bs ? '지하' : ''].filter(Boolean);
+    var head = up ? 'v2.8 공종 사슬 물량 · Zone (기준 층고 ' + r1(v28.hQ || 4.5) + 'm' + (bs ? ' · 지하 바닥 사슬도 같은 값' : '') + ')' :
+      [lbOn ? (md === 'dc' ? 'DC 분할 하한 (일반 사이클) 물량 — DC 사이클 슬래브 두께는 상세 조정' : 'v2.8 하한 (코어 c1 · 바닥 c3) 물량 — 층 사이클은 팀당 Zone (옛 식)') : '', bs ? '지하 바닥 v2.8 사슬 물량 (기준 층고 ' + r1(v28.hQB || 3.5) + 'm) — 지상은 옛 식' : ''].filter(Boolean).join(' · ') || 'v2.8 물량';
     var f = its.map(function (x) {
       var a = x.a, q = x.q, lib = !/^adv\./.test(a.path), cur, ph;
       if (lib) { cur = hasOv(a.path) ? +S.libOv[a.path] : ''; ph = libDef(a.path); }
@@ -1989,16 +2175,17 @@
       return kfNumF(a.path, q[1], a.u || '', cur, ph == null ? '' : String(ph), { step: q[2], min: q[3], pos: true, int: q[2] === 1, lib: lib, src: a.src });
     });
     var inp = its.some(function (x) { return x.a.src === '입력'; });
-    var v = '스팬 ' + val('spanL') + '×' + val('spanS') + ' · 슬래브 ' + val('slabT') + ' · Zone ' + val('pourV') + '㎥';
-    var vh = '<small>스팬 </small>' + val('spanL') + '×' + val('spanS') + '<small> · 슬래브 </small>' + val('slabT');
-    var why = 'Zone ' + val('pourV') + '㎥ · 바닥 철근 ' + val('crewU') + '인 · 기둥 ' + val('colA') + ' · 보 ' + val('beamA') + '㎡';
+    /* 값은 짧게 ('12×9 · t0.15 · 300㎥') — 1180 · 390px 에서 잘리지 않게, 자세한 값은 title */
+    var v = val('spanL') + '×' + val('spanS') + ' · t' + val('slabT') + ' · ' + val('pourV') + '㎥';
+    var vh = val('spanL') + '×' + val('spanS') + '<small> · t</small>' + val('slabT') + '<small> · </small>' + val('pourV') + '<small>㎥</small>';
+    var why = '스팬 ' + val('spanL') + '×' + val('spanS') + 'm · 슬래브 ' + val('slabT') + 'm · Zone ' + val('pourV') + '㎥ · 바닥 철근 ' + val('crewU') + '인';
     /* title : 편집 항목 (출처) + 이번 계산에 쓴 가정 · 사례 보정 · 해석 */
     var T = [head, its.map(function (x) { return x.q[1] + ' ' + val(x.q[0]) + (x.a.u || '') + ' (' + x.a.src + ')'; }).join(' · ')];
     ['가정', '사례 보정', '해석'].forEach(function (s) {
-      var L = as.filter(function (a) { return a.on && a.src === s && FQ_K.every(function (q) { return q[0] !== a.k; }); }).map(function (a) { var n = +a.v; return a.v == null || !isFinite(n) ? a.n : a.n + ' ' + (Math.abs(n) >= 1000 ? fmt(n) : +n.toFixed(3)) + (a.u || ''); });
+      var L = as.filter(function (a) { return a.on && a.src === s && FQ_K.every(function (q) { return q[0] !== a.k; }); }).map(function (a) { var n = +a.v, an = ASN[a.k] || a.n; return a.v == null || !isFinite(n) ? an : an + ' ' + (Math.abs(n) >= 1000 ? fmt(n) : +n.toFixed(3)) + (a.u || ''); });
       if (L.length) T.push(s + ' : ' + L.join(' · '));
     });
-    return { k: '골조 가정' + (md === 'v28' ? '' : ' (하한)'), v: v, vh: vh, why: why, f: f, tip: T.join('\n'), badge: inp ? '입력' : 'v2.8' };
+    return { k: '골조 가정' + (where.length ? ' (' + where.join(' · ') + ')' : ''), v: v, vh: vh, why: why, f: f, tip: T.join('\n'), badge: inp ? '입력' : 'v2.8' };
   }
   function renderKf(R) {
     var g = R.geo, b = R.basic, fr = R.frame, A = S.adv || {}, L = LIB, td = b.seq === 'TD', open = b.sup === 'OPEN' && b.nB > 0, F = {};
@@ -2034,8 +2221,21 @@
     var gc = $$('[data-chips][data-k="ground"]'); gc = gc[gc.length - 1];
     add('ground', '지반', R.ground.name + (R.ground.assumed ? ' (가정)' : ''), '풍화암 GL−' + r1(g.wrockTop) + 'm · 연암 GL−' + r1(g.rockTop) + 'm',
       sel(gc ? $$('[data-v]', gc).map(function (x) { return [x.getAttribute('data-v'), x.textContent]; }) : [], S.ground || 'AUTO'));
-    var t = GK.tactOf(R), ty = fr.typ;
-    add('cyc', '기준층 사이클', m1(t) + ' WD/층', ty.dc ? 'DC 사이클 · 외주부 ' + ty.dc.P.N + ' / 코어 ' + ty.dc.C.N + ' Zone · ' + ty.dc.gov + ' 지배' : '바닥 ' + ty.slab.Z + ' Zone ÷ ' + ty.slab.T + '팀' + (ty.core ? ' · 코어 ' + ty.core.Z + ' Zone' : '') + ' · 주공정 ' + fr.gov, go('sec-zone', '[data-team="uTeams"]', '팀 수 · Zone 은 조닝에서'));
+    var t = GK.tactOf(R), ty = fr.typ, ftx = ty.dc ? '' : frameTxt(R);
+    add('cyc', '기준층 사이클', m1(t) + ' WD/층', ty.dc ? 'DC 사이클 · 외주부 ' + ty.dc.P.N + ' / 코어 ' + ty.dc.C.N + ' Zone · ' + ty.dc.gov + ' 지배' : ftx ? ftx : '바닥 ' + ty.slab.Z + ' Zone ÷ ' + ty.slab.T + '팀' + (ty.core ? ' · 코어 ' + ty.core.Z + ' Zone' : '') + ' · 주공정 ' + fr.gov, go('sec-zone', '[data-team="uTeams"]', '팀 수 · Zone 은 조닝에서'));
+    if (ftx) F.cyc.tip = ftx + ' · 주공정 ' + fr.gov;
+    /* 타설 순서 : 자동이면 '자동 · 코어선행', 근거 (이유 · 출처 · 자동이면 X) 는 title. 누르면 [자동 | 동시타설 | 코어선행 | 코어후행] — 고를 수 없는 값은 비활성 */
+    var pr = fr.pour;
+    if (pr && pr.name) {
+      var po = pr.opts || [], lk = !po.length, au = !pr.sel || pr.sel === 'AUTO', pa = (fr.assume || []).filter(function (a) { return a && a.k === 'pourSeq'; })[0];
+      var short = String(pr.reason || '').split(' → ')[0];
+      var lkT = uiTx(pr.lock);
+      add('pour', '타설 순서', (au && !lk ? '자동 · ' : '') + pr.name, lkT || (au ? uiTx(short) : '자동이면 ' + pr.autoName),
+        sel([['AUTO', '자동 · ' + pourNm(pr.autoName)]].concat(POUR_K.map(function (k) { return [k, GE.POUR_N[k], po.indexOf(k) < 0]; })), au ? 'AUTO' : pr.sel));
+      F.pour.ed.note = lkT;
+      F.pour.tip = [uiTx(pr.reason), pr.src, au ? '' : '자동이면 ' + pr.autoName, pr.lock && pr.sel && pr.sel !== 'AUTO' && pr.sel !== pr.used ? '선택 ' + (GE.POUR_N[pr.sel] || pr.sel) + ' 무시 — ' + lkT : ''].filter(Boolean).join(' · ');
+      if (pa && pa.src && !lk) F.pour.badge = au ? '가정' : '입력';
+    }
     var two = GK.secLevels(R).filter(function (x) { return x.kind !== 'b' && x.n > 1; });
     add('split', '분할 타설 층', two.length ? two.map(function (x) { return x.label; }).join(', ') : '없음', fr.dc ? '층고 ' + L.dc.split + 'm 이상 = 수직재 2회 (그 아래 1회)' : fr.coreRows.length ? '코어 ' + L.frame.core.liftMax + 'm 초과 = 2 Lift' : '층고 ' + L.frame.split + 'm 이상 = 수직재 2회 · 층 사이클 × ' + r2(1 + L.frame.vShare), go('sec-sec', two.length ? 'input[data-floor-h="' + two[0].label + '"]' : '', '층고는 단면에서'));
     if (fr.coreRows.length) add('core', '코어 거푸집', fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼', S.coreSys && S.coreSys !== 'AUTO' ? '선택값' : '자동 : 지상 15층 이상 ACS', sel(kfOptsOf('in-core'), S.coreSys || 'AUTO'));
@@ -2045,7 +2245,7 @@
         nums([kfNumF('lim', '기초 전', 'F', pos(S.lim), l1, { step: 1, int: true, min: 1 }), kfNumF('lim2', '수직재 전', 'F', pos(S.lim2), l2, { step: 1, int: true, min: 1 })]),
         '<small>기초<i class="lx"> 전</i></small> ' + fr.lim + 'F<small class="lx"> ·</small> <small>수직재<i class="lx"> 전</i></small> ' + fr.lim2 + 'F');
     }
-    var fq = fqOf(fr, A);
+    var fq = fqOf(fr, A, R);
     if (fq) { add('fq', fq.k, fq.v, fq.why, { t: 'num', f: fq.f, grid: true }, fq.vh); F.fq.tip = fq.tip; F.fq.badge = fq.badge; }
     var ids = KF_ORD.filter(function (id) { return F[id]; }), hi = ids.slice(0, KF_N), lo = ids.slice(KF_N);
     /* 한 줄 표의 골조 가정 = 맨 아래 한 줄 전체 폭 (값이 길어 2열 칸에 안 들어감) */
@@ -2078,10 +2278,11 @@
       e.opts.forEach(function (o) {
         var gn = e.grp ? e.grp(o[0]) : null;
         if (gn !== grp) { if (grp) body += '</optgroup>'; if (gn) body += '<optgroup label="' + esc(gn) + '">'; grp = gn; }
-        body += '<option value="' + esc(o[0]) + '"' + (o[0] === e.cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+        body += '<option value="' + esc(o[0]) + '"' + (o[0] === e.cur ? ' selected' : '') + (o[2] && o[0] !== e.cur ? ' disabled' : '') + '>' + esc(o[1]) + '</option>';
       });
       if (grp) body += '</optgroup>';
       h += '<select aria-label="' + esc(x.k) + '">' + body + '</select>';
+      if (e.note) h += '<small class="ke-lk">' + esc(e.note) + '</small>';
     } else {
       h += e.f.map(function (f) {
         var two = e.f.length > 1;
@@ -2180,6 +2381,7 @@
       if (S.seq !== 'TD') { if (v === 'NONE') S.support = 'OPEN'; else if (v !== 'SCW' && S.support === 'OPEN') S.support = 'ANCHOR'; }
       onField('wall', v);
     } else if (id === 'scw') { S.scw = v === '1'; onField('scw', S.scw); }
+    else if (id === 'pour') { S.adv = S.adv || {}; if (POUR_K.indexOf(v) < 0) delete S.adv.pourSeq; else S.adv.pourSeq = v; onField('adv.pourSeq', S.adv.pourSeq || ''); }
     else { var k = { found: 'found', ground: 'ground', core: 'coreSys' }[id]; if (!k) return false; S[k] = v; onField(k, v); }
     return true;
   }
@@ -2210,7 +2412,7 @@
     var w = GK.warns(R), n = R.notes || [];
     $('#warns').innerHTML = w.length ? w.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') : '<li class="none">없음</li>';
     var wc = $('#w-ct'); wc.textContent = w.length ? w.length + '건' : '없음'; wc.classList.toggle('ok', !w.length);
-    $('#notes').innerHTML = n.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('');
+    $('#notes').innerHTML = n.map(function (t) { return '<li>' + esc(uiTx(t)) + '</li>'; }).join('');
     $('#n-ct').textContent = n.length + '건';
     $('#notes-g').hidden = !n.length; $('#wgs').classList.toggle('two', n.length > 0);
     /* 검토 사항 (R.review) : 기본 접힘 · 건수 (주의 건수) 만 — 누르면 펼침 (펼친 상태는 다시 계산해도 유지) */
@@ -2219,7 +2421,7 @@
       rg.hidden = !rv.length;
       $('#rv-ct').textContent = rv.length + '건';
       var rw = $('#rv-w'); rw.textContent = nw ? '주의 ' + nw : ''; rw.hidden = !nw;
-      var ul = $('#rv-l'); try { ul.innerHTML = rv.length ? GK.reviewList(R) : ''; } catch (e) { ul.innerHTML = ''; }
+      var ul = $('#rv-l'); try { ul.innerHTML = rv.length ? uiTx(GK.reviewList(R)) : ''; } catch (e) { ul.innerHTML = ''; }
       rvShow();
     }
     footSync();
@@ -2238,7 +2440,7 @@
   /* ───────── 입력 시트 Zone 수 칸 · 라이브러리 줄 : v2.8 사슬 경로 (일반 RC · SRC 지상 · 순타 지하 바닥) = 체적 Zone 수 adv.zN (1회 타설 ÷ 300㎥),
      옛 경로 (철골 · 강합성 · 벽식 · 사슬 끔) · DC = 면적 / 체적 500㎥ Zone adv.zSpec (뜻 그대로). 둘이 섞이면 (철골 지상 + 순타 지하) 둘 다 보임 */
   function renderZin(R) {
-    var v8 = R.frame.v28 || {}, up28 = R.frame.model === 'v28', b28 = !!(R.base && R.base.model === 'v28'), zs = $('#zs-f'), zn = $('#zn-f'), ig = $('#zs-ign');
+    var v8 = R.frame.v28 || {}, up28 = R.frame.model === 'v28' || R.frame.model === 'post', b28 = !!(R.base && R.base.model === 'v28'), zs = $('#zs-f'), zn = $('#zn-f'), ig = $('#zs-ign');
     libVis(R);
     if (!zs || !zn) return;
     zs.hidden = up28; zn.hidden = !(up28 || b28);
@@ -2265,7 +2467,14 @@
     set('prd', ah.prd ? '자동 ' + ah.prd : ''); set('pile', ah.pile ? '추정 ' + ah.pile : '');
     set('dc', fr.dc ? '적용 중' : '미적용'); set('coreA', td ? '자동 ' + fmt(td.Ac) : ''); set('colN', td ? '자동 ' + td.nCol : '');
     /* 골조 · 지하 사이클 방식 : 이번 계산에 쓴 경로 · DC 수직재 인원 빈 칸 = 철근팀 인원 (없으면 v2.8 20인) */
-    set('frChain', { v28: 'v2.8 사슬', old: '옛 식', dc: 'DC 사이클' }[fr.model] || '');
+    set('frChain', { v28: 'v2.8 사슬', post: 'v2.8 사슬', old: '옛 식', dc: 'DC 사이클' }[fr.model] || '');
+    /* 타설 순서 칸 (상세 조정) : 자동값 · 고를 수 없는 값 비활성 (주요 가정사항 칸과 같은 값) */
+    var pr = fr.pour || {}, po = pr.opts || [], ps = $('#in-pourSeq');
+    set('pourSeq', pr.lock ? uiTx(pr.lock).replace(/ \(.*\)$/, '') : pr.autoName ? '자동 = ' + pourNm(pr.autoName) : '');
+    if (ps) { $$('option', ps).forEach(function (o) { o.disabled = !!o.value && po.indexOf(o.value) < 0 && o.value !== ps.value; if (!o.value) o.textContent = pr.autoName ? '자동 · ' + pourNm(pr.autoName) : '자동'; }); ps.title = [uiTx(pr.reason), pr.src, uiTx(pr.lock)].filter(Boolean).join(' · '); }
+    /* 코어선행 v2.8 하한 (v28.lbSC) : 이번 계산에 걸리는 사슬 — 철골 · 강합성 = 코어 c1 · 바닥 c3, RC · SRC = 코어 c1, 그 밖 (동시 · 후행 · DC · 옛 식 복원) = 미적용 */
+    var stl = fr.struct === 'SC' || fr.struct === 'COMP';
+    set('lbSC', fr.seq === 'PRE' && !fr.dc && zbAdv(R).frChain !== 'OFF' && (fr.coreRows || []).length ? (stl ? 'c1 · c3' : 'c1') : '미적용');
     var bs = R.base || {}; set('bChain', bs.td ? '역타' : bs.partial ? '부분 지하' : b.nB > 0 ? (bs.model === 'v28' ? 'v2.8 사슬' : '옛 식') : '');
     var cv2 = $('#in-dcCrewV'); if (cv2) cv2.placeholder = +(S.adv && S.adv.crew) > 0 ? String(+S.adv.crew) : '20';
     var cv = $('#in-cov'); if (cv && document.activeElement !== cv) cv.placeholder = ah.cov || '자동';
@@ -2379,7 +2588,7 @@
   }
   /* 입력 교체 → 화면 · 시트 채우고 다시 계산 (사례 표시는 저장 당시 그대로). 계산 오류가 나는 입력이면 앞 상태로 되돌리고 false */
   function stateLoad(inp, preset) {
-    var s; try { s = norm(fileSane(GK.clone(inp))); } catch (e) { return false; }
+    var s; try { s = caseTeams(norm(fileSane(GK.clone(inp))), isPreset(preset) ? preset : ''); } catch (e) { return false; }
     var s0 = S, p0 = current, g0 = lastGround, r0 = lastR;
     S = s; lastGround = S.ground;
     markPreset(isPreset(preset) ? preset : '');
@@ -2469,13 +2678,10 @@
       if (R.basic && R.basic.nB > 0 && GE.WALL_N[R.basic.wall]) cond.push(GE.WALL_N[R.basic.wall].replace(/ \(.*\)$/, '') + ' · ' + (GE.SUP_N[R.basic.sup] || '').replace(/ \(.*\)$/, ''));
       if (R.inp && R.inp.start) cond.push(GK.ym(GK.addM(R.inp.start, 0)) + ' 착공');
     }
-    /* 한 줄 요약 (GK.summaryLines : 적정 공사기간 · 범위 + 최대 주공정) — 1쪽 머리에만, 화면에는 없음 */
-    var sm = '';
-    if (R) { try { var sl = GK.summaryLines(R); sm = [sl[0], sl[2]].filter(Boolean).join('<i class="pr-sep">·</i>'); } catch (e) { sm = ''; } }
+    /* 한 줄 요약 (적정 공사기간 · 최대 주공정) 은 바로 아래 히어로와 같은 내용이라 넣지 않음 */
     return '<div class="pr-t1"><span>공기산정 에이전트 · 공기 검토</span><span>검토일 <b class="n">' + dDay(new Date()) + '</b></span></div>' +
       '<h1 class="pr-nm">' + esc(S.name || '프로젝트') + '</h1>' +
-      '<p class="pr-cd">' + (pn ? '<b>' + esc(pn) + '</b>' : '') + esc(cond.join(' · ')) + '</p>' +
-      (sm ? '<p class="pr-sm">' + sm + '</p>' : '');
+      '<p class="pr-cd">' + (pn ? '<b>' + esc(pn) + '</b>' : '') + esc(cond.join(' · ')) + '</p>';
   }
   function prOn() {
     PR.fired = true;
@@ -2574,13 +2780,13 @@
   }
   function init() {
     var saved = ST.load();
-    try { S = saved && saved.inp ? norm(saved.inp) : norm(GK.clone(PRESETS.refA)); } catch (e) { S = norm(GK.clone(PRESETS.refA)); }
+    try { S = saved && saved.inp ? caseTeams(norm(saved.inp), saved.preset) : norm(GK.clone(PRESETS.refA)); } catch (e) { S = norm(GK.clone(PRESETS.refA)); }
     lastGround = S.ground; markPreset(saved && saved.inp ? (saved.preset || '') : 'refA');
     buildLib();
     GK.bind(document, function () { return S; }, onField);
     GK.fill(document, S); syncUI();
     $$('#libtbl input').forEach(function (el) { el.addEventListener('input', function () { readLib(el, false); }); el.addEventListener('change', function () { readLib(el, true); }); });
-    $('#lib-reset').addEventListener('click', function () { delete S.libOv; recompute(); });
+    $('#lib-reset').addEventListener('click', function () { delete S.libOv; delete S.cyOwn; recompute(); });
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var ac = t.closest('[data-act]'); if (ac && ACT[ac.getAttribute('data-act')]) { ACT[ac.getAttribute('data-act')](ac, e); return; }

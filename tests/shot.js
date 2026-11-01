@@ -2,6 +2,7 @@
    - 사례 A · B · C 재현값 (49.86 · 42.00 · 28.74) — B 는 지하 v2.8 사슬 기본 끔 (adv.bChain ON 일 때만) 으로 42.79 → 42.00
    - 사례 C 1F 층고 9.8 → 6.0 → 9.8 즉시 재계산 (28.74 → 28.32 → 28.74)
    - 사례 B 지하 층수 2 → 4 → 2 (42.00 → 51.96 → 42.00) · 형틀팀 3 → 1 변화 1개월 이하
+   - 사례 A 타설 순서 (주요 가정사항 칸) 자동 → 코어후행 → 자동 (49.86 → 49.58 → 49.86, 입력 시트 칸도 같은 값)
    - 1440 · 390px 가로 스크롤 없음 · 콘솔 오류 0
    - 스크린샷 : tests/out/ */
 const path = require('path');
@@ -92,6 +93,18 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const uS = await page.evaluate(() => window.__agent.state.adv.uTeams);
       res.uTeams = { ok: uN === 1 && uS === 1 && Math.abs(u1 - u0) <= 1, before: u0, teams1: u1, d: r2(u1 - u0) };
       if (!res.uTeams.ok) fail = true;
+
+      /* 사례 A 타설 순서 : 주요 가정사항 '타설 순서' 칸 → 코어후행 → 자동 (화면 = node 엔진 49.58 · 49.86) */
+      await page.evaluate(() => window.__agent.loadPreset('refA'));
+      await wait(250);
+      const pour = async (v) => {
+        await page.click('#kf [data-kf="pour"] button'); await wait(200);
+        await page.selectOption('#kf [data-kf="pour"] select', v); await wait(600);
+        return { t: r2(await page.evaluate(() => window.__agent.R.total)), sheet: await page.evaluate(() => document.getElementById('in-pourSeq').value) };
+      };
+      const ps0 = r2(await page.evaluate(() => window.__agent.R.total)), psP = await pour('POST'), psA = await pour('AUTO');
+      res.pour = { ok: ps0 === 49.86 && psP.t === 49.58 && psP.sheet === 'POST' && psA.t === 49.86 && psA.sheet === '', before: ps0, post: psP, auto: psA };
+      if (!res.pour.ok) fail = true;
     }
     await page.close();
   }
