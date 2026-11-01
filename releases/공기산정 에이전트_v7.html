@@ -1424,7 +1424,7 @@ html.pr .t-sec .kn li, html.pr .kc, html.pr .iso-fig, html.pr #gantt svg, html.p
         split: 6.5, vShare: 0.3, slabT: 0.3,
         learnSlab: [2.0, 1.625, 1.5, 1.375, 1.25], learnCore: [1.875, 1.625, 1.5, 1.375], sysF: 1.75, acsSetup: 15, setFloor: 1.4, gangFirst: 1.15, firstF: 1.25
       },
-      /* DC 층 사이클 (체적 Zone · 코어 / 외주부 분리 타설) — 사내 적정공기 가이드라인 v2.8 DC 로직을 참고해 옮김
+      /* DC 층 사이클 (체적 Zone · 코어 / 외주부 분리 타설) — v2.8 (다른 버전 공기산정 도구) DC 로직을 참고해 옮김
          Zone = 부위 체적 ÷ 일 타설량, 팀 = Zone 4개당 1팀, 층고 6.5m 이상이면 수직재 분할, 층간 = Zone 1개 작업 합계 (Zone 연속) */
       dc: { pourV: 500, zpt: 4, split: 6.5, spanL: 12, spanS: 9, colA: 1.21, beamsPerCol: 3.5, beamA: { RC: 0.88, steel: 0.3 }, slabT: 0.3, coreWall: 0.24,
         rebCB: 0.21, rebSC: 0.1, tPerMD: 0.3, crewH: 25, crewC: 25, lift: 1, form: 2, strip: 1, pour: 1, scaf: 2, table: 50, bform: 2, cure: 2, coreForm: 2, me: 1, steelPc: 18, bolt: 2, deck: 300 },
@@ -1441,7 +1441,7 @@ html.pr .t-sec .kn li, html.pr .kc, html.pr .iso-fig, html.pr #gantt svg, html.p
     Object.keys(d).forEach(function (k) { var x = s[k] == null || s[k] === '' ? NaN : parseFloat(s[k]); o[k] = isFinite(x) && x >= (k === 'rcLag' ? 0 : 1) ? Math.round(x) : d[k]; });
     return o;
   }
-  /* 일반 골조 (DC 아님) 공종 사슬 기본 가정 — 사내 적정공기 가이드라인 v2.8 (frameQty · frameCycles · zoning) 에서 옮김. 화면 편집 경로 = 'v28.<키>' (S.libOv)
+  /* 일반 골조 (DC 아님) 공종 사슬 기본 가정 — v2.8 (다른 버전 공기산정 도구) (frameQty · frameCycles · zoning) 에서 옮김. 화면 편집 경로 = 'v28.<키>' (S.libOv)
      쓰는 곳 : ① 일반 지상 RC · SRC 바닥 = v2.8 c4 '동시 RC' 사슬 + Zone 연속 ② 철골 · 강합성 코어 c1 · 바닥 c3 하한 ③ 지하 순타 층별 바닥 사슬 · 외벽 Zone ④ DC 분할 하한 (일반 사이클)
      DC 경로 (L.dc) 값과 이름이 겹쳐도 따로 둔다 (DC 사례 재현 영향 없음) */
   function defaultV28() {
@@ -1919,7 +1919,7 @@ html.pr .t-sec .kn li, html.pr .kc, html.pr .iso-fig, html.pr #gantt svg, html.p
       t = T_F;
     }
 
-    /* ── v2.8 일반 골조 물량 · 공종 사슬 (사내 적정공기 가이드라인 v2.8 frameQty · frameCycles · zoning 을 옮김)
+    /* ── v2.8 일반 골조 물량 · 공종 사슬 (v2.8 (다른 버전 공기산정 도구) frameQty · frameCycles · zoning 을 옮김)
        쓰는 곳 : 지하 순타 층별 바닥 (E3) · 일반 지상 RC · SRC 바닥 (c4) · 철골 · 강합성 코어 c1 / 바닥 c3 하한 · DC 분할 하한 (일반 사이클) */
     var FR = L.frame, V8 = v28Of(L.v28), V8D = defaultV28();
     /* Zone 수 입력 : zSpec = 옛 경로 (면적 900㎡ Zone · 철골 · 강합성 · 벽식 · frChain OFF) 와 DC (체적 500㎥ Zone) 용 — 뜻이 그대로라 옛 저장 파일 · 보관함 값이 새 경로에 섞이지 않음
