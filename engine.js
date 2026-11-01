@@ -48,8 +48,18 @@
          Zone = 부위 체적 ÷ 일 타설량, 팀 = Zone 4개당 1팀, 층고 6.5m 이상이면 수직재 분할, 층간 = Zone 1개 작업 합계 (Zone 연속) */
       dc: { pourV: 500, zpt: 4, split: 6.5, spanL: 12, spanS: 9, colA: 1.21, beamsPerCol: 3.5, beamA: { RC: 0.88, steel: 0.3 }, slabT: 0.3, coreWall: 0.24,
         rebCB: 0.21, rebSC: 0.1, tPerMD: 0.3, crewH: 25, crewC: 25, lift: 1, form: 2, strip: 1, pour: 1, scaf: 2, table: 50, bform: 2, cure: 2, coreForm: 2, me: 1, steelPc: 18, bolt: 2, deck: 300 },
-      v28: defaultV28()
+      v28: defaultV28(),
+      seq: defaultSeq()
     };
+  }
+  /* 타설 순서 (adv.pourSeq) 자동 규칙 기준 — 가정 (v2.8 기본 조합 RC = 동시타설 · 철골 = 코어선행 에 일반 적용 기준을 더함, 사례 보정 전). 화면 편집 경로 = 'seq.<키>' (S.libOv)
+     rcPreF : RC · SRC 지상 층수 ≥ 이 값 → 코어선행 (고층 · 코어 시스템폼 ACS), 그 밖 동시타설 · stPostF : 철골 · 강합성 지상 층수 ≤ 이 값 → 코어후행 (저층), 그 밖 코어선행
+     rcLag : RC 코어선행 바닥 n층 = 코어 n + rcLag 층 완료 후 (철골 코어선행의 n+3 과 같은 값 — ACS 하부 발판 간섭 · 안전측, 가정) */
+  function defaultSeq() { return { rcPreF: 30, stPostF: 10, rcLag: 3 }; }
+  function seqOf(src) {
+    var d = defaultSeq(), o = {}, s = src && typeof src === 'object' ? src : {};
+    Object.keys(d).forEach(function (k) { var x = s[k] == null || s[k] === '' ? NaN : parseFloat(s[k]); o[k] = isFinite(x) && x >= (k === 'rcLag' ? 0 : 1) ? Math.round(x) : d[k]; });
+    return o;
   }
   /* 일반 골조 (DC 아님) 공종 사슬 기본 가정 — 사내 적정공기 가이드라인 v2.8 (frameQty · frameCycles · zoning) 에서 옮김. 화면 편집 경로 = 'v28.<키>' (S.libOv)
      쓰는 곳 : ① 일반 지상 RC · SRC 바닥 = v2.8 c4 '동시 RC' 사슬 + Zone 연속 ② 철골 · 강합성 코어 c1 · 바닥 c3 하한 ③ 지하 순타 층별 바닥 사슬 · 외벽 Zone ④ DC 분할 하한 (일반 사이클)
@@ -63,6 +73,7 @@
       coreR: 0.23, coreWall: 0.24,               /* 코어 면적 = 기준층 × 0.23 (adv.coreA 없을 때) · 코어 벽 체적 = 코어 면적 × 0.24 × 층고 */
       rebCB: 0.21, rebSC: 0.1,                   /* 철근비 t/㎥ : 기둥 · 보 / 슬래브 · 벽 */
       tPerMD: 0.3, crewW: 20, crewCS: 10, crewU: 25,   /* 철근 t/인·일 · 인원 : 벽체 철근 20 · 코어 슬래브 철근 10 · 바닥 철근 / M&E 25 */
+      crewS: 20,                                 /* 동시타설 철골 (v2.8 c5) 바닥 철근 · M&E 인원 20 (v2.8 c5 는 ÷ 6t/일) */
       c1W: 0.8, c1S: 0.2,                        /* 코어 c1 : 벽체 철근 몫 0.8 · 슬래브 철근 몫 0.2 */
       pourV: 300, pourVc: 230, pump: 1,          /* 1회 (1일) 타설 ㎥ : 수평 300 · 수직 230 × 펌프 대수 */
       zpt: 4, takt: 1,                           /* 팀당 Zone 4 (Zone 4개당 1팀) · 팀 안 Zone 간격 1일 (하루 1 Zone) */
@@ -76,12 +87,14 @@
          ov1 = 벽체 철근 ∥ 양중 (v2.8 간격 0) · ov3 · ov4 · ov5 = 테이블폼 · 형틀 · DECK 를 앞 공종과 1 WD 겹침 — 사례 B 보정 (v2.8 근거 아님) */
       ov0: 0, ov1: 1, ov2: 0, ov3: 1, ov4: 1, ov5: 1, ov6: 0, ov7: 0,
       wallZ: 40, wzpt: 4,                        /* 지하 외벽 Zone = 흙막이 둘레 ÷ 40m (v2.8 합벽 Zone) · 외벽팀 자동 = ⌈Zone ÷ 4⌉ (가정) */
-      wKmin: 0.5                                 /* 외벽팀 입력 반영 하한 : 외벽 WD ≥ 지금 실적값 × 0.5 (팀을 늘려도 Lift 순서 · 양생 때문에 반 이하로 줄지 않음 — 가정) */
+      wKmin: 0.5,                                /* 외벽팀 입력 반영 하한 : 외벽 WD ≥ 지금 실적값 × 0.5 (팀을 늘려도 Lift 순서 · 양생 때문에 반 이하로 줄지 않음 — 가정) */
+      /* 철골 · 강합성 코어선행 (옛 경로) 의 v2.8 코어 c1 · 바닥 c3 하한 : 0 = 끔 (기본 — 순타 철골 건물이 근거 없이 길어짐 : v2.8 c1 직렬 사슬이 ACS 코어 실제 속도보다 느림, c3 는 해석), 1 = 켬 */
+      lbSC: 0
     };
   }
   /* v2.8 라이브러리 값 정리 : 숫자가 아니거나 음수면 기본값, 나눗셈에 쓰는 값 (POS) 은 0 이하도 기본값, 비율 (UNIT) 은 0 ~ 1 */
-  var V28_POS = { spanL: 1, spanS: 1, tPerMD: 1, crewW: 1, crewCS: 1, crewU: 1, pourV: 1, pourVc: 1, pump: 1, zpt: 1, table: 1, tableW: 1, deck: 1, steelPc: 1, wallZ: 1, wzpt: 1, hQ: 1, hQB: 1, hStd: 1 };
-  var V28_UNIT = { wKmin: 1, c1W: 1, c1S: 1 };
+  var V28_POS = { spanL: 1, spanS: 1, tPerMD: 1, crewW: 1, crewCS: 1, crewU: 1, crewS: 1, pourV: 1, pourVc: 1, pump: 1, zpt: 1, table: 1, tableW: 1, deck: 1, steelPc: 1, wallZ: 1, wzpt: 1, hQ: 1, hQB: 1, hStd: 1 };
+  var V28_UNIT = { wKmin: 1, c1W: 1, c1S: 1, lbSC: 1 };
   function v28Of(src) {
     var d = defaultV28(), o = defaultV28(), s = src && typeof src === 'object' ? src : {};
     Object.keys(d).forEach(function (k) {
@@ -107,7 +120,9 @@
     SOIL: { name: '토사 지반', st: [20, 10, 6, 10], desc: '충적 · 매립층이 두꺼운 지반 — GL−30m까지 토사 · 풍화토, 풍화암 6m, GL−36m 이하 연암' },
     ROCK: { name: '암반 지반', st: [4, 4, 3, 6], desc: '암반이 얕은 지반 — GL−8m 전후 풍화암, GL−11m 전후 연암, GL−17m 이하 경암' }
   };
-  var STRUCT_N = { RC: '철근콘크리트 (RC)', SRC: '철골철근콘크리트 (SRC)', SC: '철골 + RC 코어 (코어 선행)', COMP: '강합성 (PSRC·TSC 등) + RC 코어' };
+  var STRUCT_N = { RC: '철근콘크리트 (RC)', SRC: '철골철근콘크리트 (SRC)', SC: '철골 + RC 코어', COMP: '강합성 (PSRC·TSC 등) + RC 코어' };
+  /* 타설 순서 (adv.pourSeq) 이름 — 철골 '코어 선행' 은 이제 골조 형식이 아니라 타설 순서 (자동 = 10층 초과 코어선행) */
+  var POUR_N = { AUTO: '자동', SIM: '동시타설', PRE: '코어선행', POST: '코어후행', DC: '분리 타설 (DC)' };
   var WALL_N = { CIP: 'CIP', SW: 'Slurry Wall (지하연속벽)', HP: 'H-Pile + 토류판', SCW: 'SCW', SP: 'Sheet Pile', NONE: '없음 (오픈컷)' };
   var SUP_N = { ANCHOR: '어스앵커', STRUT: '스트럿 (버팀보)', RAKER: '레이커', OPEN: '오픈컷 (사면)', SLAB: '영구 슬래브 지지 (탑다운)' };
   var FOUND_N = { MAT: '매트 (직접기초)', PHC: 'PHC 파일 + 매트', BORED: '현장타설말뚝 + 매트' };
@@ -563,9 +578,28 @@
       var fr = 0, mx = 0;
       items.forEach(function (it, i) {
         var o = i > 0 ? clamp(num(ovOf(i), 0), 0, items[i - 1].wd) : 0;
-        it.ov = o; it.s = Math.max(0, fr - o); fr = Math.max(fr, it.s + it.wd); mx = Math.max(mx, it.wd);
+        it.ov = o; it.pe = fr; it.ovMax = i > 0 ? items[i - 1].wd : 0; it.s = Math.max(0, fr - o); fr = Math.max(fr, it.s + it.wd); mx = Math.max(mx, it.wd);
       });
       return { items: items, zone: fr, maxWD: mx };
+    }
+    /* 공종 사슬 (일반형 — c1 · c2 · c3 · c5) : pre[i] = null → 앞 공종들이 다 끝나는 때 (run28 와 같음) · [] → 0 에서 착수 (겹침 없음) · [j] → j 번째 공종 끝
+       착수 = 기준 시점 (pe) − 겹침 (0 ≤ 겹침 ≤ ovMax = 기준 공종 일수). 겹침 = 사용자 입력 (adv.seqOv.<사슬> = { a0: WD, … }) 이 있으면 그 값, 없으면 v2.8 간격 (ovDef)
+       Zone 1개 = 가장 늦은 끝 + endAdd (c3 마무리). zone28 = v2.8 간격 그대로의 사슬 길이 (사용자 겹침 없이) */
+    function runCh(items, ovDef, ovUser, pre, endAdd) {
+      var u = ovUser && typeof ovUser === 'object' ? ovUser : null;
+      function go(useU) {
+        var fr = 0, ends = [];
+        items.forEach(function (it, i) {
+          var p = pre ? pre[i] : null, ref, mo;
+          if (i === 0 || (p && !p.length)) { ref = 0; mo = 0; } else if (p) { ref = ends[p[0]]; mo = items[p[0]].wd; } else { ref = fr; mo = items[i - 1].wd; }
+          var x = useU && u ? parseFloat(u['a' + i]) : NaN, o = clamp(isFinite(x) ? x : (ovDef[i] || 0), 0, mo), s0 = Math.max(0, ref - o);
+          if (useU) { it.ov = o; it.pe = ref; it.ovMax = mo; it.s = s0; }
+          ends.push(s0 + it.wd); fr = Math.max(fr, s0 + it.wd);
+        });
+        return fr + (endAdd || 0);
+      }
+      var z = go(true), mx = 0; items.forEach(function (it) { mx = Math.max(mx, it.wd); });
+      return { items: items, zone: z, zone28: u ? go(false) : z, maxWD: mx };
     }
     /* 사슬 길이만 (items 는 바꾸지 않음) : ov[i] = 겹침 WD */
     function len28(items, ov) {
@@ -595,49 +629,68 @@
       r.zone28 = len28(r.items, [0, 1, 0, 0, 0, 0, 0, 0]); r.ptd = ptd;
       return r;
     }
-    /* c1 코어 (Zone 1개, 수직재 회차마다) : Zc = ⌈코어 체적 ÷ 230⌉ · 순타 직렬 / 역타 [양중 ∥ 벽체 철근, 형틀 · 슬래브 철근 각 1일 겹침] → 층 = 사슬 × 회수 */
-    function c1(Ac, h, lifts, td) {
+    /* c1 코어 (Zone 1개, 수직재 회차마다) : Zc = ⌈코어 체적 ÷ 230⌉ (Nc 입력이 있으면 그 값) · 순타 직렬 / 역타 [양중 ∥ 벽체 철근, 형틀 · 슬래브 철근 각 1일 겹침] → 층 = 사슬 × 회수
+       ovUser = 사용자 겹침 (코어후행 코어 경로 adv.seqOv.c1) — 없으면 v2.8 간격 (하한 · DC 분할 하한은 늘 v2.8 간격) */
+    function c1(Ac, h, lifts, td, ovUser, Nc) {
       lifts = Math.max(1, lifts || 1);
-      var Vw = Ac * V8.coreWall * h, Vcs = Ac * V8.slabT, Zc = Math.max(1, RU((Vw + Vcs) / (V8.pourVc * V8.pump)));
+      var Vw = Ac * V8.coreWall * h, Vcs = Ac * V8.slabT, Zc = Nc > 0 ? Math.max(1, Math.round(Nc)) : Math.max(1, RU((Vw + Vcs) / (V8.pourVc * V8.pump)));
       var qW = RU(RU(Vw / lifts * V8.rebSC, 2) / Zc * V8.c1W, 2), qS = RU(RU(Vcs * V8.rebSC, 2) / Zc * V8.c1S, 2), g = td ? [0, 1, 1, 1, 0, 0] : [0, 0, 0, 0, 0, 0];
-      var r = run28([
+      var r = runCh([
         it8('c0', '양중', V8.lift / hF, { fixed: true, lib: 'v28.lift' }),
         it8('c1', '벽체 철근', rb8(qW, V8.crewW), { q: qW, u: 't', p: V8.crewW, lib: 'v28.crewW' }),
         it8('c2', '벽체 형틀', V8.wform / hF, { fixed: true, lib: 'v28.wform' }),
         it8('c3', '슬래브 철근', rb8(qS, V8.crewCS), { q: qS, u: 't', p: V8.crewCS, lib: 'v28.crewCS' }),
         it8('c4', 'M&E', V8.me / hF, { fixed: true, lib: 'v28.me' }),
         it8('c5', '타설', V8.pour, { fixed: true, lib: 'v28.pour' })
-      ], function (i) { return g[i]; });
+      ], g, ovUser, null);
       r.Z = Zc; r.lifts = lifts; r.wd = r.zone * lifts; r.V = Vw + Vcs;
       return r;
     }
-    /* c2 외주 RC (DC 분할 하한의 일반 사이클용) : 양중 · 테이블폼 · 형틀 3 · DECK · 철근 · M&E · 타설, 테이블폼 ~ 철근은 앞 공종과 1일 겹침 */
-    function c2(Q) {
-      var Z = Math.max(1, RU((Q.Vc + Q.Vb + Q.Vs) / (V8.pourV * V8.pump))), qT = RU(Q.tf / Z), qD = RU(Q.slabA / Z, 1), qR = Q.rRC / Z, g = [0, 1, 1, 1, 1, 0];
-      var r = run28([
+    /* c2 외주 RC : 양중 · 테이블폼 · 형틀 3 · DECK · 철근 · M&E · 타설, 테이블폼 ~ 철근은 앞 공종과 1일 겹침 (v2.8 간격 0)
+       쓰는 곳 : DC 분할 하한 (일반 사이클) · RC 코어선행 바닥 · RC 코어후행 외주부. N = Zone 수 입력 (없으면 ⌈(기둥 + 보 + 슬래브) ÷ 300⌉), ptd = PT 슬래브 일수 (철근 · M&E 에) */
+    function c2(Q, N, ovUser, ptd) {
+      var Z = N > 0 ? Math.max(1, Math.round(N)) : Math.max(1, RU((Q.Vc + Q.Vb + Q.Vs) / (V8.pourV * V8.pump))), qT = RU(Q.tf / Z), qD = RU(Q.slabA / Z, 1), qR = Q.rRC / Z, g = [0, 1, 1, 1, 1, 0];
+      ptd = ptd > 0 ? ptd : 0;
+      var r = runCh([
         it8('b0', '양중', V8.lift / hF, { fixed: true, lib: 'v28.lift' }),
         it8('b1', '테이블폼', cl(qT / (V8.table * hF)), { q: qT, u: '장', p: V8.table, lib: 'v28.table' }),
         it8('b2', '형틀', V8.form2 / hF, { fixed: true, lib: 'v28.form2' }),
         it8('b3', 'DECK', cl(qD / (V8.deck * hF)), { q: qD, u: '㎡', p: V8.deck, lib: 'v28.deck' }),
-        it8('b4', '철근 · M&E', rb8(qR, V8.crewU), { q: RN(qR, 2), u: 't', p: V8.crewU, lib: 'v28.crewU' }),
+        it8('b4', ptd > 0 ? '철근 · M&E (PT ' + r1(ptd) + '일)' : '철근 · M&E', rb8(qR, V8.crewU) + ptd / hF, { q: RN(qR, 2), u: 't', p: V8.crewU, lib: 'v28.crewU', pt: ptd }),
         it8('b5', '타설', V8.pour, { fixed: true, lib: 'v28.pour' })
-      ], function (i) { return g[i]; });
-      r.Z = Z; r.wd = r.zone; return r;
+      ], g, ovUser, null);
+      r.Z = Z; r.wd = r.zone; r.V = Q.Vc + Q.Vb + Q.Vs; return r;
     }
-    /* c3 외주 철골 : 철골 + 볼팅 · DECK · 철근 동시 착수 → 철근 뒤 M&E · 타설, 사이클 = 가장 늦은 끝 + 1 (Z = ⌈(기둥 + 슬래브) ÷ 300⌉) */
-    function c3(Q) {
-      var Z = Math.max(1, RU((Q.Vc + Q.Vs) / (V8.pourV * V8.pump))), qS = (Q.nCol + Q.nBm) / Z, qD = RU(Q.slabA / Z), qR = Q.rST / Z;
-      var its = [
+    /* c3 외주 철골 : 철골 + 볼팅 · DECK · 철근 동시 착수 → 철근 뒤 M&E · 타설, 사이클 = 가장 늦은 끝 + 1 (Z = ⌈(기둥 + 슬래브) ÷ 300⌉, N 입력이 있으면 그 값)
+       겹침 : 철골 · DECK · 철근은 0 에서 착수 (겹침 없음), M&E = 철근 끝 − 겹침, 타설 = M&E 끝 − 겹침 (v2.8 기본 0) */
+    function c3(Q, N, ovUser) {
+      var Z = N > 0 ? Math.max(1, Math.round(N)) : Math.max(1, RU((Q.Vc + Q.Vs) / (V8.pourV * V8.pump))), qS = (Q.nCol + Q.nBm) / Z, qD = RU(Q.slabA / Z), qR = Q.rST / Z;
+      var r = runCh([
         it8('s0', '철골 + 볼팅', cl(qS / (V8.steelPc * hF)) + V8.bolt / hF, { q: RN(qS, 1), u: 'pcs', p: V8.steelPc, lib: 'v28.steelPc' }),
         it8('s1', 'DECK', cl(qD / (V8.deck * hF)), { q: qD, u: '㎡', p: V8.deck, lib: 'v28.deck' }),
         it8('s2', '철근', rb8(qR, V8.crewU), { q: RN(qR, 2), u: 't', p: V8.crewU, lib: 'v28.crewU' }),
         it8('s3', 'M&E', V8.me / hF, { fixed: true, lib: 'v28.me' }),
         it8('s4', '타설', V8.pour, { fixed: true, lib: 'v28.pour' })
-      ];
-      its[0].s = 0; its[1].s = 0; its[2].s = 0; its[3].s = its[2].wd; its[4].s = its[3].s + its[3].wd;
-      its.forEach(function (x) { x.ov = 0; });
-      var mx = 0, zt = 0; its.forEach(function (x) { mx = Math.max(mx, x.wd); zt = Math.max(zt, x.s + x.wd); });
-      return { items: its, zone: zt + V8.c3End, maxWD: mx, Z: Z, wd: zt + V8.c3End };
+      ], [0, 0, 0, 0, 0], ovUser, [[], [], [], [2], [3]], V8.c3End);
+      r.Z = Z; r.wd = r.zone; r.V = Q.Vc + Q.Vs; return r;
+    }
+    /* c5 동시 철골 (v2.8 c5, 동시타설 철골 · 강합성) : 철골 + 볼팅 · DECK 는 선행 (사슬 밖, Zone 1개 lead = 철골 + DECK) →
+       양중 ∥ 벽체 철근 → 벽체 형틀 (1일 겹침) → 철근 · M&E (crewS 20인) → 타설. Z = ⌈(코어 + 기둥 + 슬래브) ÷ 300⌉ (N 입력이 있으면 그 값) */
+    function c5(Q, N, ovUser) {
+      var Z = N > 0 ? Math.max(1, Math.round(N)) : Math.max(1, RU((Q.Vw + Q.Vcs + Q.Vc + Q.Vs) / (V8.pourV * V8.pump)));
+      var qS = RU((Q.nCol + Q.nBm) / Z), qD = RU(Q.slabA / Z), qW = RU(Q.rW / Z, 1), qR = RU((Q.rS + Q.rST) / Z, 1);
+      var lead = [it8('L0', '철골 + 볼팅 (선행)', cl(qS / (V8.steelPc * hF)) + V8.bolt / hF, { q: qS, u: 'pcs', p: V8.steelPc, lib: 'v28.steelPc' }),
+        it8('L1', 'DECK (선행)', cl(qD / (V8.deck * hF)), { q: qD, u: '㎡', p: V8.deck, lib: 'v28.deck' })];
+      lead[0].s = 0; lead[1].s = lead[0].wd; lead.forEach(function (x) { x.ov = 0; x.pe = x.s; x.ovMax = 0; });
+      var r = runCh([
+        it8('e0', '양중', V8.lift / hF, { fixed: true, lib: 'v28.lift' }),
+        it8('e1', '벽체 철근', rb8(qW, V8.crewW), { q: qW, u: 't', p: V8.crewW, lib: 'v28.crewW' }),
+        it8('e2', '벽체 형틀', V8.wform / hF, { fixed: true, lib: 'v28.wform' }),
+        it8('e3', '철근 · M&E', rb8(qR, V8.crewS), { q: qR, u: 't', p: V8.crewS, lib: 'v28.crewS' }),
+        it8('e4', '타설', V8.pour, { fixed: true, lib: 'v28.pour' })
+      ], [0, 99, 1, 0, 0], ovUser, null);
+      r.Z = Z; r.wd = r.zone; r.V = Q.Vw + Q.Vcs + Q.Vc + Q.Vs; r.leadItems = lead; r.lead = lead[0].wd + lead[1].wd;
+      return r;
     }
     /* v2.8 소요 작업조 (참고값, 계산에는 안 씀) = ⌈Zone ÷ (사슬 ÷ (사슬 − 최대 공종))⌉ */
     function need8(N, c) { var z = c.zone28 != null ? c.zone28 : c.zone; return z > c.maxWD + 1e-9 ? Math.max(1, RU(N / (z / (z - c.maxWD)))) : 1; }
@@ -656,10 +709,11 @@
       } else {
         /* 층 안 외벽 → 바닥 겹침 (adv.bOv = { B2 : WD, … }, 0 ≤ 겹침 ≤ 외벽 일수) → 층 WD = max(외벽, 바닥, 외벽 + 바닥 − 겹침). 없으면 외벽 + 바닥 */
         var bOv = A.bOv && typeof A.bOv === 'object' ? A.bOv : null;
-        /* v2.8 지하 바닥 (adv.bChain 'OFF' = 옛 식 : 면적 900㎡ Zone × 3.25 WD 순환) : 지하 물량 (기둥 1.44 · 보 0.84 · 슬래브 0.15) 의 c4 공종 사슬, Zone = 체적 ÷ 300㎥,
+        /* v2.8 지하 바닥 (adv.bChain 'ON' 일 때만 — 기본 (AUTO · 빈 값 · OFF) = 옛 식 : 면적 900㎡ Zone × 3.25 WD 순환. 사례 B 지하골조 실적 3.8개월 : 옛 식 4.11 · v2.8 사슬 4.91 로 멀어져 기본에서 뺌)
+           켜면 : 지하 물량 (기둥 1.44 · 보 0.84 · 슬래브 0.15) 의 c4 공종 사슬, Zone = 체적 ÷ 300㎥,
            팀 = adv.bTeams 또는 ⌈Zone ÷ 4⌉, 층 바닥 WD = max(사슬 × 2회 타설 계수 × 층고 보정, 팀당 Zone × 하루 1 Zone) — 지상과 같은 Zone 연속, 팀 안 Zone 간격 (nt − 1) 은 1F 바닥에서 1회
            외벽 : 둘레 Zone = ⌈흙막이 둘레 ÷ 40m⌉ (v2.8 합벽), 외벽팀 = adv.wTeams 또는 ⌈Zone ÷ 4⌉ → 지금 외벽 식 × ⌈Zone ÷ 팀⌉ ÷ 4 (Zone 4개를 1팀이 맡는 지금 실적 보정값 기준으로 팀 수만 상대 반영 — 가정) */
-        var bCh = A.bChain !== 'OFF', bTin = num(A.bTeams, 0) > 0 ? Math.round(num(A.bTeams, 0)) : 0, wTin = num(A.wTeams, 0) > 0 ? Math.round(num(A.wTeams, 0)) : 0;
+        var bCh = A.bChain === 'ON', bTin = num(A.bTeams, 0) > 0 ? Math.round(num(A.bTeams, 0)) : 0, wTin = num(A.wTeams, 0) > 0 ? Math.round(num(A.wTeams, 0)) : 0;
         /* 지하 바닥팀 (adv.bTeams) = 1F 바닥 (B1 층 바닥 · 화면 지하 판에 보이는 층) 팀 수 — 다른 층은 자동값 (⌈Zone ÷ 4⌉) 에 같은 비율 (지상 uTeams 와 같은 규칙) */
         /* 물량 · Zone 은 지하 기준 층고 (v28.hQB 3.5m, v2.8 지하 고정) 로 — 층별 층고는 2회 타설 계수 · 층고 보정으로만 (층고를 올려도 Zone 이 늘어 사슬이 짧아지지 않게)
            Zone 수 입력 = adv.zN 'Bk:N' (Bk 층 행 = Bk 외벽 + 그 위 바닥). 옛 zSpec 은 순타 지하에 쓰지 않음 (옛 엔진과 같음) */
@@ -714,8 +768,31 @@
     /* ── 지상골조 */
     if (ZS.err.length) R.warn.push('바닥 Zone 수 입력을 읽지 못한 항목 : ' + ZS.err.join(', '));
     var sysC = inp.coreSys && inp.coreSys !== 'AUTO' && FR.core[inp.coreSys] ? inp.coreSys : (nUp >= 15 ? 'ACS' : 'GANG');
-    var hasCore = struct === 'SC' || struct === 'COMP';
-    if (hasCore && sysC === 'ACS' && nUp < 10) R.warn.push('ACS는 고층 코어 (15층 이상) 에 적합합니다 → 지상 ' + nUp + '층은 갱폼 · 알폼 검토');
+    var hasCore = struct === 'SC' || struct === 'COMP';   /* 철골 · 강합성 (코어 · 바닥 두 사슬이 실제로 있는지는 corePath) */
+    /* DC 층 사이클 (순타 · 용도 데이터센터 기본, 상세 조정 'DC 층 사이클' 로 켜고 끔) */
+    var DCL = L.dc, steelF = hasCore;
+    var dcMode = A.dcCycle === 'ON' || A.dcCycle === 'OFF' ? A.dcCycle : 'AUTO';
+    var dcOn = seq === 'BU' && (dcMode === 'ON' || (dcMode === 'AUTO' && use === 'dc'));
+    var frMode = A.frChain === 'ON' || A.frChain === 'OFF' ? A.frChain : 'AUTO', walled = use === 'residential' || use === 'mixed';
+    /* ── 타설 순서 (adv.pourSeq = AUTO · SIM 동시타설 · PRE 코어선행 · POST 코어후행) — 건물 규모 · 골조 형식으로 자동 선택, 사용자가 다른 순서를 고르면 그 경로로 계산
+       자동 (기준 = LIB.seq, 가정) : RC · SRC 지상 rcPreF (30) 층 이상 → 코어선행, 그 밖 → 동시타설 · 공동주택 · 주상복합 (벽식 RC) → 동시타설만 · 철골 · 강합성 지상 stPostF (10) 층 이하 → 코어후행, 그 밖 → 코어선행
+       DC 층 사이클 = 외주부 · 코어 분리 타설 (선택 대상 아님) · adv.frChain 'OFF' (옛 식 복원) = RC · SRC 일체 (동시) · 철골 · 강합성 코어선행 고정 */
+    var SQ = seqOf(L.seq);
+    var pSel = A.pourSeq === 'SIM' || A.pourSeq === 'PRE' || A.pourSeq === 'POST' ? A.pourSeq : 'AUTO', wallRC = walled && !steelF, legacy = frMode === 'OFF';
+    var sNm = struct === 'SC' ? '철골' : struct === 'COMP' ? '강합성' : struct, pAuto, pWhy;
+    if (dcOn) { pAuto = 'DC'; pWhy = '데이터센터 DC 층 사이클 → 외주부 · 코어 분리 타설 (타설 순서 선택 대상 아님)'; }
+    else if (legacy) { pAuto = steelF ? 'PRE' : 'SIM'; pWhy = '옛 식 (상세 조정 frChain OFF) → ' + (steelF ? sNm + ' 코어선행 (옛 경로)' : sNm + ' 일체 타설 (옛 경로)'); }
+    else if (wallRC) { pAuto = 'SIM'; pWhy = U.name + ' (벽식 ' + sNm + ') → 동시타설 (벽 · 슬래브 일체 타설)'; }
+    else if (!steelF) { pAuto = nUp >= SQ.rcPreF ? 'PRE' : 'SIM'; pWhy = sNm + ' · ' + nUp + '층 (' + SQ.rcPreF + '층 ' + (nUp >= SQ.rcPreF ? '이상 고층' : '미만') + ') → ' + (pAuto === 'PRE' ? '코어선행 (코어 시스템폼 ' + (sysC === 'ACS' ? 'ACS' : '갱폼') + ' 가 먼저 오르고 바닥이 n+' + SQ.rcLag + '층 뒤를 따라감)' : '동시타설 (코어 · 바닥 한 번에 타설, v2.8 RC 기본)'); }
+    else { pAuto = nUp <= SQ.stPostF ? 'POST' : 'PRE'; pWhy = sNm + ' · ' + nUp + '층 (' + SQ.stPostF + '층 ' + (nUp <= SQ.stPostF ? '이하 저층' : '초과') + ') → ' + (pAuto === 'POST' ? '코어후행 (철골 · DECK 바닥이 먼저, 코어는 따라 타설)' : '코어선행 (' + (sysC === 'ACS' ? 'ACS' : '갱폼') + ' 코어가 먼저 오르고 ' + sNm + ' 바닥이 따라감, v2.8 철골 기본)'); }
+    var seqU = dcOn ? 'DC' : (legacy || wallRC ? pAuto : (pSel === 'AUTO' ? pAuto : pSel));
+    if (pSel !== 'AUTO' && pSel !== seqU) {
+      if (dcOn) R.notes.push('DC 층 사이클은 외주부 · 코어 분리 타설 — 타설 순서 선택 (' + POUR_N[pSel] + ') 은 쓰지 않았습니다');
+      else if (legacy) R.notes.push('상세 조정 frChain OFF (옛 식) — 타설 순서 선택 (' + POUR_N[pSel] + ') 대신 옛 경로 (' + POUR_N[seqU] + ') 로 계산했습니다');
+      else if (wallRC) R.warn.push(U.name + ' (벽식) 은 벽 · 슬래브 일체 타설 → 동시타설로 계산했습니다 (' + POUR_N[pSel] + ' 선택은 쓰지 않음)');
+    }
+    var corePath = seqU === 'PRE';   /* 코어 · 바닥 두 사슬 (코어 선행 체인 + 바닥 체인) */
+    if (corePath && sysC === 'ACS' && nUp < 10) R.warn.push('ACS는 고층 코어 (15층 이상) 에 적합합니다 → 지상 ' + nUp + '층은 갱폼 · 알폼 검토');
     var dS = (FR.d[struct] + (inp.pt ? FR.ptAdd : 0)) / hF, dC = FR.core[sysC] / hF, minT = FR.minTact[struct] / hF, acsSet = FR.acsSetup / hF;
     /* 바닥 Zone : 층별 Zone 입력 → 없으면 (기준층 면적, 지하층은 지하 면적) ÷ 900㎡ */
     /* 지상 형틀팀 수 (adv.uTeams) = 기준층 팀 수. 다른 층은 자동 규칙 (Zone ÷ 팀당 Zone) 에 같은 비율 (입력 ÷ 기준층 자동값) 을 곱한다
@@ -729,12 +806,13 @@
     }
     function teamsAuto(Zx) { return Math.ceil(Zx / FR.zonesPerTeam[struct] - 1e-9); }
     var uK = uTin ? uTin / teamsAuto(zOf(typN0)) : 1;
-    /* 일반 지상 RC · SRC 바닥 (코어 분리 없음 · DC 아님) = v2.8 c4 '동시 RC' 공종 사슬 + Zone 연속 (adv.frChain : AUTO = 공동주택 · 주상복합 (벽식) 제외하고 켬 · ON · OFF = 옛 식, 철골 · 강합성 c1 · c3 하한도 끔)
-       Zone N = 층 체적 ÷ (300㎥ × 펌프) (바닥 Zone 수 입력 zSpec 이 있으면 그 값), 층간 = Zone 1개 사슬 × 2회 타설 계수 × 층고 보정 — 팀 수는 층간을 나누지 않음
+    /* 일반 지상 RC · SRC 동시타설 바닥 (DC 아님) = v2.8 c4 '동시 RC' 공종 사슬 + Zone 연속 (adv.frChain : AUTO = 공동주택 · 주상복합 (벽식) 제외하고 켬 · ON · OFF = 옛 식)
+       Zone N = 층 체적 ÷ (300㎥ × 펌프) (Zone 수 입력 zN 이 있으면 그 값), 층간 = Zone 1개 사슬 × 2회 타설 계수 × 층고 보정 — 팀 수는 층간을 나누지 않음
        팀 T = adv.uTeams (기준층, 다른 층은 같은 비율) 또는 ⌈N ÷ 4⌉, 팀당 nt = ⌈N ÷ T⌉ Zone 을 하루 1 Zone 씩 → 층간 ≥ nt × 1일 (팀이 너무 적을 때 하한 — v2.8 에 없는 우리 규칙)
        Zone 연속 (adv.rcFlow ≠ 'FLOOR') : 팀 안 Zone 간격은 맨 위층 꼬리 (nt − 1) 1회 · 층 완결 ('FLOOR') : 층마다 + (nt − 1) */
-    var frMode = A.frChain === 'ON' || A.frChain === 'OFF' ? A.frChain : 'AUTO', walled = use === 'residential' || use === 'mixed';
-    var v28On = !hasCore && (frMode === 'ON' || (frMode === 'AUTO' && !walled)), rcFlowZ = A.rcFlow !== 'FLOOR', uK8 = null;
+    var v28On = !steelF && seqU === 'SIM' && (frMode === 'ON' || (frMode === 'AUTO' && !walled)), rcFlowZ = A.rcFlow !== 'FLOOR', uK8 = null;
+    /* 철골 · 강합성 코어선행 옛 경로 (+ RC 코어선행 코어) 의 v2.8 하한 (코어 c1 · 바닥 c3) : v28.lbSC 1 일 때만 (기본 0 = 끔) · frChain OFF 면 늘 끔 */
+    var lbOn = !legacy && V8.lbSC > 0;
     /* 물량 · Zone 은 기준 층고 하나 (지상 v28.hQ 4.5m · 지하 hQB 3.5m — v2.8 은 건물 전체를 기준층 층고 하나로 계산) → 층별 층고는 lk × hfac 로만 (층고를 올렸는데 Zone 이 늘어 사이클이 줄지 않게)
        Zone 수 입력 = adv.zN (옛 zSpec 은 면적 900㎡ Zone 이라 이 경로에서 쓰지 않음) */
     function c4Floor(n, h, area, bsm) {
@@ -745,20 +823,77 @@
       return c;
     }
     function uK28() { if (uK8 == null) { uK8 = 1; uK8 = uTin / Math.max(1, cl(c4Floor(typN0, hUp[typN0 - 1]).N / V8.zpt)); } return uK8; }
+    /* 코어 형틀팀 수 (adv.cTeams) : 코어 Zone 수는 층마다 같으므로 입력이 있으면 그 값 (1 ~ Zone 수) */
+    var cTin = num(A.cTeams, 0) > 0 ? Math.round(num(A.cTeams, 0)) : 0;
+    /* ── 타설 순서별 새 경로 (v2.8 cycleFor) : 동시 철골 c5 · RC 코어선행 바닥 c2 · 코어후행 = max(코어 c1, 외주부 c2 | c3) — 모두 Zone 연속 · 팀 규칙 (c4 경로와 같음)
+       층 물량 = c4Floor 와 같은 규칙 (기준 층고 hQ · hQB, 코어 = adv.coreA 또는 기준층 × coreRb (RC · SRC 0.23 · 철골 · 강합성 0.2)), Zone 수 입력 zN = 바닥 (코어후행은 외주부) Zone */
+    var SOV = A.seqOv && typeof A.seqOv === 'object' ? A.seqOv : {};
+    function ovU(ch) { return SOV[ch] && typeof SOV[ch] === 'object' ? SOV[ch] : null; }
+    var ptS = inp.pt ? V8.ptX : 0;   /* PT 슬래브 (inp.pt) : c2 바닥 철근 · M&E 에 ptX 일 (c4 의 'PT 1일 항상' 은 v2.8 c4 만) */
+    function qFl(n, area, bsm) {
+      var Au = area != null && area > 0 ? area : Atyp, Ac = coreAin ? Math.min(coreAin, Au * 0.6) : Math.min((bsm ? Atyp : Au) * coreRb, Au * 0.6);
+      var sp = n >= 1 ? ZN.up[n] : (ZN.b[1 - n] != null ? ZN.b[1 - n] : ZN.b['*']);
+      return { Au: Au, Ac: Ac, Q: q28(Au, Ac, bsm ? V8.hQB : V8.hQ, !!bsm, bsm ? 0 : colN8), spec: sp != null ? Math.max(1, Math.round(sp)) : 0 };
+    }
+    /* 팀 : 자동 T0 = ⌈N ÷ 4⌉, 입력 (기준층 팀 수) 이 있으면 다른 층은 자동값 × (입력 ÷ 기준층 자동값) — uTeams · cTeams 와 같은 규칙. n0 = 기준층 Zone 수 (팀과 무관) */
+    var tkR = {};
+    function teamOf(id, N, tin, n0) {
+      var T0 = Math.max(1, cl(N / V8.zpt));
+      if (!tin) return { T0: T0, T: T0 };
+      if (tkR[id] == null) { tkR[id] = 1; tkR[id] = tin / Math.max(1, cl(n0() / V8.zpt)); }
+      return { T0: T0, T: clamp(Math.round(T0 * tkR[id]), 1, N) };
+    }
+    function n0c5() { var f = qFl(typN0); return c5(f.Q, f.spec).Z; }
+    function n0c2() { var f = qFl(typN0); return c2(f.Q, f.spec).Z; }
+    function n0P() { var f = qFl(typN0); return (steelF ? c3(f.Q, f.spec) : c2(f.Q, f.spec)).Z; }
+    function n0C() { var f = qFl(typN0); return c1(f.Ac, V8.hQ, 1, false, null, num(A.coreZ, 0)).Z; }
+    /* 사슬 하나 (동시 철골 c5 · RC 코어선행 바닥 c2) 의 층 : 층간 = max(Zone 1개 사슬 × lk × 층고 보정, 철골 · DECK 선행 lead (c5, Zone 1개 — v2.8 DC flowPz 처럼), 팀당 nt × 하루 1 Zone)
+       층 완결 (rcFlow FLOOR) = max(사슬, lead) + (nt − 1). 꼬리 (Zone 연속) = 맨 위층 마지막 Zone 이 층간을 넘는 만큼 */
+    function chFloor(c, f, h, tid, n0) {
+      var N = c.Z, tq = teamOf(tid, N, uTin, n0), nt = cl(N / tq.T), kq = lk8(h), zw = c.zone * kq.lk * kq.hf, tk = V8.takt, ld = c.lead || 0, b0 = Math.max(zw, ld);
+      var iv = rcFlowZ ? Math.max(b0, nt * tk) : b0 + (nt - 1) * tk, bind = rcFlowZ && nt * tk > b0 + 1e-9 ? 'takt' : (ld > zw + 1e-9 ? 'steel' : '');
+      return { model: 'v28', ch: c.ch, ovKey: 'seqOv.' + c.ch, Z: N, N: N, T: tq.T, T0: tq.T0, per: nt, nt: nt, hf: kq.hf, lifts: kq.lf, lk: kq.lk, wd: iv, zone: c.zone, chain: c.zone, zoneF: zw, takt: tk, flow: rcFlowZ ? 'ZONE' : 'FLOOR',
+        tail: rcFlowZ ? Math.max(0, zw + (nt - 1) * tk - iv) : 0, need: need8(N, c), zone28: c.zone28, items: c.items, maxWD: c.maxWD, zIn: !!f.spec, tIn: !!uTin, q: qSum(f.Q), Ac: f.Ac,
+        lb: { v: nt * tk, on: bind === 'takt', k: 'takt' }, lead: ld, leadItems: c.leadItems || null, bind: bind };
+    }
+    function c5Floor(n, h, area, bsm) { var f = qFl(n, area, bsm), c = c5(f.Q, f.spec, ovU('c5')); c.ch = 'c5'; return chFloor(c, f, h, 'c5', n0c5); }
+    function c2Floor(n, h, area, bsm) { var f = qFl(n, area, bsm), c = c2(f.Q, f.spec, ovU('c2'), bsm ? 0 : ptS); c.ch = 'c2'; return chFloor(c, f, h, 'c2', n0c2); }
+    /* 코어후행 : 외주부 (RC · SRC = c2 · 철골 · 강합성 = c3) 와 코어 (c1, v2.8 순타 간격 = 직렬) 를 따로 → 층간 = 두 경로 중 긴 쪽 (각각 Zone 연속 · 팀 규칙)
+       외주부 층고 = lk × 층고 보정 (c4 와 같음) · 코어 층고 = 수직재 회수 ⌈h ÷ 6⌉ × 층고 보정 (h ÷ 회수) — 코어선행 코어 (coreT) 와 같은 규칙. 코어 Zone = ⌈코어 체적 ÷ 230⌉ (adv.coreZ 가 있으면 그 값) */
+    function postFloor(n, h, area, bsm) {
+      var f = qFl(n, area, bsm), Q = f.Q, tk = V8.takt, kq = lk8(h);
+      var cP = steelF ? c3(Q, f.spec, ovU('c3')) : c2(Q, f.spec, ovU('c2'), bsm ? 0 : ptS); cP.ch = steelF ? 'c3' : 'c2';
+      var lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hfC = hfac(h / lifts), cC = c1(f.Ac, bsm ? V8.hQB : V8.hQ, 1, false, ovU('c1'), num(A.coreZ, 0)); cC.ch = 'c1';
+      function path(name, c, tq, zf, ext) {
+        var nt = cl(c.Z / tq.T), iv = rcFlowZ ? Math.max(zf, nt * tk) : zf + (nt - 1) * tk, o = { name: name, ch: c.ch, ovKey: 'seqOv.' + c.ch, N: c.Z, T: tq.T, T0: tq.T0, nt: nt, V: c.V, items: c.items,
+          zone: c.zone, zone28: c.zone28, zoneF: zf, maxWD: c.maxWD, gap: nt - 1, cyc: zf + (nt - 1) * tk, int: iv, need: need8(c.Z, c),
+          ov: c.items.map(function (x) { return x.ov; }), ss: c.items.map(function (x) { return x.s; }), lb: { v: nt * tk, on: rcFlowZ && nt * tk > zf + 1e-9, k: 'takt' } };
+        Object.keys(ext).forEach(function (k) { o[k] = ext[k]; });
+        return o;
+      }
+      var P = path('외주부', cP, teamOf('pP', cP.Z, uTin, n0P), cP.zone * kq.lk * kq.hf, { lk: kq.lk, hf: kq.hf, lifts: kq.lf, tIn: !!uTin, zIn: !!f.spec, q: qSum(Q) });
+      var C = path('코어', cC, teamOf('pC', cC.Z, cTin, n0C), cC.zone * lifts * hfC, { lifts: lifts, hf: hfC, tIn: !!cTin, zIn: num(A.coreZ, 0) > 0, Ac: f.Ac });
+      var gv = P.int >= C.int - 1e-9 ? P : C, iv = Math.max(P.int, C.int);
+      return { model: 'post', ch: P.ch + '+c1', Z: P.N, N: P.N, T: P.T, T0: P.T0, per: P.nt, nt: P.nt, hf: kq.hf, lifts: kq.lf, lk: kq.lk, wd: iv, takt: tk, flow: rcFlowZ ? 'ZONE' : 'FLOOR',
+        tail: rcFlowZ ? Math.max(0, Math.max(P.zoneF + P.gap * tk, C.zoneF + C.gap * tk) - iv) : 0, zIn: !!f.spec, tIn: !!uTin, P: P, C: C, gov: gv.name, Au: f.Au, Ac: f.Ac };
+    }
     function slabT(n, h, area, bsm) {
+      if (seqU === 'POST') return postFloor(n, h, area, bsm);
+      if (seqU === 'SIM' && steelF) return c5Floor(n, h, area, bsm);
+      if (seqU === 'PRE' && !steelF) return c2Floor(n, h, area, bsm);
       if (v28On) {
         var c = c4Floor(n, h, area, bsm), N = c.N, T0 = Math.max(1, cl(N / V8.zpt)), Tq = uTin ? clamp(Math.round(T0 * uK28()), 1, N) : T0, nt = cl(N / Tq);
         var kq = lk8(h), zw = c.zone * kq.lk * kq.hf, tk = V8.takt, iv = rcFlowZ ? Math.max(zw, nt * tk) : zw + (nt - 1) * tk;
-        return { model: 'v28', Z: N, N: N, T: Tq, per: nt, nt: nt, hf: kq.hf, lifts: kq.lf, lk: kq.lk, wd: iv, zone: c.zone, chain: c.zone, zoneF: zw, takt: tk, flow: rcFlowZ ? 'ZONE' : 'FLOOR',
+        return { model: 'v28', ch: 'c4', ovKey: 'rcOv', Z: N, N: N, T: Tq, per: nt, nt: nt, hf: kq.hf, lifts: kq.lf, lk: kq.lk, wd: iv, zone: c.zone, chain: c.zone, zoneF: zw, takt: tk, flow: rcFlowZ ? 'ZONE' : 'FLOOR',
           tail: rcFlowZ ? Math.max(0, zw + (nt - 1) * tk - iv) : 0, need: c.need, zone28: c.zone28, T0: T0, items: c.items, maxWD: c.maxWD, zIn: c.zIn, tIn: !!uTin, q: qSum(c.Q),
-          lb: { v: nt * tk, on: rcFlowZ && nt * tk > zw + 1e-9, k: 'takt' } };
+          lb: { v: nt * tk, on: rcFlowZ && nt * tk > zw + 1e-9, k: 'takt' }, lead: 0, bind: rcFlowZ && nt * tk > zw + 1e-9 ? 'takt' : '' };
       }
       var Zx = zOf(n, area);
       var Tx = uTin ? clamp(Math.round(teamsAuto(Zx) * uK), 1, Zx) : teamsAuto(Zx), per = Math.ceil(Zx / Tx - 1e-9);
       if (hasCore) {
         var o = { model: 'old', Z: Zx, T: Tx, per: per, hf: hfac(h), lifts: 0, wd: Math.max(minT, per * dS * hfac(h)) };
-        /* 철골 · 강합성 바닥 하한 (v2.8 c3 외주 철골 사슬 — v2.8 철골 기본은 '코어 선행' 이라 층 사이클은 c1 만 → c3 하한은 v2.8 동작이 아니라 해석) */
-        if (!dcOn && frMode !== 'OFF') {
+        /* 철골 · 강합성 바닥 하한 (v2.8 c3 외주 철골 사슬 — v2.8 철골 기본은 '코어 선행' 이라 층 사이클은 c1 만 → c3 하한은 v2.8 동작이 아니라 해석) — v28.lbSC 1 일 때만 */
+        if (!dcOn && lbOn) {
           /* 물량은 기준 층고 (v28.hQ) — 층고가 올라도 하한이 줄지 않게. 코어 면적 자동값은 이 경로의 코어 (frame.core.ratio 0.2, 화면 코어 그림과 같음) 를 그대로 */
           var Au3 = area != null && area > 0 ? area : Atyp, Ac3 = coreAin ? Math.min(coreAin, Au3 * 0.6) : Au3 * FR.core.ratio, g3 = c3(q28(Au3, Ac3, V8.hQ, false, colN8));
           o.wd0 = o.wd; o.lb = { v: g3.wd, on: g3.wd > o.wd + 1e-9, k: 'c3', src: '해석', Z: g3.Z, items: g3.items, zone: g3.zone };
@@ -769,27 +904,25 @@
       var lf = h >= FR.split ? 1 + Math.floor(h / FR.split) : 1, lk = 1 - FR.vShare + FR.vShare * lf, hf1 = hfac(h / lf);
       return { model: 'old', Z: Zx, T: Tx, per: per, hf: hf1, lifts: lf, lk: lk, wd: Math.max(minT, per * dS * lk * hf1) };
     }
-    /* 코어 형틀팀 수 (adv.cTeams) : 코어 Zone 수는 층마다 같으므로 입력이 있으면 그 값 (1 ~ Zone 수) */
-    var cTin = num(A.cTeams, 0) > 0 ? Math.round(num(A.cTeams, 0)) : 0;
+    /* 코어선행 코어 (옛 식 : 팀당 Zone × ACS 4 · 갱폼 6 WD/Zone × 수직재 회수 × 층고 보정) — 철골 · 강합성 (사례 A 보정) 과 RC · SRC 코어선행 공통.
+       코어 Zone = (adv.coreA 또는 기준층 × coreRb (철골 · 강합성 0.2 · RC · SRC 0.23)) ÷ 300㎡ */
     function coreT(h) {
-      var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(coreAin ? 1 : 2, Math.round((coreAin || Atyp * FR.core.ratio) / FR.core.zoneA));
+      var cAu = coreAin || Atyp * coreRb;
+      var Zc = num(A.coreZ, 0) > 0 ? Math.max(1, Math.round(num(A.coreZ, 0))) : Math.max(coreAin ? 1 : 2, Math.round(cAu / FR.core.zoneA));
       var Tc = cTin ? clamp(cTin, 1, Zc) : Math.ceil(Zc / FR.core.perTeam - 1e-9), per = Math.ceil(Zc / Tc - 1e-9), lifts = Math.max(1, Math.ceil(h / FR.core.liftMax - 1e-9)), hl = h / lifts;
-      var o = { model: 'old', Z: Zc, T: Tc, per: per, lifts: lifts, hf: hfac(hl), wd: lifts * per * dC * hfac(hl) };
-      /* 코어 하한 = v2.8 c1 사슬 (기준 층고 v28.hQ 1개층분, Zc = ⌈코어 체적 ÷ 230⌉) × 수직재 회수 — 필요 이상 팀은 효과 없게.
-         층고는 회수로만 (v2.8 dcGuard 처럼 '일반 사이클 × 회수') → 층고를 올려도 하한이 줄지 않음. 코어 면적 자동값 = frame.core.ratio (이 경로의 코어와 같음) */
-      if (!dcOn && frMode !== 'OFF') {
-        var g1 = c1(coreAin || Atyp * FR.core.ratio, V8.hQ, 1, seq === 'TD'), v1 = g1.zone * lifts;
+      var o = { model: 'old', Z: Zc, T: Tc, per: per, lifts: lifts, hf: hfac(hl), wd: lifts * per * dC * hfac(hl), Ac: r1(cAu) };
+      /* 코어 하한 = v2.8 c1 사슬 (기준 층고 v28.hQ 1개층분, Zc = ⌈코어 체적 ÷ 230⌉) × 수직재 회수 — 필요 이상 팀은 효과 없게. v28.lbSC 1 일 때만 (기본 끔)
+         층고는 회수로만 (v2.8 dcGuard 처럼 '일반 사이클 × 회수') → 층고를 올려도 하한이 줄지 않음. 코어 면적 자동값 = 이 경로의 코어와 같음 */
+      if (!dcOn && lbOn) {
+        var g1 = c1(cAu, V8.hQ, 1, seq === 'TD'), v1 = g1.zone * lifts;
         o.wd0 = o.wd; o.lb = { v: v1, on: v1 > o.wd + 1e-9, k: 'c1', src: 'v2.8', Z: g1.Z, items: g1.items, zone: g1.zone, lifts: lifts };
         if (o.lb.on) o.wd = v1;
       }
       return o;
     }
-    /* DC 층 사이클 (순타 · 용도 데이터센터 기본, 상세 조정 'DC 층 사이클' 로 켜고 끔)
+    /* DC 층 사이클 :
        외주부 (기둥 · 보 · 슬라브) 와 코어 (벽체 · 코어 바닥) 를 따로 타설 → 층간 = 두 경로 중 긴 쪽의 Zone 1개 작업 합계
        Zone = 체적 ÷ 일 타설량 (바닥 Zone 수 입력이 있으면 외주부 Zone 으로), 팀 = Zone 4개당 1팀, 팀 안 Zone 간격 (하루 1 Zone) 은 맨 위층에서 1회 */
-    var DCL = L.dc, steelF = struct === 'SC' || struct === 'COMP';
-    var dcMode = A.dcCycle === 'ON' || A.dcCycle === 'OFF' ? A.dcCycle : 'AUTO';
-    var dcOn = seq === 'BU' && (dcMode === 'ON' || (dcMode === 'AUTO' && use === 'dc'));
     var dcFlow = A.dcFlow !== 'FLOOR', dcKv = null;
     /* DC 외주부 팀 비율 = 입력 ÷ 기준층 외주부 자동 팀 수 (기준층 Zone 수는 팀 수와 무관하므로 한 번 계산해 둔다) */
     function dcK() {
@@ -922,9 +1055,12 @@
       R.frameLead = dcLast ? dcLast.tail : 0;
       frameEnd = tt + rcM(R.frameLead);
       gov = 'DC 층 사이클 (' + (dcLast ? dcLast.gov : '외주부') + ')';
-    } else if (!hasCore) {
-      var tt = frameStart, first = slabT(1, hUp[0]), lastSt = null;
+    } else if (!corePath) {
+      /* 한 층씩 (일체 타설) : 동시타설 RC · SRC (c4 또는 옛 식 · 벽식) · 동시타설 철골 · 강합성 (c5) · 코어후행 (외주부 · 코어 두 경로 중 긴 쪽) */
+      var tt = frameStart, first = slabT(1, hUp[0]), lastSt = null, chain1 = first.model !== 'old';
       var lead = (FR.zoneDur[struct] / hF - dS) + (first.T - 1) * FR.lag;
+      /* 동시타설 철골 : 첫 층 철골 · DECK 선행 1회 (DC 철골 1절 · 데크 선행과 같은 규칙) — 이후 층은 아래층 RC 중 선행 */
+      if (first.lead > 0) { tt += rcM(first.lead); R.notes.push('동시타설 철골 : 철골 · DECK 선행 ' + r1(first.lead) + 'WD (첫 층만, 이후 층은 아래층 타설 중 선행 · 층간 ≥ 선행)'); }
       allLv.forEach(function (x, idx) {
         var st = slabT(Math.min(x.n, nUp), x.h, x.b ? AdnEff : null, !!x.b), f = 1, why = [];
         lastSt = st;
@@ -935,20 +1071,26 @@
         if (fp > 1 + 1e-9) { f *= fp; why.push('기초 전 T/C 공용 × ' + r2(fp)); }
         var wd = st.wd * f;
         if (hold > 0.005) holdLog.push({ lv: x.lv, m: hold, why: x.n > lim2 ? '지하 수직재 완료 대기' : '기초 완료 대기' });
-        var e0 = s0 + rcM(wd);
+        var e0 = s0 + rcM(wd), hfx = (st.hf > 1.001 ? ' × 층고 ' + r2(st.hf) : ''), fx = (f !== 1 ? ' × ' + r2(f) : '');
         var fl = { lv: x.lv, n: x.n, h: x.h, ph: x.ph, Z: st.Z, T: st.T, per: st.per, hf: st.hf, lifts: st.lifts, f: f, why: why.join(' · '), wd: wd, s: s0, e: e0, hold: hold, model: st.model,
-          formula: st.model === 'v28'
-            ? st.N + ' Zone' + (st.zIn ? ' (입력)' : '') + ' · ' + st.T + '팀 (팀당 ' + st.nt + ') · Zone 1개 사슬 ' + r1(st.zone) + 'WD' + (st.lifts > 1 ? ' × ' + st.lifts + '회 타설 ' + r2(st.lk) : '') + (st.hf > 1.001 ? ' × 층고 ' + r2(st.hf) : '') +
-              (st.lb.on ? ' → 하루 1 Zone 하한 ' + r1(st.lb.v) + 'WD' : '') + (st.flow === 'FLOOR' && st.nt > 1 ? ' + Zone 간격 ' + (st.nt - 1) + 'WD' : '') + (f !== 1 ? ' × ' + r2(f) : '')
-            : st.Z + ' Zone ÷ ' + st.T + '팀 → ' + st.per + ' Zone × ' + r2(dS) + 'WD' + (st.lifts > 1 ? ' × ' + st.lifts + '회 타설 ' + r2(st.lk) : '') + (st.hf > 1.001 ? ' × 층고 ' + r2(st.hf) : '') + (f !== 1 ? ' × ' + r2(f) : '') + (st.wd > st.per * dS * (st.lk || 1) * st.hf + 1e-6 ? ' (최소 ' + r1(minT) + 'WD)' : '') };
-        if (st.model === 'v28') { fl.N = st.N; fl.nt = st.nt; fl.T0 = st.T0; fl.takt = st.takt; fl.zone = st.zone; fl.zone28 = st.zone28; fl.zoneF = st.zoneF; fl.lk = st.lk; fl.tail = st.tail; fl.need = st.need; fl.items = st.items; fl.lb = st.lb; fl.flow = st.flow; fl.q = st.q; }
+          formula: st.model === 'post'
+            ? '코어후행 : 외주부 (' + st.P.ch + ') ' + st.P.N + ' Zone' + (st.P.zIn ? ' (입력)' : '') + ' · ' + st.P.T + '팀 ' + r1(st.P.zoneF) + 'WD / 코어 (c1) ' + st.C.N + ' Zone · ' + st.C.T + '팀 ' + r1(st.C.zoneF) + 'WD' + (st.C.lifts > 1 ? ' (수직재 ' + st.C.lifts + '회)' : '') +
+              ' → ' + st.gov + ' ' + r1(st.wd) + 'WD' + (st.flow === 'FLOOR' ? ' (층 완결 · Zone 간격 포함)' : '') + fx
+            : st.model === 'v28'
+            ? (st.ch === 'c5' ? '동시타설 철골 (c5) ' : st.ch === 'c2' ? '바닥 (c2) ' : '') + st.N + ' Zone' + (st.zIn ? ' (입력)' : '') + ' · ' + st.T + '팀 (팀당 ' + st.nt + ') · Zone 1개 사슬 ' + r1(st.zone) + 'WD' + (st.lifts > 1 ? ' × ' + st.lifts + '회 타설 ' + r2(st.lk) : '') + hfx +
+              (st.bind === 'steel' ? ' → 철골 · DECK 선행 ' + r1(st.lead) + 'WD 지배' : '') + (st.lb.on ? ' → 하루 1 Zone 하한 ' + r1(st.lb.v) + 'WD' : '') + (st.flow === 'FLOOR' && st.nt > 1 ? ' + Zone 간격 ' + (st.nt - 1) + 'WD' : '') + fx
+            : st.Z + ' Zone ÷ ' + st.T + '팀 → ' + st.per + ' Zone × ' + r2(dS) + 'WD' + (st.lifts > 1 ? ' × ' + st.lifts + '회 타설 ' + r2(st.lk) : '') + hfx + fx + (st.wd > st.per * dS * (st.lk || 1) * st.hf + 1e-6 ? ' (최소 ' + r1(minT) + 'WD)' : '') };
+        if (st.model === 'v28') { fl.N = st.N; fl.nt = st.nt; fl.T0 = st.T0; fl.takt = st.takt; fl.zone = st.zone; fl.zone28 = st.zone28; fl.zoneF = st.zoneF; fl.lk = st.lk; fl.tail = st.tail; fl.need = st.need; fl.items = st.items; fl.lb = st.lb; fl.flow = st.flow; fl.q = st.q;
+          fl.ch = st.ch; fl.ovKey = st.ovKey; fl.lead = st.lead; fl.bind = st.bind; if (st.leadItems) fl.leadItems = st.leadItems; }
+        if (st.model === 'post') { fl.N = st.N; fl.nt = st.nt; fl.takt = st.takt; fl.lk = st.lk; fl.tail = st.tail; fl.flow = st.flow; fl.ch = st.ch; fl.post = st; fl.gov = st.gov; }
         floors.push(fl);
         tt = e0;
       });
       /* 꼬리 : 옛 식 = (Zone 1개 전체 − 순환 1회) + (팀 − 1) × 시차 · v2.8 사슬 = 맨 위층 마지막 Zone 이 층간을 넘는 만큼 (Zone 연속 : nt − 1) — 사슬이 이미 Zone 1개 전체라 (zoneDur − d) 는 다시 더하지 않음 */
-      if (v28On) lead = lastSt ? lastSt.tail : 0;
-      frameEnd = tt + rcM(lead); gov = v28On ? '바닥 (공종 사슬 · Zone 연속)' : '바닥 (일체 타설)';
-      if (v28On && !rcFlowZ) gov = '바닥 (공종 사슬 · 층 완결)';
+      if (chain1) lead = lastSt ? lastSt.tail : 0;
+      frameEnd = tt + rcM(lead);
+      gov = seqU === 'POST' ? '코어후행 (' + (lastSt ? lastSt.gov : '외주부') + ' 지배)' : steelF ? '동시타설 (' + sNm + ' c5 공종 사슬)' : v28On ? '바닥 (공종 사슬 · Zone 연속)' : '바닥 (일체 타설)';
+      if (chain1 && !rcFlowZ) gov = gov.replace(/\)$/, ' · 층 완결)').replace('Zone 연속 · 층 완결', '층 완결');
       R.frameLead = lead;
     } else {
       /* 코어 선행 체인 + 바닥 체인 */
@@ -979,33 +1121,41 @@
         ct = e0;
       });
       var coreEnd = ct, topN = cLv[cLv.length - 1].n;
-      var stt = frameStart, li = 0;
+      var stt = frameStart, li = 0, lastSl = null;
       var slabLv = allLv.filter(function (x) { return !x.ph; });
       for (var si = 0; si < slabLv.length; si++) {
         n = slabLv[si].n;
-        var h2 = slabLv[si].h, sl = slabT(n, h2, slabLv[si].b ? AdnEff : null), f2 = 1, why2 = [];
+        var h2 = slabLv[si].h, sl = slabT(n, h2, slabLv[si].b ? AdnEff : null, !!slabLv[si].b), f2 = 1, why2 = [];
+        lastSl = sl;
+        /* 초기층 계수 : 철골 (ACS 숙련 · 셋팅층 · 초기층) 만 — RC 코어선행 바닥 (c2 사슬) 은 동시타설 c4 경로처럼 없음 (코어가 ACS 셋팅 · 숙련을 맡음) */
         if (struct === 'SC' && sysC === 'ACS' && li < FR.learnSlab.length) { f2 *= FR.learnSlab[li]; why2.push('초기 숙련 × ' + FR.learnSlab[li]); li++; }
         else if (si === 0 && struct === 'COMP') { f2 *= FR.setFloor; why2.push('셋팅층 × ' + FR.setFloor); }
-        else if (si === 0) { f2 *= FR.firstF; why2.push('초기층 × ' + FR.firstF); }
+        else if (si === 0 && steelF) { f2 *= FR.firstF; why2.push('초기층 × ' + FR.firstF); }
         if (n === nUp) { f2 *= FR.roofF; why2.push('최상층 × ' + FR.roofF); }
-        var ready = struct === 'SC' ? (cEnd[Math.min(n + 3, topN)] || coreEnd) : frameStart;
-        var s1 = Math.max(stt, ready, holdT(n, false)), bind = s1 > stt + 0.005 ? (ready >= holdT(n, false) ? (struct === 'SC' ? '코어 n+3층' : '') : '구조제한') : '';
+        /* 바닥 n층 착수 = 코어 n + k 층 완료 후 : 철골 k = 3 (사례 A — ACS 하부 발판 간섭, 안전측) · RC 코어선행 k = seq.rcLag (가정, 기본 3) · 강합성 = 코어와 독립 */
+        var kLag = struct === 'SC' ? 3 : (!steelF ? SQ.rcLag : -1), ready = kLag >= 0 ? (cEnd[Math.min(n + kLag, topN)] || coreEnd) : frameStart;
+        var s1 = Math.max(stt, ready, holdT(n, false)), bind = s1 > stt + 0.005 ? (ready >= holdT(n, false) ? (kLag >= 0 ? '코어 n+' + kLag + '층' : '') : '구조제한') : '';
         /* 강합성 바닥은 코어와 독립 → 기초 전 T/C 공용 할증 (철골 바닥은 코어 n+3층 연동으로 코어에 반영) */
         var fpS = struct === 'COMP' ? preFac(s1, rcM(sl.wd * f2)) : 1;
         if (fpS > 1 + 1e-9) { f2 *= fpS; why2.push('기초 전 T/C 공용 × ' + r2(fpS)); }
         var wd2 = sl.wd * f2;
         if (holdT(n, false) > Math.max(stt, ready) + 0.005) holdLog.push({ lv: slabLv[si].lv + ' 바닥', m: holdT(n, false) - Math.max(stt, ready), why: n > lim2 ? '지하 수직재 완료 대기' : '기초 완료 대기' });
         var e1 = s1 + rcM(wd2);
-        slabRows.push({ lv: slabLv[si].lv, n: n, h: h2, Z: sl.Z, T: sl.T, per: sl.per, hf: sl.hf, f: f2, why: why2.join(' · '), wd: wd2, s: s1, e: e1, bind: bind, model: sl.model, lb: sl.lb || null,
-          formula: (sl.lb && sl.lb.on ? 'v2.8 c3 사슬 하한 ' + r1(sl.lb.v) + 'WD (' + sl.lb.Z + ' Zone · 해석) > ' : '') + sl.Z + ' Zone ÷ ' + sl.T + '팀 → ' + sl.per + ' Zone × ' + r2(dS) + 'WD' + (sl.hf > 1.001 ? ' × 층고 ' + r2(sl.hf) : '') + (f2 !== 1 ? ' × ' + r2(f2) : '') });
+        var sr = { lv: slabLv[si].lv, n: n, h: h2, Z: sl.Z, T: sl.T, per: sl.per, hf: sl.hf, f: f2, why: why2.join(' · '), wd: wd2, s: s1, e: e1, bind: bind, model: sl.model, lb: sl.lb || null,
+          formula: sl.model === 'v28'
+            ? '바닥 (c2) ' + sl.N + ' Zone' + (sl.zIn ? ' (입력)' : '') + ' · ' + sl.T + '팀 (팀당 ' + sl.nt + ') · Zone 1개 사슬 ' + r1(sl.zone) + 'WD' + (sl.lifts > 1 ? ' × ' + sl.lifts + '회 타설 ' + r2(sl.lk) : '') + (sl.hf > 1.001 ? ' × 층고 ' + r2(sl.hf) : '') + (sl.lb.on ? ' → 하루 1 Zone 하한 ' + r1(sl.lb.v) + 'WD' : '') + (sl.flow === 'FLOOR' && sl.nt > 1 ? ' + Zone 간격 ' + (sl.nt - 1) + 'WD' : '') + (f2 !== 1 ? ' × ' + r2(f2) : '')
+            : (sl.lb && sl.lb.on ? 'v2.8 c3 사슬 하한 ' + r1(sl.lb.v) + 'WD (' + sl.lb.Z + ' Zone · 해석) > ' : '') + sl.Z + ' Zone ÷ ' + sl.T + '팀 → ' + sl.per + ' Zone × ' + r2(dS) + 'WD' + (sl.hf > 1.001 ? ' × 층고 ' + r2(sl.hf) : '') + (f2 !== 1 ? ' × ' + r2(f2) : '') };
+        if (sl.model === 'v28') { sr.N = sl.N; sr.nt = sl.nt; sr.T0 = sl.T0; sr.takt = sl.takt; sr.zone = sl.zone; sr.zone28 = sl.zone28; sr.zoneF = sl.zoneF; sr.lk = sl.lk; sr.lifts = sl.lifts; sr.tail = sl.tail; sr.need = sl.need; sr.items = sl.items; sr.flow = sl.flow; sr.q = sl.q; sr.ch = sl.ch; sr.ovKey = sl.ovKey; }
+        slabRows.push(sr);
         stt = e1;
       }
-      var slabEnd = stt;
+      /* RC 코어선행 바닥 (c2 사슬 · Zone 연속) : 맨 위층 마지막 Zone 이 층간을 넘는 만큼 (nt − 1) 을 바닥 끝에 1회 */
+      var tailS = lastSl && lastSl.model === 'v28' ? lastSl.tail || 0 : 0, slabEnd = stt + rcM(tailS);
       var leadC = struct === 'COMP' ? (FR.zoneDur.COMP / hF - dC) + (coreRows[coreRows.length - 1].T - 1) * FR.lag : 0;
       var cEndL = coreEnd + rcM(leadC);
       frameEnd = Math.max(slabEnd, cEndL);
-      gov = cEndL >= slabEnd ? '코어 (RC)' : (struct === 'SC' ? '철골 · 데크 · 슬래브' : '바닥 (강합성)');
-      R.frameLead = leadC; R.coreEnd = coreEnd; R.slabEnd = slabEnd;
+      gov = cEndL >= slabEnd ? '코어 (RC)' : (struct === 'SC' ? '철골 · 데크 · 슬래브' : struct === 'COMP' ? '바닥 (강합성)' : '바닥 (RC c2 공종 사슬 · 코어 n+' + SQ.rcLag + '층 후)');
+      R.frameLead = cEndL >= slabEnd ? leadC : (tailS || leadC); R.coreEnd = coreEnd; R.slabEnd = slabEnd;
     }
     /* 순타 지하 → 지상 연계 : 중첩은 지상골조 공기의 1/2 이내 (지상골조가 지하골조보다 먼저 끝날 수 없음) */
     if (ovApplied > 0) {
@@ -1021,13 +1171,19 @@
     /* 골조 완료 = 지상골조 · 지하골조 (순타) · 기초 · 지하 수직재 (역타) 중 마지막 */
     var frameDone = seq === 'TD' ? Math.max(frameEnd, T_F, V_END) : Math.max(frameEnd, baseEnd);
     var typN = Math.min(nUp, Math.max(2, Math.floor(nUp / 2))), typH = hUp[typN - 1];
-    var typS = slabT(typN, typH), typC = hasCore && !dcOn ? coreT(typH) : null, typD = null;
+    var typS = slabT(typN, typH), typC = corePath && !dcOn ? coreT(typH) : null, typD = null, typP = null;
     if (dcOn) { typD = dcFloor(typN, typH, Atyp); typS = { model: 'dc', Z: typD.P.N, T: typD.P.T, per: typD.P.nt, hf: 1, wd: typD.wd }; }
+    /* 코어후행 : typ.post = { P (외주부), C (코어), gov, wd … } (DC typ.dc 와 같은 두 경로), typ.slab = 층간 요약 (Z · T · per = 외주부) */
+    else if (typS.model === 'post') { typP = typS; typS = { model: 'post', ch: typP.ch, Z: typP.P.N, N: typP.P.N, T: typP.P.T, T0: typP.P.T0, per: typP.P.nt, nt: typP.P.nt, hf: typP.hf, lifts: typP.lifts, lk: typP.lk, wd: typP.wd, tail: typP.tail, flow: typP.flow, gov: typP.gov }; }
     var fBasis = dcOn
       ? '기준층 ' + r1(typD.wd) + 'WD/층 (DC 층 사이클 · 외주부 ' + typD.P.N + ' Zone · ' + typD.P.T + '팀 ' + r1(typD.P.zone) + 'WD / 코어 ' + typD.C.N + ' Zone ' + r1(typD.C.zone) + 'WD · ' + (typD.flow ? 'Zone 연속' : '층 단위 완결') + ') · 주공정 ' + gov
+      : typP
+        ? '기준층 ' + r1(typP.wd) + 'WD/층 (코어후행 · 외주부 ' + typP.P.ch + ' ' + typP.P.N + ' Zone · ' + typP.P.T + '팀 ' + r1(typP.P.zoneF) + 'WD / 코어 c1 ' + typP.C.N + ' Zone · ' + typP.C.T + '팀 ' + r1(typP.C.zoneF) + 'WD → ' + typP.gov + ' 지배 · ' + (typP.flow === 'ZONE' ? 'Zone 연속 · 맨 위층 + ' + r1(R.frameLead || 0) + 'WD' : '층 단위 완결') + ') · 주공정 ' + gov
+      : typS.model === 'v28' && typC
+        ? '기준층 ' + r1(Math.max(typS.wd, typC.wd)) + 'WD/층 (코어선행 · 바닥 c2 ' + typS.N + ' Zone · ' + typS.T + '팀 (팀당 ' + typS.nt + ') · Zone 1개 ' + r1(typS.zone) + 'WD → ' + r1(typS.wd) + 'WD / 코어 ' + typC.Z + ' Zone × ' + r2(dC) + 'WD = ' + r1(typC.wd) + 'WD' + (typC.lb && typC.lb.on ? ' → c1 하한 ' + r1(typC.lb.v) + 'WD' : '') + ') · 주공정 ' + gov + ' · 바닥 n층 = 코어 n+' + SQ.rcLag + '층 완료 후'
       : typS.model === 'v28'
-        ? '기준층 ' + r1(typS.wd) + 'WD/층 (v2.8 공종 사슬 · ' + typS.N + ' Zone · ' + typS.T + '팀 (팀당 ' + typS.nt + ') · Zone 1개 ' + r1(typS.zone) + 'WD' + (typS.lb.on ? ' → 하루 1 Zone 하한 ' + r1(typS.lb.v) + 'WD' : '') + ' · ' + (typS.flow === 'ZONE' ? 'Zone 연속 · 맨 위층 + ' + r1(R.frameLead || 0) + 'WD' : '층 단위 완결') + ') · 주공정 ' + gov
-        : '기준층 ' + r1(Math.max(typS.wd, typC ? typC.wd : 0)) + 'WD/층 (바닥 ' + typS.Z + ' Zone ÷ ' + typS.T + '팀 × ' + r2(dS) + 'WD' + (typS.lb && typS.lb.on ? ' → c3 하한 ' + r1(typS.lb.v) + 'WD' : '') + (typC ? ' · 코어 ' + typC.Z + ' Zone × ' + r2(dC) + 'WD' + (typC.lb && typC.lb.on ? ' → c1 하한 ' + r1(typC.lb.v) + 'WD' : '') : '') + ') · 주공정 ' + gov + (struct === 'SC' ? ' · 철골 n층 = 코어 n+3층 완료 후' : '');
+        ? '기준층 ' + r1(typS.wd) + 'WD/층 (' + (typS.ch === 'c5' ? '동시타설 ' + sNm + ' c5 ' : 'v2.8 ') + '공종 사슬 · ' + typS.N + ' Zone · ' + typS.T + '팀 (팀당 ' + typS.nt + ') · Zone 1개 ' + r1(typS.zone) + 'WD' + (typS.bind === 'steel' ? ' → 철골 · DECK 선행 ' + r1(typS.lead) + 'WD 지배' : '') + (typS.lb.on ? ' → 하루 1 Zone 하한 ' + r1(typS.lb.v) + 'WD' : '') + ' · ' + (typS.flow === 'ZONE' ? 'Zone 연속 · 맨 위층 + ' + r1(R.frameLead || 0) + 'WD' : '층 단위 완결') + ') · 주공정 ' + gov
+        : '기준층 ' + r1(Math.max(typS.wd, typC ? typC.wd : 0)) + 'WD/층 (바닥 ' + typS.Z + ' Zone ÷ ' + typS.T + '팀 × ' + r2(dS) + 'WD' + (typS.lb && typS.lb.on ? ' → c3 하한 ' + r1(typS.lb.v) + 'WD' : '') + (typC ? ' · 코어 ' + typC.Z + ' Zone × ' + r2(dC) + 'WD' + (typC.lb && typC.lb.on ? ' → c1 하한 ' + r1(typC.lb.v) + 'WD' : '') : '') + ') · 주공정 ' + gov + (struct === 'SC' && corePath ? ' · 철골 n층 = 코어 n+3층 완료 후' : '');
     var fName = '지상골조 (' + STRUCT_N[struct].replace(/ \(.*\)/, '') + ', ' + nUp + '층' + (nPH ? ' + 옥탑 ' + nPH : '') + ')';
     function findA(id) { for (var q = 0; q < acts.length; q++) if (acts[q].id === id) return acts[q]; return null; }
     var frameCPs;
@@ -1057,58 +1213,79 @@
       frameCPs = frameStart;
       act({ id: 'frame', g: '골조', name: fName, s: frameStart, e: frameEnd, cp: true, rate: 'rc', wd: (frameEnd - frameStart) * rRC * D, basis: fBasis + (ovApplied > 0 ? ' · 지하골조와 ' + r1(ovApplied) + '개월 중첩' : '') });
     }
-    if (hasCore && !dcOn) act({ id: 'core', g: '골조', name: '코어 선행 (' + (sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼') + ')', s: coreRows[0].s, e: coreRows[coreRows.length - 1].e, cp: false, rate: 'rc', basis: '코어 ' + coreRows[Math.min(6, coreRows.length - 1)].Z + ' Zone · 기준 ' + r1(typC.wd) + 'WD/층' });
-    var bUsed = !!(base && base.model === 'v28'), lbUsed = hasCore && !dcOn && frMode !== 'OFF';
+    if (corePath && !dcOn) act({ id: 'core', g: '골조', name: '코어 선행 (' + (sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼') + ')', s: coreRows[0].s, e: coreRows[coreRows.length - 1].e, cp: false, rate: 'rc', basis: '코어 ' + coreRows[Math.min(6, coreRows.length - 1)].Z + ' Zone · 기준 ' + r1(typC.wd) + 'WD/층' });
+    var bUsed = !!(base && base.model === 'v28'), lbUsed = corePath && !dcOn && lbOn;
+    /* 지상 v2.8 공종 사슬 경로 (동시 RC c4 · 동시 철골 c5 · RC 코어선행 바닥 c2 · 코어후행 c2 | c3 + c1) */
+    var upCh = !dcOn && (v28On || seqU === 'POST' || (seqU === 'SIM' && steelF) || (seqU === 'PRE' && !steelF));
+    var onC5 = !dcOn && seqU === 'SIM' && steelF, onC2 = !dcOn && !steelF && (seqU === 'PRE' || seqU === 'POST'), onC3 = !dcOn && steelF && seqU === 'POST', onC1 = !dcOn && seqU === 'POST';
     /* 코어 면적 자동값 (adv.coreA 없을 때) 에 실제 쓴 비율 (coreRb : 철골 · 강합성 · DC = frame.core.ratio, 일반 RC · SRC = v28.coreR) */
     var coreRuse = coreRb, coreRpath = coreSC ? 'frame.core.ratio' : 'v28.coreR';
     /* 옛 zSpec (면적 900㎡ Zone) 이 v2.8 사슬 경로 층에 들어 있으면 쓰지 않았다고 알림 (체적 Zone 수는 adv.zN) */
-    var zIgn = (v28On && !dcOn && Object.keys(ZS.up).length > 0) || (bUsed && Object.keys(ZS.b).length > 0);
-    if (zIgn) R.notes.push('바닥 Zone 수 입력 (zSpec \'' + String(A.zSpec) + '\' · 면적 900㎡ Zone 기준) 은 v2.8 공종 사슬 경로 (일반 RC · SRC 바닥 · 순타 지하 바닥) 에서 쓰지 않았습니다 — 체적 Zone 수 (1회 타설 ' + V8.pourV + '㎥) 는 별도 입력 (adv.zN)');
+    var zIgn = (upCh && Object.keys(ZS.up).length > 0) || (bUsed && Object.keys(ZS.b).length > 0);
+    if (zIgn) R.notes.push('바닥 Zone 수 입력 (zSpec \'' + String(A.zSpec) + '\' · 면적 900㎡ Zone 기준) 은 v2.8 공종 사슬 경로 (지상 ' + POUR_N[seqU] + ' 사슬 · 순타 지하 바닥) 에서 쓰지 않았습니다 — 체적 Zone 수 (1회 타설 ' + V8.pourV + '㎥) 는 별도 입력 (adv.zN)');
     if (ZN.err.length) R.warn.push('체적 Zone 수 입력 (zN) 을 읽지 못한 항목 : ' + ZN.err.join(', '));
+    /* 타설 순서 결과 : sel (입력) · auto (자동 규칙) · used (계산에 쓴 값) · reason (자동 이유) · src · opts (고를 수 있는 값 — 벽식 SIM 만 · DC · 옛 식은 없음) · lock (선택이 무시되는 이유) */
+    var pOpts = dcOn || legacy ? [] : (wallRC ? ['SIM'] : ['SIM', 'PRE', 'POST']);
+    var pour = { sel: pSel, auto: pAuto, used: seqU, name: POUR_N[seqU], autoName: POUR_N[pAuto], reason: pWhy, src: dcOn ? 'DC 경로' : legacy ? '옛 식' : '가정 (v2.8 기본 + 일반 적용 기준, 사례 보정 전)',
+      opts: pOpts, lock: dcOn ? 'DC 층 사이클 (분리 타설)' : legacy ? 'frChain OFF (옛 식)' : wallRC ? '벽식 — 동시타설만' : '', rule: { rcPreF: SQ.rcPreF, stPostF: SQ.stPostF, rcLag: SQ.rcLag },
+      ch: dcOn ? 'dc' : seqU === 'POST' ? (steelF ? 'c3+c1' : 'c2+c1') : seqU === 'SIM' ? (steelF ? 'c5' : (v28On ? 'c4' : 'old')) : (steelF ? 'old' : 'c2+core') };
     R.frame = { struct: struct, sysC: sysC, floors: floors, coreRows: coreRows, slabRows: slabRows, start: frameStart, end: frameEnd, done: frameDone, cpStart: frameCPs, gov: gov, holds: holdLog, lim: lim, lim2: lim2, limC: limC, lim2C: lim2C, Atyp: Atyp, dS: dS, V_END: V_END, T_F: T_F, ov: ovApplied,
-      typ: { n: typN, h: typH, slab: typS, core: typC, dc: typD }, dc: dcOn, dcMode: dcMode,
-      model: dcOn ? 'dc' : (v28On ? 'v28' : 'old'), frChain: frMode, rcFlow: rcFlowZ ? 'ZONE' : 'FLOOR', lead: R.frameLead || 0,
-      v28: { on: v28On && !dcOn, base: bUsed, lb: lbUsed, guard: dcOn && frMode !== 'OFF', ptOn: ptOn, ptX: ptXd, hQ: V8.hQ, hQB: V8.hQB, spanL: sL8, spanS: sS8, colN: colN8 || null, coreA: coreAin || null,
+      typ: { n: typN, h: typH, slab: typS, core: typC, dc: typD, post: typP }, dc: dcOn, dcMode: dcMode, pour: pour, seq: seqU,
+      model: dcOn ? 'dc' : (seqU === 'POST' ? 'post' : (upCh ? 'v28' : 'old')), frChain: frMode, rcFlow: rcFlowZ ? 'ZONE' : 'FLOOR', lead: R.frameLead || 0,
+      v28: { on: v28On && !dcOn, up: upCh, ch: pour.ch, base: bUsed, bChain: A.bChain === 'ON' ? 'ON' : 'OFF', lb: lbUsed, lbSC: V8.lbSC, guard: dcOn && frMode !== 'OFF', ptOn: ptOn, ptX: ptXd, ptS: ptS, hQ: V8.hQ, hQB: V8.hQB, spanL: sL8, spanS: sS8, colN: colN8 || null, coreA: coreAin || null,
         coreR: coreRuse, coreRpath: coreRpath, coreAuto: r1(Atyp * coreRuse), zN: !!(Object.keys(ZN.up).length || Object.keys(ZN.b).length), zSpecIgnored: zIgn, lib: Object.assign({}, V8) },
       assume: assume28() };
-    /* 실제 쓴 기본 가정 (화면 '주요 가정사항' 표 · 편집용) : k · n (이름) · v · u (단위) · path (편집 경로 : S.libOv 'v28.*' 또는 adv.*) · src ('v2.8' | '가정' | '사례 보정' | '해석' | '입력') · g (묶음) · on (이번 계산에 쓰였는지) */
+    /* 실제 쓴 기본 가정 (화면 '주요 가정사항' 표 · 편집용) : k · n (이름) · v · u (단위) · path (편집 경로 : S.libOv 'v28.*' · 'seq.*' 또는 adv.*) · src ('v2.8' | '가정' | '사례 보정' | '해석' | '입력') · g (묶음) · on (이번 계산에 쓰였는지) */
     function assume28() {
-      var o = [], onC4 = (v28On && !dcOn) || bUsed, onLb = lbUsed || dcOn;
+      var o = [], onC4 = (v28On && !dcOn) || bUsed, onLb = lbUsed || dcOn, onNew = onC5 || onC2 || onC3 || onC1, onUp = onC4 || onNew, onAll = onUp || onLb;
       function lib(k, n, u, src, g, on) { var v = V8[k], d = V8D[k]; o.push({ k: k, n: n, v: v, u: u, path: 'v28.' + k, src: d != null && Math.abs(v - d) > 1e-9 ? '입력' : src, g: g, on: !!on }); }
       function rule(k, n, src, g, on) { o.push({ k: 'rule.' + k, n: n, v: null, u: '', path: '', src: src, g: g, on: !!on }); }
-      o.push({ k: 'spanL', n: '스팬 장변', v: sL8, u: 'm', path: 'adv.spanL', src: num(A.spanL, 0) > 0 || V8.spanL !== V8D.spanL ? '입력' : 'v2.8', g: '물량', on: onC4 || onLb });
-      o.push({ k: 'spanS', n: '스팬 단변', v: sS8, u: 'm', path: 'adv.spanS', src: num(A.spanS, 0) > 0 || V8.spanS !== V8D.spanS ? '입력' : 'v2.8', g: '물량', on: onC4 || onLb });
-      lib('colA', '기둥 단면 (지상)', '㎡', 'v2.8', '물량', onC4 || onLb); lib('colAB', '기둥 단면 (지하)', '㎡', 'v2.8', '물량', bUsed);
-      lib('beamsPerCol', '기둥당 보', '개', 'v2.8', '물량', onC4 || onLb); lib('beamA', '보 단면 (지상)', '㎡', 'v2.8', '물량', onC4 || onLb); lib('beamAB', '보 단면 (지하)', '㎡', 'v2.8', '물량', bUsed); lib('beamK', '보 길이 계수', '', 'v2.8', '물량', onC4 || onLb);
-      lib('slabT', '슬래브 두께 (지상)', 'm', 'v2.8', '물량', onC4 || onLb); lib('slabTB', '슬래브 두께 (지하)', 'm', 'v2.8', '물량', bUsed);
-      o.push({ k: 'coreA', n: '코어 면적', v: coreAin || r1(Atyp * coreRuse), u: '㎡', path: 'adv.coreA', src: coreAin ? '입력' : (coreSC ? '가정' : 'v2.8'), g: '물량', on: onC4 || onLb, note: coreAin ? '' : '기준층 × ' + coreRuse + (coreSC ? ' (frame.core.ratio — 철골 · 강합성 · DC 코어, v2.8 은 0.23)' : '') });
-      lib('coreR', '코어 면적 비 (자동, 일반 RC · SRC)', '', 'v2.8', '물량', onC4 && !coreAin && !coreSC);
-      o.push({ k: 'coreRsc', n: '코어 면적 비 (자동, 철골 · 강합성 · DC)', v: FR.core.ratio, u: '', path: 'frame.core.ratio', src: '가정', g: '물량', on: coreSC && !coreAin, note: 'c1 · c3 하한 · DC 분할 하한 · 지하 사슬도 이 코어 (옛 경로 코어 Zone · 화면 코어 그림과 같게) — v2.8 은 0.23' });
-      lib('coreWall', '코어 벽 체적 비', '', 'v2.8', '물량', onC4 || onLb);
-      lib('hQ', '물량 · Zone 기준 층고 (지상)', 'm', 'v2.8', '물량', onC4 || lbUsed); lib('hQB', '물량 · Zone 기준 층고 (지하)', 'm', 'v2.8', '물량', bUsed);
-      lib('rebCB', '철근비 기둥 · 보', 't/㎥', 'v2.8', '물량', onC4 || onLb); lib('rebSC', '철근비 슬래브 · 벽', 't/㎥', 'v2.8', '물량', onC4 || onLb);
-      lib('pourV', '1회 타설 (수평)', '㎥', 'v2.8', 'Zone', onC4 || onLb); lib('pourVc', '1회 타설 (코어 수직)', '㎥', 'v2.8', 'Zone', lbUsed); lib('pump', '펌프 대수', '대', 'v2.8', 'Zone', onC4 || onLb);
-      lib('zpt', '팀당 Zone', '개', 'v2.8', '팀', onC4); lib('takt', '팀 안 Zone 간격', 'WD', 'v2.8', '팀', onC4);
-      lib('tPerMD', '철근 생산성', 't/인·일', 'v2.8', '생산성', onC4 || onLb); lib('crewW', '벽체 철근 인원', '인', 'v2.8', '생산성', onC4 || onLb); lib('crewCS', '코어 슬래브 철근 인원', '인', 'v2.8', '생산성', onLb); lib('crewU', '바닥 철근 · M&E 인원', '인', 'v2.8', '생산성', onC4 || onLb);
-      lib('table', '테이블폼', '장/일', 'v2.8', '생산성', onC4 || dcOn); lib('tableW', '테이블폼 1장 폭', 'm', 'v2.8', '생산성', onC4 || dcOn); lib('deck', 'DECK', '㎡/일', 'v2.8', '생산성', onC4 || onLb); lib('steelPc', '철골 설치', 'pcs/일', 'v2.8', '생산성', onLb && steelF); lib('bolt', '볼팅', 'WD', 'v2.8', '생산성', onLb && steelF);
-      lib('lift', '양중', 'WD', 'v2.8', '고정 일수', onC4 || onLb); lib('wform', '벽체 형틀', 'WD', 'v2.8', '고정 일수', onC4 || onLb); lib('form', '형틀 (c4)', 'WD', 'v2.8', '고정 일수', onC4); lib('form2', '형틀 (c2)', 'WD', 'v2.8', '고정 일수', dcOn && !steelF);
-      lib('me', 'M&E', 'WD', 'v2.8', '고정 일수', onLb); lib('pour', '타설', 'WD', 'v2.8', '고정 일수', onC4 || onLb); lib('ptAdd', 'PT (철근 · M&E 안)', 'WD', 'v2.8', '고정 일수', onC4 && ptOn); lib('ptX', 'PT 슬래브 추가 (지상)', 'WD', '가정', '고정 일수', v28On && !dcOn && ptXd > 0); lib('c3End', 'c3 마무리', 'WD', 'v2.8', '고정 일수', onLb && steelF);
+      var SQD = defaultSeq();
+      function sq(k, n, u, on, note) { o.push({ k: 'seq.' + k, n: n, v: SQ[k], u: u, path: 'seq.' + k, src: SQ[k] !== SQD[k] ? '입력' : '가정', g: '타설 순서', on: !!on, note: note || '' }); }
+      /* 타설 순서 (맨 앞 — 화면 '주요 가정사항' 칸 '타설 순서' : 자동 표시 + 이유 말풍선 + 선택) */
+      o.push({ k: 'pourSeq', n: '타설 순서', v: POUR_N[seqU], u: '', path: 'adv.pourSeq', src: pSel !== 'AUTO' ? '입력' : (dcOn ? 'DC 경로' : legacy ? '옛 식' : '가정'), g: '타설 순서', on: true, note: pWhy, sel: pSel, auto: pAuto, used: seqU, opts: pOpts });
+      sq('rcPreF', 'RC · SRC 코어선행 자동 기준 (지상 층수 이상)', '층', !steelF && !dcOn && !legacy && !wallRC && pSel === 'AUTO', '그 아래는 동시타설 — 가정 (사례 보정 전)');
+      sq('stPostF', '철골 · 강합성 코어후행 자동 기준 (지상 층수 이하)', '층', steelF && !dcOn && !legacy && pSel === 'AUTO', '그 위는 코어선행 (v2.8 철골 기본) — 가정 (사례 보정 전)');
+      sq('rcLag', 'RC 코어선행 바닥 = 코어 n + 이 값 층 완료 후', '층', corePath && !steelF && !dcOn, '철골 코어선행 n+3 (사례 A) 과 같은 값 — 가정');
+      o.push({ k: 'spanL', n: '스팬 장변', v: sL8, u: 'm', path: 'adv.spanL', src: num(A.spanL, 0) > 0 || V8.spanL !== V8D.spanL ? '입력' : 'v2.8', g: '물량', on: onAll });
+      o.push({ k: 'spanS', n: '스팬 단변', v: sS8, u: 'm', path: 'adv.spanS', src: num(A.spanS, 0) > 0 || V8.spanS !== V8D.spanS ? '입력' : 'v2.8', g: '물량', on: onAll });
+      lib('colA', '기둥 단면 (지상)', '㎡', 'v2.8', '물량', onAll); lib('colAB', '기둥 단면 (지하)', '㎡', 'v2.8', '물량', bUsed);
+      lib('beamsPerCol', '기둥당 보', '개', 'v2.8', '물량', onAll); lib('beamA', '보 단면 (지상)', '㎡', 'v2.8', '물량', onC4 || onC2 || onLb); lib('beamAB', '보 단면 (지하)', '㎡', 'v2.8', '물량', bUsed); lib('beamK', '보 길이 계수', '', 'v2.8', '물량', onC4 || onC2 || onLb);
+      lib('slabT', '슬래브 두께 (지상)', 'm', 'v2.8', '물량', onAll); lib('slabTB', '슬래브 두께 (지하)', 'm', 'v2.8', '물량', bUsed);
+      o.push({ k: 'coreA', n: '코어 면적', v: coreAin || r1(Atyp * coreRuse), u: '㎡', path: 'adv.coreA', src: coreAin ? '입력' : (coreSC ? '가정' : 'v2.8'), g: '물량', on: onAll || corePath, note: coreAin ? '' : '기준층 × ' + coreRuse + (coreSC ? ' (frame.core.ratio — 철골 · 강합성 · DC 코어, v2.8 은 0.23)' : '') });
+      lib('coreR', '코어 면적 비 (자동, 일반 RC · SRC)', '', 'v2.8', '물량', (onC4 || onC2 || corePath) && !coreAin && !coreSC);
+      o.push({ k: 'coreRsc', n: '코어 면적 비 (자동, 철골 · 강합성 · DC)', v: FR.core.ratio, u: '', path: 'frame.core.ratio', src: '가정', g: '물량', on: coreSC && !coreAin, note: '철골 · 강합성 사슬 (c5 · c3 · c1) · c1 · c3 하한 · DC 분할 하한 · 지하 사슬도 이 코어 (옛 경로 코어 Zone · 화면 코어 그림과 같게) — v2.8 은 0.23' });
+      lib('coreWall', '코어 벽 체적 비', '', 'v2.8', '물량', onC4 || onC5 || onC1 || onLb);
+      lib('hQ', '물량 · Zone 기준 층고 (지상)', 'm', 'v2.8', '물량', onUp || lbUsed); lib('hQB', '물량 · Zone 기준 층고 (지하)', 'm', 'v2.8', '물량', bUsed);
+      lib('rebCB', '철근비 기둥 · 보', 't/㎥', 'v2.8', '물량', onAll); lib('rebSC', '철근비 슬래브 · 벽', 't/㎥', 'v2.8', '물량', onAll);
+      lib('pourV', '1회 타설 (수평)', '㎥', 'v2.8', 'Zone', onAll); lib('pourVc', '1회 타설 (코어 수직)', '㎥', 'v2.8', 'Zone', lbUsed || onC1); lib('pump', '펌프 대수', '대', 'v2.8', 'Zone', onAll);
+      lib('zpt', '팀당 Zone', '개', 'v2.8', '팀', onUp); lib('takt', '팀 안 Zone 간격', 'WD', 'v2.8', '팀', onUp);
+      lib('tPerMD', '철근 생산성', 't/인·일', 'v2.8', '생산성', onAll); lib('crewW', '벽체 철근 인원', '인', 'v2.8', '생산성', onC4 || onC5 || onC1 || onLb); lib('crewCS', '코어 슬래브 철근 인원', '인', 'v2.8', '생산성', onLb || onC1); lib('crewU', '바닥 철근 · M&E 인원', '인', 'v2.8', '생산성', onC4 || onC2 || onC3 || onLb);
+      lib('crewS', '동시타설 철골 철근 · M&E 인원 (c5)', '인', 'v2.8', '생산성', onC5);
+      lib('table', '테이블폼', '장/일', 'v2.8', '생산성', onC4 || onC2 || dcOn); lib('tableW', '테이블폼 1장 폭', 'm', 'v2.8', '생산성', onC4 || onC2 || dcOn); lib('deck', 'DECK', '㎡/일', 'v2.8', '생산성', onAll);
+      lib('steelPc', '철골 설치', 'pcs/일', 'v2.8', '생산성', (onLb && steelF) || onC3 || onC5); lib('bolt', '볼팅', 'WD', 'v2.8', '생산성', (onLb && steelF) || onC3 || onC5);
+      lib('lift', '양중', 'WD', 'v2.8', '고정 일수', onAll); lib('wform', '벽체 형틀', 'WD', 'v2.8', '고정 일수', onC4 || onC5 || onC1 || onLb); lib('form', '형틀 (c4)', 'WD', 'v2.8', '고정 일수', onC4); lib('form2', '형틀 (c2)', 'WD', 'v2.8', '고정 일수', onC2 || (dcOn && !steelF));
+      lib('me', 'M&E', 'WD', 'v2.8', '고정 일수', onLb || onC3 || onC1); lib('pour', '타설', 'WD', 'v2.8', '고정 일수', onAll); lib('ptAdd', 'PT (철근 · M&E 안)', 'WD', 'v2.8', '고정 일수', onC4 && ptOn); lib('ptX', 'PT 슬래브 추가 (지상)', 'WD', '가정', '고정 일수', (v28On && !dcOn && ptXd > 0) || (onC2 && ptS > 0)); lib('c3End', 'c3 마무리', 'WD', 'v2.8', '고정 일수', (onLb && steelF) || onC3);
       lib('ov1', '겹침 : 벽체 철근 ∥ 양중', 'WD', 'v2.8', '겹침', onC4); lib('ov3', '겹침 : 테이블폼', 'WD', '사례 보정', '겹침', onC4); lib('ov4', '겹침 : 형틀', 'WD', '사례 보정', '겹침', onC4); lib('ov5', '겹침 : DECK', 'WD', '사례 보정', '겹침', onC4);
       lib('wallZ', '지하 외벽 Zone 길이', 'm', 'v2.8', '지하', bUsed); lib('wzpt', '외벽팀 자동 = Zone ÷ 이 값', '개', '가정', '지하', bUsed); lib('wKmin', '외벽팀 반영 하한 (지금 값 × )', '', '가정', '지하', bUsed && !!(base && base.wIn));
       o.push({ k: 'hStd', n: 'DC 분할 하한 기준 층고', v: V8.hStd, u: 'm', path: 'v28.hStd', src: Math.abs(V8.hStd - V8D.hStd) > 1e-9 ? '입력' : '가정', g: 'DC', on: dcOn && frMode !== 'OFF', note: 'v2.8 은 DC 기준층 층고 (기본 6m) 기준 — 사례 C 는 하한 18 < 사슬 27 이라 영향 없음' });
       lib('ptAll', 'PT 1일 항상 (1) / PT 슬래브만 (0)', '', 'v2.8', '규칙', onC4);
-      rule('takt', '층간 ≥ 팀당 Zone × 하루 1 Zone (팀이 적을 때 하한)', '가정', '규칙', onC4);
-      rule('lk', '2회 타설 = 사슬 × (1 − 0.3 + 0.3 × 회수) · 층고 보정 (수직재 반복 대신)', '가정', '규칙', onC4);
-      rule('tail', '맨 위층 꼬리 = 마지막 Zone 이 층간을 넘는 만큼 (nt − 1)', '가정', '규칙', v28On && !dcOn);
+      lib('lbSC', '철골 · 강합성 코어선행 v2.8 하한 (1 켬 · 0 끔)', '', '가정', '규칙', corePath && !dcOn && !legacy);
+      rule('takt', '층간 ≥ 팀당 Zone × 하루 1 Zone (팀이 적을 때 하한)', '가정', '규칙', onUp);
+      rule('lk', '2회 타설 = 사슬 × (1 − 0.3 + 0.3 × 회수) · 층고 보정 (수직재 반복 대신)', '가정', '규칙', onUp);
+      rule('tail', '맨 위층 꼬리 = 마지막 Zone 이 층간을 넘는 만큼 (nt − 1)', '가정', '규칙', upCh);
       rule('bTail', '지하 바닥 Zone 간격 (nt − 1) 은 1F 바닥에서 1회', '가정', '규칙', bUsed);
-      rule('hQ', '물량 · Zone 은 기준 층고 하나로 (층별 층고는 2회 타설 계수 · 층고 보정으로만) — 층고를 올려도 사이클이 줄지 않음', 'v2.8', '규칙', onC4 || lbUsed);
+      rule('hQ', '물량 · Zone 은 기준 층고 하나로 (층별 층고는 2회 타설 계수 · 층고 보정으로만) — 층고를 올려도 사이클이 줄지 않음', 'v2.8', '규칙', onUp || lbUsed);
       rule('wallK', '지하 외벽 = 지금 식 (실적값) · 외벽팀 입력 때만 × ⌈둘레 Zone ÷ 팀⌉ ÷ ⌈둘레 Zone ÷ 자동 팀⌉ (하한 ' + V8.wKmin + ')', '가정', '규칙', bUsed);
-      rule('c3', '철골 · 강합성 바닥 하한 = v2.8 c3 (기준 층고, v2.8 철골 기본 코어 선행은 c1 만)', '해석', '규칙', lbUsed);
+      rule('c3', '철골 · 강합성 바닥 하한 = v2.8 c3 (기준 층고, v2.8 철골 기본 코어 선행은 c1 만)', '해석', '규칙', lbUsed && steelF);
       rule('c1', '코어 하한 = v2.8 c1 (기준 층고 1개층분) × 수직재 회수', 'v2.8', '규칙', lbUsed);
-      rule('scTeams', '철골 · 강합성 바닥 · 코어는 옛 식 — 팀 수가 층 사이클을 직접 나눔 (하한만 v2.8 사슬)', '가정', '규칙', hasCore && !dcOn);
+      rule('scTeams', '철골 · 강합성 코어선행 바닥 · 코어는 옛 식 — 팀 수가 층 사이클을 직접 나눔 (사례 A 보정)', '가정', '규칙', corePath && steelF && !dcOn);
+      rule('preCore', '코어선행 코어 = 옛 식 (팀당 Zone × ACS 4 · 갱폼 6 WD/Zone · 시스템폼 셋팅 · 숙련) — RC 바닥은 v2.8 c2 사슬 · Zone 연속', '가정', '규칙', corePath && !steelF && !dcOn);
+      rule('c5Lead', '동시타설 철골 = v2.8 c5 (철골 · DECK 선행은 사슬 밖) · 층간 ≥ 선행 (Zone 1개, v2.8 DC 처럼) · 첫 층 선행 1회', 'v2.8', '규칙', onC5);
+      rule('post', '코어후행 층간 = max(외주부 사슬, 코어 c1 사슬) — 각각 Zone 연속 · 팀 규칙 (v2.8 cycleFor)', 'v2.8', '규칙', onC1);
       rule('tdT', '역타 슬래브 팀 = 팀당 Zone 으로 한 번 나눔 (v2.8 이중 나눗셈 안 따름)', '가정', '규칙', seq === 'TD');
       rule('guard', 'DC 분할 하한 = 일반 사이클 (기준 층고 hStd) × 회수 · 철골 선행 지배', 'v2.8', '규칙', dcOn && frMode !== 'OFF');
-      rule('zStep', 'Zone 수 = ⌈체적 ÷ 1회 타설⌉ · 공종 일수 올림 → 면적이 조금 늘 때 Zone 이 하나 늘면 층 사이클이 1 ~ 2 WD 줄 수 있음 (면적 계단 효과, v2.8 도 같음)', 'v2.8', '규칙', onC4);
+      rule('zStep', 'Zone 수 = ⌈체적 ÷ 1회 타설⌉ · 공종 일수 올림 → 면적이 조금 늘 때 Zone 이 하나 늘면 층 사이클이 1 ~ 2 WD 줄 수 있음 (면적 계단 효과, v2.8 도 같음)', 'v2.8', '규칙', onUp);
       return o;
     }
 
@@ -1139,7 +1316,8 @@
     /* 팀수 입력 키 (화면 최적 팀 계산 sweepTeams 용) : key · now (지금 값) · max (훑을 범위 끝) · inp (입력했는지) */
     var tk = [{ key: 'fTeams', label: '기초 철근팀', now: fz.teams, max: 8, inp: num(A.fTeams, 0) > 0 }];
     if (typD) tk.push({ key: 'uTeams', label: '지상 외주부팀', now: typD.P.T, max: Math.max(1, Math.min(8, typD.P.N)), inp: !!uTin }, { key: 'cTeams', label: '코어팀', now: typD.C.T, max: Math.max(1, Math.min(8, typD.C.N)), inp: !!cTin });
-    else { tk.push({ key: 'uTeams', label: hasCore ? '지상 철골팀' : '지상 형틀팀', now: typS.T, max: Math.max(1, Math.min(8, typS.Z)), inp: !!uTin }); if (typC) tk.push({ key: 'cTeams', label: '코어 형틀팀', now: typC.T, max: Math.max(1, Math.min(8, typC.Z)), inp: !!cTin }); }
+    else if (typP) tk.push({ key: 'uTeams', label: '지상 외주부팀', now: typP.P.T, max: Math.max(1, Math.min(8, typP.P.N)), inp: !!uTin }, { key: 'cTeams', label: '코어팀', now: typP.C.T, max: Math.max(1, Math.min(8, typP.C.N)), inp: !!cTin });
+    else { tk.push({ key: 'uTeams', label: steelF ? (corePath ? '지상 철골팀' : '지상 바닥팀 (동시타설)') : (corePath ? '지상 바닥 형틀팀' : '지상 형틀팀'), now: typS.T, max: Math.max(1, Math.min(8, typS.Z)), inp: !!uTin }); if (typC) tk.push({ key: 'cTeams', label: '코어 형틀팀', now: typC.T, max: Math.max(1, Math.min(8, typC.Z)), inp: !!cTin }); }
     if (bUsed) {
       /* 외벽팀 max = 하한 (wKmin) 에 닿는 가장 적은 팀 (그 위로는 효과 없음). sweep false = 화면 최적 팀 자동 계산에 넣지 않기를 권장 (외벽 팀 반영은 가정 — 비우면 실적값) */
       var bR1 = base.rows[base.rows.length - 1], wq0 = Math.max(1, cl(base.Zw / base.Tw0)), wMax = Math.min(8, base.Zw);
@@ -1181,7 +1359,16 @@
     if (f.nPit) add('기초', 'PIT Zone ' + f.nPit + '개 — 바닥 · 벽체 2회 타설 (+' + r1(f.Rpit - f.R) + 'WD) · 공정 불리 시 25명 증원 조건');
     if (R.pile) add('기초', R.fType === 'PHC' ? 'PHC 파일 ' + R.pile.qty + ' — 시항타 후 본수 확정 · 굴착은 파일 Zone 추종' : '현장타설말뚝 ' + R.pile.qty + ' — 지지층 확인 · 슬라임 처리 시간 반영');
     if (R.geoRes) add('토목', '지열 ' + R.geoRes.n + '공 — 건물 하부 시공으로 C.P (' + L.geo.rigs + '대 × ' + L.geo.rate + '공/일)');
-    if (fr.struct === 'SC') add('골조', '철골 n층 = 코어 n+3층 완료 후 (' + (fr.sysC === 'ACS' ? 'ACS 하부 발판 간섭, ' : '') + '안전측) · 코어 · 외주부 A → B 순환, 타설일 분산');
+    if (fr.pour) {
+      var po = fr.pour;
+      var ign = po.sel !== 'AUTO' && po.sel !== po.used;
+      add('골조', '타설 순서 : ' + po.name + (po.lock ? ' — ' + po.reason + (ign ? ' (선택 ' + ({ SIM: '동시타설', PRE: '코어선행', POST: '코어후행' })[po.sel] + ' 은 쓰지 않음)' : '')
+        : po.sel === 'AUTO' ? ' (자동) — ' + po.reason + ' · 자동 기준은 가정 (사례 보정 전), 공법 검토로 확정' : ' (선택 · 자동이면 ' + po.autoName + ')'), ign ? 'warn' : 'info');
+    }
+    if (fr.struct === 'SC' && fr.seq === 'PRE') add('골조', '철골 n층 = 코어 n+3층 완료 후 (' + (fr.sysC === 'ACS' ? 'ACS 하부 발판 간섭, ' : '') + '안전측) · 코어 · 외주부 A → B 순환, 타설일 분산');
+    if (fr.seq === 'PRE' && (fr.struct === 'RC' || fr.struct === 'SRC') && fr.typ.core) add('골조', 'RC 코어선행 : 코어 ' + fr.typ.core.Z + ' Zone × ' + (fr.sysC === 'ACS' ? 'ACS' : '갱폼') + ' (시스템폼 셋팅 · 숙련 포함) → 바닥 (v2.8 c2 사슬) n층 = 코어 n+' + (fr.pour.rule.rcLag) + '층 완료 후 — 코어 · 바닥 사이 간격 (가정) 은 시스템폼 계획으로 확정');
+    if (fr.seq === 'POST' && fr.typ.post) { var tp8 = fr.typ.post; add('골조', '코어후행 : 외주부 (' + tp8.P.ch + ') ' + tp8.P.N + ' Zone · ' + r1(tp8.P.zoneF) + 'WD / 코어 (c1) ' + tp8.C.N + ' Zone · ' + r1(tp8.C.zoneF) + 'WD → ' + tp8.gov + ' 지배 ' + r1(tp8.wd) + 'WD/층 — 코어가 바닥보다 늦게 오르므로 양중 · 계단 동선 (가설 계단 · 호이스트) 확인'); }
+    if (fr.seq === 'SIM' && (fr.struct === 'SC' || fr.struct === 'COMP') && !fr.dc) { var t5 = fr.typ.slab; add('골조', '동시타설 ' + (fr.struct === 'SC' ? '철골' : '강합성') + ' (v2.8 c5) : ' + t5.N + ' Zone · ' + t5.T + '팀 · Zone 1개 ' + r1(t5.zone) + 'WD · 철골 · DECK 선행 ' + r1(t5.lead || 0) + 'WD' + (t5.bind === 'steel' ? ' (선행이 층간 지배)' : '') + ' → 층간 ' + r1(t5.wd) + 'WD'); }
     if (fr.struct === 'COMP' || fr.struct === 'SC') {
       var c = fr.typ.core, s2 = fr.typ.slab;
       if (c && c.wd > s2.wd + 0.5) add('골조', '코어 사이클 ' + r1(c.wd) + 'WD > 바닥 ' + r1(s2.wd) + 'WD → 코어가 주공정 · ' + (fr.sysC === 'ACS' ? '코어 Zone 분할' : 'ACS · 원클릭 갱폼 · 코어 슬래브 데크화') + ' 검토', 'warn');
@@ -1192,8 +1379,9 @@
       add('골조', '일반 바닥 = v2.8 공종 사슬 (' + (t8.flow === 'ZONE' ? 'Zone 연속' : '층 완결') + ') · 기준층 ' + t8.N + ' Zone · ' + t8.T + '팀 (팀당 ' + t8.nt + ') · Zone 1개 ' + r1(t8.zone) + 'WD → 층간 ' + r1(t8.wd) + 'WD — 겹침 3곳 (테이블폼 · 형틀 · DECK) 은 사례 B 보정 가정 · v2.8 소요 작업조 ' + t8.need + '팀 (v2.8 간격 사슬 ' + r1(t8.zone28) + 'WD 기준, 참고)');
       if (t8.tIn && t8.T < t8.T0) add('골조', '형틀팀 입력 ' + t8.T + '팀 < v2.8 기준 ' + t8.T0 + '팀 (Zone 4개당 1팀) — v2.8 사슬은 팀 수가 층간을 나누지 않아 (하루 1 Zone 하한 · 맨 위층 꼬리만) 팀이 적어도 층 사이클이 거의 같음 → 팀당 ' + t8.nt + ' Zone 을 공종별 작업조가 따라가는지 확인', 'warn');
     }
-    if ((fr.struct === 'SC' || fr.struct === 'COMP') && !fr.dc) add('골조', '철골 · 강합성 바닥 · 코어 = 옛 식 (팀당 Zone × Zone당 WD — 팀 수가 층 사이클을 직접 나눔) · v2.8 사슬은 하한 (코어 c1 · 바닥 c3) 으로만');
+    if ((fr.struct === 'SC' || fr.struct === 'COMP') && !fr.dc && fr.seq === 'PRE') add('골조', '철골 · 강합성 코어선행 바닥 · 코어 = 옛 식 (팀당 Zone × Zone당 WD — 팀 수가 층 사이클을 직접 나눔, 사례 A 보정)' + (fr.v28.lb ? ' · v2.8 사슬 하한 (코어 c1 · 바닥 c3) 켬 (v28.lbSC 1)' : ' · v2.8 c1 · c3 하한은 끔 (v28.lbSC 0 — 근거 부족)'));
     if (fr.coreRows.some(function (x) { return x.lb && x.lb.on; }) || fr.slabRows.some(function (x) { return x.lb && x.lb.on; })) add('골조', 'v2.8 사슬 하한에 걸린 층 있음 (코어 c1 · 바닥 c3) → 팀을 늘려도 층 사이클이 줄지 않음');
+    if (b.seq === 'BU' && b.nB > 0 && R.base && !R.base.partial && R.base.model !== 'v28') add('골조', '지하 바닥 = 옛 식 (면적 900㎡ Zone 순환) — v2.8 지하 공종 사슬은 끔 (adv.bChain \'ON\' 이면 켬 · 사례 B 지하골조 실적 3.8개월 : 옛 식 4.1 · v2.8 사슬 4.9)');
     if (R.base && R.base.model === 'v28') { var bl = R.base.rows[R.base.rows.length - 1]; add('골조', '지하 바닥 = v2.8 공종 사슬 · 1F 바닥 ' + bl.N + ' Zone · ' + bl.T + '팀 · 외벽 둘레 ' + R.base.Zw + ' Zone · ' + R.base.Tw + '팀' + (R.base.wIn ? ' (입력, 자동 ' + R.base.Tw0 + '팀 대비 × ' + r2(R.base.wK) + ' — 가정)' : ' (자동 = 지금 외벽 실적값)')); }
     /* DC (v2.8 검토 규칙) */
     if (b.use === 'dc' && b.seq === 'TD') add('공법', 'DC 는 순타 기본 — 역타면 DC 층 사이클 미적용 (일반 골조 사이클로 계산)', 'warn');
@@ -1213,7 +1401,8 @@
 
   /* ── 실적 사례 (검증 세트) — 현장명은 표기하지 않음 */
   /* adv.uTeams (지상 외주부팀) · cTeams (코어 형틀팀) · bTeams (지하 바닥팀) · wTeams (지하 외벽팀) · tdTeams (역타 슬래브팀) · pitN (PIT Zone 수) = 엔진 기본 규칙 값 그대로
-     — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정 */
+     — 화면이 빈 팀수를 최적값으로 채울 때 사례 재현값이 바뀌지 않게 고정. 사례 B 의 bTeams · wTeams 는 지하 v2.8 사슬 (adv.bChain 'ON') 일 때만 쓰임 (기본 끔 — 켤 때 재현용으로 남김)
+     타설 순서 (adv.pourSeq) 는 비움 = 자동 (A 철골 31층 → 코어선행 · B RC 17층 → 동시타설 · C DC) — 사례 실적과 같음. LIB.seq 기준을 바꿔 사례가 다른 순서로 넘어가면 그때 사례에 pourSeq 를 적을 것 */
   var REFS = [
     { key: 'refA', name: '사례 A', loc: '도심 업무시설', seq: 'TD', struct: 'SC', nB: 8, nUp: 31, total: 50.0, cmp: 50.0, frame: 9.5,
       actual: [['MOB + 흙막이', 4.5, ['mob', 'wall']], ['PRD', 2.8, ['prd']], ['지열', 2.6, ['geo']], ['1차 터파기', 0.5, ['exc1']], ['1F 슬래브', 1.6, ['f1']], ['지하 터파기', 16.1, ['exc']], ['기초', 1.4, ['found']], ['지상골조', 9.5, ['frame']], ['마감', 9.0, ['fin']], ['T&C', 2.0, ['tc']]],
@@ -1294,7 +1483,7 @@
     return { lo: scaled(1.15), hi: scaled(0.85) };
   }
 
-  var API = { GROUND: GROUND, compute: compute, validate: validate, CP_SHORT: CP_SHORT, defaultLib: defaultLib, parseSpec: parseSpec, REFS: REFS, similarity: similarity, sensitivity: sensitivity, LN: LN, LK: LK, USE_H: USE_H, STRUCT_N: STRUCT_N, WALL_N: WALL_N, SUP_N: SUP_N, FOUND_N: FOUND_N, r1: r1, r2: r2, fmt: fmt, D: D };
+  var API = { GROUND: GROUND, compute: compute, validate: validate, CP_SHORT: CP_SHORT, defaultLib: defaultLib, parseSpec: parseSpec, REFS: REFS, similarity: similarity, sensitivity: sensitivity, LN: LN, LK: LK, USE_H: USE_H, STRUCT_N: STRUCT_N, POUR_N: POUR_N, WALL_N: WALL_N, SUP_N: SUP_N, FOUND_N: FOUND_N, r1: r1, r2: r2, fmt: fmt, D: D };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.GE = API;
 })(this);
 

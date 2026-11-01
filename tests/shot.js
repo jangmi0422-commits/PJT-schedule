@@ -1,7 +1,7 @@
 /* 화면 점검 : node tests/shot.js [dist/option7.html]
-   - 사례 A · B · C 재현값 (49.86 · 42.79 · 28.74)
+   - 사례 A · B · C 재현값 (49.86 · 42.00 · 28.74) — B 는 지하 v2.8 사슬 기본 끔 (adv.bChain ON 일 때만) 으로 42.79 → 42.00
    - 사례 C 1F 층고 9.8 → 6.0 → 9.8 즉시 재계산 (28.74 → 28.32 → 28.74)
-   - 사례 B 지하 층수 2 → 4 → 2 (42.79 → 52.98 → 42.79) · 형틀팀 3 → 1 변화 1개월 이하
+   - 사례 B 지하 층수 2 → 4 → 2 (42.00 → 51.96 → 42.00) · 형틀팀 3 → 1 변화 1개월 이하
    - 1440 · 390px 가로 스크롤 없음 · 콘솔 오류 0
    - 스크린샷 : tests/out/ */
 const path = require('path');
@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
 
 const FILE = path.resolve(process.argv[2] || 'dist/option7.html');
 const OUT = path.join(__dirname, 'out');
-const EXPECT = { refA: 49.86, refB: 42.79, refC: 28.74 };
+const EXPECT = { refA: 49.86, refB: 42.00, refC: 28.74 };
 const r2 = (v) => Math.round(v * 100) / 100;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -60,7 +60,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       } else res.edit = { ok: false, reason: '1F 층고 칸 없음' };
       if (!res.edit.ok) fail = true;
 
-      /* 사례 B 지하 층수 2 → 4 → 2 (입력 시트 in-nB change) : 화면 = node 엔진 실측 42.79 → 52.98 → 42.79 */
+      /* 사례 B 지하 층수 2 → 4 → 2 (입력 시트 in-nB change) : 화면 = node 엔진 실측 42.00 → 51.96 → 42.00 */
       await page.evaluate(() => window.__agent.loadPreset('refB'));
       await wait(250);
       const setNB = async (v) => {
@@ -74,10 +74,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const nb0 = r2(await page.evaluate(() => window.__agent.R.total));
       const nb4 = await setNB('4');
       const nb2 = await setNB('2');
-      res.nB = { ok: nb0 === 42.79 && nb4 === 52.98 && nb2 === 42.79, before: nb0, nB4: nb4, back: nb2 };
+      res.nB = { ok: nb0 === 42 && nb4 === 51.96 && nb2 === 42, before: nb0, nB4: nb4, back: nb2 };
       if (!res.nB.ok) fail = true;
 
-      /* 사례 B 지상 형틀팀 (uTeams) 3 → 1 (조닝 지상 판 팀 칸 −) : v2.8 은 팀 = 꼬리 · 하루 1 Zone 하한만 → 변화 1개월 이하 (실측 42.79 → 43.13, +0.34) */
+      /* 사례 B 지상 형틀팀 (uTeams) 3 → 1 (조닝 지상 판 팀 칸 −) : v2.8 은 팀 = 꼬리 · 하루 1 Zone 하한만 → 변화 1개월 이하 (실측 42.00 → 42.33, +0.33) */
       await page.evaluate(() => window.__agent.loadPreset('refB'));
       await wait(250);
       const tq = '[data-team="uTeams"]';

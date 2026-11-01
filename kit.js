@@ -202,6 +202,16 @@
         '<dt>' + (p.nSlab > 1 ? '지하 바닥 ' + p.nSlab + '개층' : '1F 바닥 (지하부)') + '</dt><dd>' + (p.nSlab > 1 ? p.nSlab + ' × ' + m1(p.slabPer) + ' = ' : '') + m1(p.slab) + 'WD</dd><dt>경사띠 Zone</dt><dd>' + f.nSlopeZ + '개 (되메우기 후)</dd></dl></div>';
     } else out += '<div class="sheetbox"><span class="k">지하골조</span><span class="big">-</span><span class="small muted">지하층 없음</span></div>';
     var tact = Math.max(typ.slab.wd, typ.core ? typ.core.wd : 0), perM = b.rRC * D / tact;
+    if (typ.post) {
+      /* 코어후행 (엔진 R.frame.typ.post) : 외주부 · 코어 두 경로, 층간 = 긴 쪽 */
+      var q = typ.post, itq = function (s) { return s.items.map(function (x) { return esc(x.n) + ' ' + r1(x.wd); }).join(' · '); };
+      out += '<div class="sheetbox"><span class="k">지상 기준층 사이클 · 코어후행 (' + r1(typ.h) + 'm)</span><span class="big">' + m1(tact) + '<small>WD / 층</small></span><dl>' +
+        '<dt>외주부 (' + esc(q.P.ch) + ')</dt><dd>' + q.P.N + ' Zone · ' + q.P.T + '팀 (팀당 ' + q.P.nt + ') · Zone 1개 ' + m1(q.P.zoneF) + 'WD</dd>' +
+        '<dt>코어 (c1)</dt><dd>' + q.C.N + ' Zone · ' + q.C.T + '팀 (팀당 ' + q.C.nt + ') · Zone 1개 ' + m1(q.C.zoneF) + 'WD' + (q.C.lifts > 1 ? ' · 수직재 ' + q.C.lifts + '회' : '') + '</dd>' +
+        '<dt>주공정</dt><dd>' + esc(q.gov) + ' 지배 · ' + (q.flow === 'ZONE' ? 'Zone 연속' : '층 완결') + '</dd><dt>월 진도</dt><dd>' + r1(perM) + '개층 / 월</dd></dl>' +
+        '<span class="small muted">외주부 Zone 1개 : ' + itq(q.P) + '<br>코어 Zone 1개 : ' + itq(q.C) + '</span></div>';
+      return out;
+    }
     if (typ.dc) {
       var d = typ.dc, its = function (s) { return s.items.map(function (x) { return esc(x[0]) + ' ' + r1(x[1]); }).join(' + '); };
       out += '<div class="sheetbox"><span class="k">지상 기준층 DC 사이클 (' + r1(typ.h) + 'm)</span><span class="big">' + m1(tact) + '<small>WD / 층</small></span><dl>' +
@@ -256,7 +266,7 @@
     });
     return {
       svg: svgEl(W, H, g + s, '지상골조 층 × 시간 계단형 공정표'),
-      legend: (hasCore ? '<span><i style="background:var(--navy)"></i>코어 (' + (fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼') + ')</span><span><i style="background:var(--cp)"></i>바닥 (' + (fr.struct === 'SC' ? '철골 · 데크 · 슬래브' : '강합성 · 데크 · 슬래브') + ')</span>' : '<span><i style="background:var(--cp)"></i>골조 (수직재 → 수평재)</span>') + (fr.holds.length ? '<span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>구조제한 대기</span>' : '') + '<span>층 표기 = 수직재 기준 (nF = n+1층 바닥)</span>',
+      legend: (hasCore ? '<span><i style="background:var(--navy)"></i>코어 (' + (fr.sysC === 'ACS' ? 'ACS' : '갱폼 · 알폼') + ')</span><span><i style="background:var(--cp)"></i>바닥 (' + (fr.struct === 'SC' ? '철골 · 데크 · 슬래브' : fr.struct === 'COMP' ? '강합성 · 데크 · 슬래브' : 'RC · 테이블폼 · DECK') + ')</span>' : '<span><i style="background:var(--cp)"></i>골조 (수직재 → 수평재)</span>') + (fr.holds.length ? '<span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>구조제한 대기</span>' : '') + '<span>층 표기 = 수직재 기준 (nF = n+1층 바닥)</span>',
       sub: (b.seq === 'TD' ? '역타 · 기준층 ' + R.tdBase.name + ' · 기초 전 ' + fr.lim + 'F (코어 ' + fr.limC + 'F) / 수직재 전 ' + fr.lim2 + 'F 허용 · ' : '') + '주공정 ' + fr.gov + ' · 층 표기 = 수직재 기준'
     };
   }
@@ -279,7 +289,7 @@
         h += '<tr class="' + (sl ? 'cp' : '') + '"><td>' + esc(lv) + '</td><td class="n mono">' + r1((c || sl).h) + '</td><td class="f">' + (c ? esc(c.formula) : '-') + '</td><td class="n mono">' + (c ? m1(c.wd) : '') + '</td><td class="n mono">' + (c ? 'M+' + m2(c.e) : '') + '</td>' +
           '<td class="f">' + (sl ? esc(sl.formula) : '-') + '</td><td class="n mono">' + (sl ? m1(sl.wd) : '') + '</td><td class="n mono">' + (sl ? 'M+' + m2(sl.e) : '') + '</td><td class="small muted">' + esc(note.join(' · ')) + '</td></tr>';
       });
-      if (R.frameLead) h += '<tr><td>파이프라인</td><td></td><td class="f" colspan="6">코어 마지막 Zone 완료 ' + r1(R.frameLead) + 'WD → 지상골조 완료 M+' + m2(fr.end) + '</td><td></td></tr>';
+      if (R.frameLead) h += '<tr><td>파이프라인</td><td></td><td class="f" colspan="6">' + (fr.struct === 'RC' || fr.struct === 'SRC' ? '바닥' : '코어') + ' 마지막 Zone 완료 ' + r1(R.frameLead) + 'WD → 지상골조 완료 M+' + m2(fr.end) + '</td><td></td></tr>';
     }
     return h + '<tr class="sum"><td colspan="3">지상골조 완료</td><td colspan="' + (hasCore ? 6 : 5) + '" class="n mono">M+' + m2(fr.end) + (fr.done > fr.end + 0.005 ? ' · 골조 완료 M+' + m2(fr.done) + ' (지하 포함)' : '') + ' · C.P ' + m2(R.gsum.frame) + '개월 (' + m1(R.gsum.frame * rRC * D) + 'WD)</td></tr></tbody>';
   }
@@ -558,8 +568,9 @@
     else {
       var cLast = pushChain(fr.coreRows, '코어');
       var top = fr.coreRows[fr.coreRows.length - 1].n;
-      var sLast = pushChain(fr.slabRows, '바닥', fr.struct === 'SC' ? function (x) { var k = Math.min(x.n + 3, top); return cellOf['코어' + k] ? { ref: cellOf['코어' + k], label: '코어 ' + (k > b.nUp ? '옥탑' : (k >= 1 ? k + 'F' : 'B' + (1 - k))) + ' 완료' } : null; } : null);
-      var rr2 = fRows.length + 1; fRows.push(['골조 완료', '', fr.struct === 'COMP' ? '코어 마지막 Zone ' + r1(R.frameLead) + 'WD' : '바닥 최종', { t: 'n', v: R.frameLead || 0, z: '0.0' }, { t: 'n', f: 'D' + rr2 + '/$B$2', z: '0.0' }, 'MAX(코어, 바닥)', { t: 'n', f: 'MAX(' + cLast + '+E' + rr2 + ',' + sLast + ')', z: '0.0' }, { t: 'n', f: 'G' + rr2 + '/30.4', z: '0.00' }]);
+      var kLag = fr.struct === 'SC' ? 3 : (fr.struct === 'RC' || fr.struct === 'SRC') && fr.pour ? fr.pour.rule.rcLag : -1, slabTail = (fr.struct === 'RC' || fr.struct === 'SRC') && fr.gov.indexOf('바닥') === 0;
+      var sLast = pushChain(fr.slabRows, '바닥', kLag >= 0 ? function (x) { var k = Math.min(x.n + kLag, top); return cellOf['코어' + k] ? { ref: cellOf['코어' + k], label: '코어 ' + (k > b.nUp ? '옥탑' : (k >= 1 ? k + 'F' : 'B' + (1 - k))) + ' 완료' } : null; } : null);
+      var rr2 = fRows.length + 1; fRows.push(['골조 완료', '', fr.struct === 'COMP' ? '코어 마지막 Zone ' + r1(R.frameLead) + 'WD' : slabTail ? '바닥 마지막 Zone ' + r1(R.frameLead) + 'WD' : '바닥 최종', { t: 'n', v: R.frameLead || 0, z: '0.0' }, { t: 'n', f: 'D' + rr2 + '/$B$2', z: '0.0' }, 'MAX(코어, 바닥)', { t: 'n', f: slabTail ? 'MAX(' + cLast + ',' + sLast + '+E' + rr2 + ')' : 'MAX(' + cLast + '+E' + rr2 + ',' + sLast + ')', z: '0.0' }, { t: 'n', f: 'G' + rr2 + '/30.4', z: '0.00' }]);
     }
     var ws2 = X.utils.aoa_to_sheet(fRows); ws2['!cols'] = [{ wch: 9 }, { wch: 7 }, { wch: 52 }, { wch: 8 }, { wch: 14 }, { wch: 26 }, { wch: 11 }, { wch: 11 }]; X.utils.book_append_sheet(wb, ws2, '골조 층별');
     var f = R.found, zr = [['기초 Zone · 철근팀', '', '', '', '', ''], ['Zone', '팀', '구분', '물량 (㎥)', '철근 착수 (WD)', '타설 (WD)']];
@@ -833,9 +844,11 @@
     /* 지상 기준층 : 코어는 오른쪽 띠 (면적 비례) */
     var ty = fr.typ, NP, TP, NC = 0, TC = 0, Ac = 0;
     if (ty.dc) { NP = ty.dc.P.N; TP = ty.dc.P.T; NC = ty.dc.C.N; TC = ty.dc.C.T; Ac = ty.dc.Ac; }
-    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; Ac = Au * Lb.frame.core.ratio; } }
+    else if (ty.post) { NP = ty.post.P.N; TP = ty.post.P.T; NC = ty.post.C.N; TC = ty.post.C.T; Ac = ty.post.Ac; }
+    else { NP = ty.slab.Z; TP = ty.slab.T; if (ty.core) { NC = ty.core.Z; TC = ty.core.T; Ac = ty.core.Ac > 0 ? ty.core.Ac : Au * Lb.frame.core.ratio; } }
     var tp = zteams(NP, TP), tc = NC ? zteams(NC, TC) : null;
-    var usub = (ty.dc ? '외주부 ' + NP + ' Zone · ' + TP + '팀 (' + r1(ty.dc.P.zone) + 'WD) / 코어 ' + NC + ' Zone · ' + TC + '팀 (' + r1(ty.dc.C.zone) + 'WD) · 분리 타설' : '바닥 ' + NP + ' Zone · ' + TP + '팀' + (NC ? ' / 코어 ' + NC + ' Zone · ' + TC + '팀 (선행)' : '')) + ' · 기준층 ' + ty.n + 'F 층고 ' + r1(ty.h) + 'm';
+    var usub = (ty.dc ? '외주부 ' + NP + ' Zone · ' + TP + '팀 (' + r1(ty.dc.P.zone) + 'WD) / 코어 ' + NC + ' Zone · ' + TC + '팀 (' + r1(ty.dc.C.zone) + 'WD) · 분리 타설' :
+      ty.post ? '외주부 ' + NP + ' Zone · ' + TP + '팀 (' + r1(ty.post.P.zoneF) + 'WD) / 코어 ' + NC + ' Zone · ' + TC + '팀 (' + r1(ty.post.C.zoneF) + 'WD) · 코어후행' : '바닥 ' + NP + ' Zone · ' + TP + '팀' + (NC ? ' / 코어 ' + NC + ' Zone · ' + TC + '팀 (선행)' : '')) + ' · 기준층 ' + ty.n + 'F 층고 ' + r1(ty.h) + 'm';
     out += zcard('지상 기준층 (지상 ' + b.nUp + '층 × ' + fmt(Au) + '㎡)', usub, plan(dU, function (x, y, w, h) {
       var cw = NC ? Math.min(w * 0.45, Math.max(14, Ac / Math.max(dU.B, 1) * sc)) : 0, s = zgrid(x, y, w - cw, h, NP, function (i) { var q = tp(i); return { fill: TEAMC[q.team % 8], stroke: 'var(--sheet)', op: .5, t: q.ord }; });
       if (NC) s += zgrid(x + w - cw, y, cw, h, NC, function (i) { var q = tc(i); return { fill: 'var(--ink-2)', stroke: 'var(--sheet)', op: .55 + .15 * (q.team % 2), t: q.ord }; });
