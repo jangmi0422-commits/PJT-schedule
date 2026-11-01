@@ -1021,7 +1021,7 @@ html.pr .t-sec .kn li, html.pr .kc, html.pr .iso-fig, html.pr #gantt svg, html.p
         <div class="f"><label for="in-cov">건폐율 <span class="auto" data-auto="cov"></span></label><div class="in"><input id="in-cov" data-k="cov" data-type="num" type="number" min="0" max="100" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">%</span></div></div>
         <div class="f"><label for="in-gfa">연면적 합계</label><div class="in"><input id="in-gfa" type="text" readonly tabindex="-1"></div></div>
         <div class="f"><label for="in-gUp">연면적 (지상)</label><div class="in"><input id="in-gUp" data-k="gfaUp" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
-        <div class="f"><label for="in-gDn">연면적 (지하)</label><div class="in"><input id="in-gDn" data-k="gfaDn" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
+        <div class="f"><label for="in-gDn" title="지하층 한 층의 바닥면적 — 지하 연면적 = 층당 × 지하 층수 (층수를 바꾸면 굴착 · 기초 물량이 따라감)">지하 바닥면적 /층 <span class="auto" data-auto="gDn"></span></label><div class="in"><input id="in-gDn" data-k="aDn" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u"><span class="u">㎡</span></div></div>
       </div>
       <div class="g c3">
         <div class="f"><label for="in-nB">지하 층수</label><div class="in"><input id="in-nB" data-k="nB" data-type="int" type="number" min="0" max="12" step="1" inputmode="numeric"></div></div>
@@ -1044,7 +1044,7 @@ html.pr .t-sec .kn li, html.pr .kc, html.pr .iso-fig, html.pr #gantt svg, html.p
       </div>
       <div class="g" style="margin-top:14px">
         <div class="f"><label for="in-gwl">지하수위</label><div class="in"><input id="in-gwl" data-k="gwl" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="GL−"><span class="u">m</span></div></div>
-        <div class="f"><label for="in-H">굴착 깊이 <span class="auto" data-auto="H"></span></label><div class="in"><input id="in-H" data-k="adv.H" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">m</span></div></div>
+        <div class="f"><label for="in-H" title="굴착 깊이 = 지하 층고 합 + 기초 + 0.3m (자동) + 보정 — 지하 층수 · 층고를 바꾸면 깊이가 따라감">굴착 깊이 보정 <span class="auto" data-auto="H"></span></label><div class="in"><input id="in-H" data-k="adv.dH" data-type="num" type="number" step="any" inputmode="decimal" class="has-u" placeholder="0"><span class="u">±m</span></div></div>
         <div class="f"><label for="in-A">굴착 면적 <span class="auto" data-auto="A"></span></label><div class="in"><input id="in-A" data-k="adv.Aexc" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">㎡</span></div></div>
         <div class="f"><label for="in-P">흙막이 연장 <span class="auto" data-auto="P"></span></label><div class="in"><input id="in-P" data-k="adv.P" data-type="num" type="number" min="0" step="any" inputmode="decimal" class="has-u" placeholder="자동"><span class="u">m</span></div></div>
       </div>

@@ -31,7 +31,7 @@
   /* ───────── 상태 */
   /* 빈 값은 빈 값 그대로 (D. 직접입력 = 아무것도 고르지 않은 상태) — 엔진에 넘길 때만 기본값 (toInp) */
   var KEEP_EMPTY = ['use', 'seq', 'struct', 'support', 'wall', 'found', 'coreSys', 'ground', 'rExt', 'rRC', 'rInt', 'mob', 'fin', 'tc', 'hours', 'nB', 'nUp', 'nPH'];
-  var EMPTY = { name: '', use: '', site: '', bldg: '', gfaUp: '', gfaDn: '', nB: '', nUp: '', nPH: '', ground: '', strata: [null, null, null, null], gwl: '', seq: '', tdBase: 0, wall: '', support: '', scw: false, found: '', geo: '',
+  var EMPTY = { name: '', use: '', site: '', bldg: '', gfaUp: '', aDn: '', nB: '', nUp: '', nPH: '', ground: '', strata: [null, null, null, null], gwl: '', seq: '', tdBase: 0, wall: '', support: '', scw: false, found: '', geo: '',
     struct: '', pt: false, coreSys: '', lim: '', lim2: '', mob: '', fin: '', tc: '', rExt: '', rRC: '', rInt: '', hours: '', link: false, start: '', adv: {} };
   PRESETS.blank = EMPTY;
   function norm(p) {
@@ -160,6 +160,8 @@
     applyLib(); fillLib();
     var miss = missing();
     if (miss.length) { lastR = null; ST.save({ inp: S, preset: current }); renderEmpty(miss); return; }
+    /* 옛 파일 · 도면 가져오기의 고정 굴착 깊이 (adv.H) → 자동 깊이 기준 보정값 (adv.dH) 으로 바꿔 지하 층수 · 층고를 따라가게 */
+    if (S.adv && +S.adv.H > 0) { try { var i0 = toInp(); delete i0.adv.H; delete i0.adv.dH; var g0 = GE.compute(i0, LIB).geo; if (g0.Hauto > 0) { var d0 = r1(S.adv.H - g0.Hauto); if (d0) S.adv.dH = d0; else delete S.adv.dH; } } catch (e) {} delete S.adv.H; GK.fill(document, S); }
     var inp = toInp(), R, team = { u: null, c: null, f: null };
     inp.adv = inp.adv || {};
     try {
@@ -1762,8 +1764,8 @@
         sv = [KF_SUP[b.sup] + (ns > 0 ? ' · ' + ns + '단' : ''), '굴착 ' + r1(g.H) + 'm' + (ns > 0 ? ' · 첫 단 1.5m · 간격 ' + sp + 'm' + (an ? ' · 단당 ' + fmt(an.perStage) + '본, 총 ' + fmt(an.total) + '본 · ' + an.sets + '조' : '') : '')];
       }
       add('sup', '지보', sv[0], sv[1], sel(kfOptsOf('in-sup'), td ? 'SLAB' : b.sup, function (v) { return v === 'SLAB' ? '역타' : '순타'; }));
-      add('H', '굴착 깊이', 'GL−' + r1(g.H) + 'm', A.H > 0 ? '입력값' : (td ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m',
-        nums([kfNumF('adv.H', '굴착 깊이', 'm', pos(A.H), A.H > 0 ? '자동' : r1(g.H), { pos: true, pre: 'GL−' })]));
+      add('H', '굴착 깊이', 'GL−' + r1(g.H) + 'm', g.Hfix ? '고정값' : (td ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m' + (g.dH ? ' ' + (g.dH > 0 ? '+' : '−') + ' 보정 ' + r1(Math.abs(g.dH)) + 'm' : ''),
+        nums([kfNumF('adv.Habs', '굴착 깊이', 'm', g.dH ? r1(g.H) : '', '자동 ' + r1(g.Hauto), { pos: true, pre: 'GL−' })]));
       var wCur = open && b.wall !== 'SCW' ? 'NONE' : b.wall, wO = kfOptsOf('in-wall').filter(function (o) { return o[0] === wCur || !(td && o[0] === 'NONE'); });
       if (R.wall) add('wall', '흙막이', GE.WALL_N[b.wall], R.wall.qty + ' · ' + R.wall.sets + '조', sel(wO, wCur));
       else if (open) add('wall', '흙막이', b.wall === 'SCW' ? 'SCW (차수)' : '없음 (오픈컷)', b.wall === 'SCW' && R.scw ? R.scw.qty : '사면 개착 · 벽체 없음', sel(wO, wCur));
@@ -1895,6 +1897,8 @@
       e.f.forEach(function (f, i) {
         var raw = vals[i], v = raw === '' || raw == null ? null : parseFloat(raw);
         if (v != null) { if (!isFinite(v) || v < f.min) return; if (f.int) v = Math.round(v); if (f.pos && v <= 0) v = null; }
+        /* 굴착 깊이 칸 : 깊이 (절대값) 를 받아 자동 깊이와의 차이 (adv.dH) 로 저장 — 지하 층수 · 층고를 바꾸면 깊이가 따라감 */
+        if (f.key === 'adv.Habs') { var ha = lastR && lastR.geo ? lastR.geo.Hauto : 0; if (!(ha > 0)) return; var nd = v == null ? null : r1(v - ha); if (nd === 0) nd = null; var od = S.adv && +S.adv.dH ? +S.adv.dH : null; if (od === nd && !(S.adv && S.adv.H)) return; S.adv = S.adv || {}; if (nd == null) delete S.adv.dH; else S.adv.dH = nd; delete S.adv.H; last = 'adv.dH'; return; }
         var p = f.key.split('.'), o = getP(S, p);
         if ((o == null || o === '' ? '' : String(+o)) === (v == null ? '' : String(v))) return;
         setP(S, p, v); last = f.key;
@@ -1953,7 +1957,7 @@
     var ah = GK.autoHints(R), b = R.basic, fr = R.frame, g = R.geo, td = fr.typ.dc;
     function set(k, t) { $$('[data-auto="' + k + '"]').forEach(function (el) { el.textContent = t; }); }
     set('cov', ah.cov ? '자동 ' + ah.cov + '%' : ''); set('nPH', '자동 ' + ah.nPH);
-    set('H', ah.H ? '자동 ' + ah.H : ''); set('A', ah.A ? '자동 ' + ah.A : ''); set('P', ah.P ? '자동 ' + ah.P : '');
+    set('H', ah.H ? '자동 GL−' + ah.H + (g.dH ? ' → ' + r1(g.H) : '') : ''); set('gDn', b.nB > 0 && g.gDn > 0 ? '× ' + b.nB + ' = ' + fmt(g.gDn) + '㎡' : ''); set('A', ah.A ? '자동 ' + ah.A : ''); set('P', ah.P ? '자동 ' + ah.P : '');
     set('found', '판정 ' + ah.found); set('core', ah.core);
     set('lim', b.seq === 'TD' ? (R.tags.lim === '기본' ? '자동 ' : '') + ah.lim : ''); set('lim2', b.seq === 'TD' ? '자동 ' + Math.max(fr.lim, LIB.td.limTot2 - b.nB) + 'F' : '');
     set('Atyp', '자동 ' + ah.Atyp); set('coreZ', ah.coreZ ? '자동 ' + ah.coreZ : ''); set('mat', '자동 ' + ah.mat); set('fTeams', lastR && lastR.team && lastR.team.f ? '최적 ' + lastR.team.f.opt : '자동 ' + ah.fTeams);

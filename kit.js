@@ -11,7 +11,7 @@
   var SEQ_N = { BU: '순타', TD: '역타' };
 
   /* ── 입력 기본값 · 사례 */
-  var BLANK = { name: '새 프로젝트', use: 'office', site: '', bldg: '', gfaUp: '', gfaDn: '', nB: 3, nUp: 15, nPH: '', ground: 'AUTO', strata: [null, null, null, null], gwl: '', seq: 'BU', tdBase: 0, wall: 'CIP', support: 'ANCHOR', scw: false, found: 'AUTO', geo: 0,
+  var BLANK = { name: '새 프로젝트', use: 'office', site: '', bldg: '', gfaUp: '', aDn: '', nB: 3, nUp: 15, nPH: '', ground: 'AUTO', strata: [null, null, null, null], gwl: '', seq: 'BU', tdBase: 0, wall: 'CIP', support: 'ANCHOR', scw: false, found: 'AUTO', geo: 0,
     struct: 'RC', pt: false, coreSys: 'AUTO', lim: '', lim2: '', mob: 1.0, fin: 8.0, tc: 2.0, rExt: 0.702, rRC: 0.585, hours: 8, link: false, start: '', adv: {} };
   var PRESETS = { blank: BLANK };
   GE.REFS.forEach(function (r) { if (r.inp) PRESETS[r.key] = r.inp; });
@@ -465,6 +465,7 @@
     if (o.use && GE.USE_H[o.use]) { p.use = o.use; keys.push('use'); }
     ['site', 'bldg', 'gfaUp', 'gfaDn', 'nB', 'nUp', 'nPH', 'gwl', 'geo'].forEach(function (k) { if (numOk(o[k])) { p[k] = r2(+o[k]); keys.push(k); } });
     if (numOk(o.H)) { p.adv.H = r2(+o.H); keys.push('H'); }
+    if (p.gfaDn > 0) { if (p.nB > 0) p.aDn = r2(p.gfaDn / p.nB); delete p.gfaDn; }
     var nSt = 0;
     if (o.strata && typeof o.strata === 'object') ['soil', 'wsoil', 'wrock', 'srock'].forEach(function (k, i) { if (numOk(o.strata[k])) { p.strata[i] = r2(+o.strata[k]); nSt++; keys.push('strata.' + k); } });
     if (nSt) p.ground = 'CUSTOM'; else if (o.ground === 'SOIL' || o.ground === 'ROCK') { p.ground = o.ground; keys.push('ground'); }
@@ -624,6 +625,9 @@
     p.ground = p.ground && (GE.GROUND[p.ground] || p.ground === 'CUSTOM') ? p.ground : (p.strata.some(hasVal) ? 'CUSTOM' : 'AUTO');
     [['mob', 1.0], ['fin', 8.0], ['tc', 2.0], ['rExt', 0.702], ['rRC', 0.585], ['hours', 8], ['tdBase', 0]].forEach(function (d) { if (!hasVal(p[d[0]])) p[d[0]] = d[1]; });
     if (!p.use) p.use = 'office';
+    /* 옛 입력 : 지하 연면적 (gfaDn) → 지하층 바닥면적 (층당, aDn) */
+    if (!hasVal(p.aDn) || !(+p.aDn > 0)) { if (+p.gfaDn > 0 && +p.nB > 0) p.aDn = Math.round(p.gfaDn / p.nB * 100) / 100; }
+    delete p.gfaDn;
     return p;
   }
   /* 사례 층고 구성 (orig) 위에 대표 층고 (지하 · 1층 · 기준층) 덮어쓰기 — 뒤 항목이 앞 항목을 이긴다 */
@@ -631,7 +635,7 @@
     hs = hs || {}; var any = ['hB', 'h1', 'hTyp'].some(function (k) { return hs[k] > 0; });
     return [orig || '', any ? simpleH(hs, Math.max(0, +nB || 0), Math.max(1, +nUp || 1)) : ''].filter(Boolean).join(', ');
   }
-  var AI_K = { name: 'name', site: 'site', bldg: 'bldg', gfaUp: 'gfaUp', gfaDn: 'gfaDn', nB: 'nB', nUp: 'nUp', nPH: 'nPH', H: 'adv.H', gwl: 'gwl', geo: 'geo', 'strata.soil': 'strata.0', 'strata.wsoil': 'strata.1', 'strata.wrock': 'strata.2', 'strata.srock': 'strata.3' };
+  var AI_K = { name: 'name', site: 'site', bldg: 'bldg', gfaUp: 'gfaUp', gfaDn: 'aDn', nB: 'nB', nUp: 'nUp', nPH: 'nPH', H: 'adv.H', gwl: 'gwl', geo: 'geo', 'strata.soil': 'strata.0', 'strata.wsoil': 'strata.1', 'strata.wrock': 'strata.2', 'strata.srock': 'strata.3' };
   function aiExtract(sample, text, imgs) {
     var opt = { modelTier: 'default' }; if (imgs && imgs.length) opt.images = imgs;
     return sample.json(extractPrompt(text), opt).then(function (o) { if (!o || typeof o !== 'object') throw { code: 'invalid_json' }; var res = extractToInp(o); res.paths = res.keys.map(function (k) { return AI_K[k]; }).filter(Boolean); return res; });
@@ -865,7 +869,7 @@
   function keyFacts(R, L) {
     var g = R.geo, b = R.basic, fr = R.frame, A = R.inp.adv || {}, F = [];
     function add(k, v, why, hi) { F.push({ k: k, v: v, why: why, hi: !!hi }); }
-    if (b.nB > 0) add('굴착 깊이', 'GL−' + r1(g.H) + 'm', A.H > 0 ? '입력값' : (b.seq === 'TD' ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m');
+    if (b.nB > 0) add('굴착 깊이', 'GL−' + r1(g.H) + 'm', g.Hfix ? '고정값' : (b.seq === 'TD' ? '역타 층 층고 합' : '지하 층고 합 ' + r1(g.sumB) + 'm') + ' + 기초 ' + r1(g.tMat) + 'm + 0.3m');
     if (b.nB > 0) {
       if (R.exc && R.exc.ns > 0) { var sp = L.support[b.sup].sp, an = R.exc.anchor; add(GE.SUP_N[b.sup], R.exc.ns + '단', '굴착 ' + r1(g.H) + 'm 에서 첫 단 1.5m · 간격 ' + sp + 'm' + (an ? ' · 단당 ' + fmt(an.perStage) + '본, 총 ' + fmt(an.total) + '본 · ' + an.sets + '조' : ''), true); }
       else if (b.sup === 'OPEN') add('지보', '오픈컷 1:' + L.exc.slope, '사면 폭 ' + r1(g.slopeW) + 'm 필요 · 흙막이 벽체 없음' + (R.scw ? ' (외곽 SCW 차수만)' : ''), true);

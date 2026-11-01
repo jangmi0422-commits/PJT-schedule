@@ -116,6 +116,8 @@
     var nB = clamp(Math.round(num(inp.nB, 0)), 0, 15), nUp = clamp(Math.round(num(inp.nUp, 1)), 1, 150);
     var nPH = inp.nPH == null || inp.nPH === '' ? (nUp >= 20 ? 2 : 1) : clamp(Math.round(num(inp.nPH, 1)), 0, 4);
     var site = Math.max(0, num(inp.site, 0)), bldg = Math.max(0, num(inp.bldg, 0)), gUp = Math.max(0, num(inp.gfaUp, 0)), gDn = Math.max(0, num(inp.gfaDn, 0));
+    /* 지하층 바닥면적 (㎡/층, inp.aDn) 이 1차 입력 — 지하 연면적 = aDn × 지하 층수 (층수를 바꾸면 굴착 · 기초 물량이 따라감). 없으면 옛 입력 지하 연면적 ÷ 층수 */
+    var aDnIn = Math.max(0, num(inp.aDn, 0)); if (aDnIn > 0) gDn = aDnIn * nB;
     var rExt = clamp(num(inp.rExt, 0.702), 0.3, 1), rRC = clamp(num(inp.rRC, 0.585), 0.3, 1);
     /* 내부 (마감) 공사 가동률 : 마감 개월 (inp.fin) 은 기준 가동률 R_INT0 에서의 값 → 가동률이 다르면 그 비율로 (사례 실적 없음 — 일요일 · 공휴일만 쉬는 기준 가정) */
     var R_INT0 = 0.81, rInt = clamp(num(inp.rInt, R_INT0), 0.3, 1);
@@ -167,29 +169,32 @@
 
     /* ── 기하 · 물량 */
     var coverage = site > 0 ? bldg / site : NaN;
-    var Adn = nB > 0 && gDn > 0 ? gDn / nB : 0;
+    var Adn = nB > 0 ? (aDnIn > 0 ? aDnIn : (gDn > 0 ? gDn / nB : 0)) : 0;
     var partial = nB > 0 && Adn > 0 && Adn < 0.75 * bldg;
     var Adeep = nB > 0 ? (partial ? Adn : Math.max(Adn, bldg)) * 1.08 : 0;
     if (num(A.Aexc, 0) > 0 && nB > 0) Adeep = num(A.Aexc, 0);
     var Ash = partial ? Math.max(0, bldg - Adn) * 1.05 : (nB === 0 ? bldg * 1.05 : 0);
-    /* 지하층 바닥 면적 : 지하 연면적 ÷ 층수, 미입력 시 굴착 면적 기준 전면 지하 */
+    /* 지하층 바닥 면적 : 입력 (층당) 또는 지하 연면적 ÷ 층수, 미입력 시 굴착 면적 기준 전면 지하 */
     var AdnEff = Adn > 0 ? Adn : (Adeep > 0 ? Adeep / 1.08 : 0);
-    if (nB > 0 && gDn <= 0 && Adeep > 0) R.warn.push('지하 연면적이 없어 지하층 면적을 ' + (num(A.Aexc, 0) > 0 ? '굴착 면적' : '건축면적') + ' 기준 (전면 지하) 으로 가정했습니다.');
-    if (nB > 0 && Adeep <= 0) R.warn.push('지하 ' + nB + '개층인데 건축면적 · 지하 연면적이 없어 굴착 · 기초 물량이 0입니다 → 면적을 입력하세요.');
+    if (nB > 0 && gDn <= 0 && Adeep > 0) R.warn.push('지하 바닥면적이 없어 지하층 면적을 ' + (num(A.Aexc, 0) > 0 ? '굴착 면적' : '건축면적') + ' 기준 (전면 지하) 으로 가정했습니다.');
+    if (nB > 0 && Adeep <= 0) R.warn.push('지하 ' + nB + '개층인데 건축면적 · 지하 바닥면적이 없어 굴착 · 기초 물량이 0입니다 → 면적을 입력하세요.');
     if (nB === 0 && bldg <= 0) R.warn.push('건축면적이 없어 기초 물량을 계산할 수 없습니다 → 건축면적을 입력하세요.');
     /* 면적 점검 : 입력끼리 맞지 않으면 값을 고치지 않고 경고만 한다 (계산은 입력값 그대로) */
     var aChk = [];
     if (site > 0 && bldg > site) aChk.push('건축면적 ' + fmt(bldg) + '㎡ 가 대지면적 ' + fmt(site) + '㎡ 보다 큽니다 (건폐율 ' + r1(bldg / site * 100) + '%) → 단위 · 자릿수를 확인하세요.');
     if (bldg > 0 && gUp > 0 && gUp / nUp > bldg * 1.15) aChk.push('지상 평균 바닥면적 ' + fmt(gUp / nUp) + '㎡ (지상 연면적 ÷ ' + nUp + '개층) 가 건축면적 ' + fmt(bldg) + '㎡ 보다 큽니다 → 지상 층수 · 연면적을 확인하세요 (단지 전체 연면적을 넣었는지).');
     if (bldg > 0 && gUp > 0 && gUp < bldg * 0.95) aChk.push('지상 연면적 ' + fmt(gUp) + '㎡ 가 건축면적 ' + fmt(bldg) + '㎡ 보다 작습니다 → 지상 · 지하 연면적이 바뀌었는지 확인하세요.');
-    if (site > 0 && Adn > site) aChk.push('지하층 바닥면적 ' + fmt(Adn) + '㎡ (지하 연면적 ÷ ' + nB + '개층) 가 대지면적 ' + fmt(site) + '㎡ 보다 큽니다 → 지하 층수 · 연면적을 확인하세요.');
+    if (site > 0 && Adn > site) aChk.push('지하층 바닥면적 ' + fmt(Adn) + '㎡ 가 대지면적 ' + fmt(site) + '㎡ 보다 큽니다 → 지하 바닥면적 (층당) 을 확인하세요.');
     if (gUp <= 0 && bldg <= 0 && !(num(A.Atyp, 0) > 0)) aChk.push('지상 연면적 · 건축면적이 없어 지상골조 물량을 계산할 수 없습니다 → 면적을 입력하세요.');
     aChk.forEach(function (x) { R.warn.push('면적 확인 : ' + x); });
     R.areaChk = aChk;
     var autoT = clamp(0.9 + 0.045 * nUp, 1.2, 3.5) + (use === 'dc' ? 0.6 : 0);
     var tMat = num(A.mat, 0) > 0 ? clamp(num(A.mat, 0), 0.3, 6) : r1(autoT);
     var Hauto = nB > 0 ? (seq === 'TD' ? sumTD : sumB) + tMat + 0.3 : 0;
-    var H = nB > 0 && num(A.H, 0) > 0 ? clamp(num(A.H, 0), 1, 80) : r1(Hauto);
+    /* 굴착 깊이 = 자동 (층고 합 + 매트 + 0.3) + 보정 adv.dH (사례 실측 차이 · 사용자 입력) — 지하 층수 · 층고를 바꾸면 따라감. adv.H = 고정값 (옛 파일 · 고급) */
+    var dH = num(A.dH, 0), Hfix = num(A.H, 0) > 0;
+    var H = nB > 0 ? (Hfix ? clamp(num(A.H, 0), 1, 80) : clamp(r1(Hauto + dH), 1, 80)) : 0;
+    if (nB > 0 && Hfix && Math.abs(num(A.H, 0) - Hauto) >= 3) R.warn.push('굴착 깊이 고정값 GL−' + r1(num(A.H, 0)) + 'm 가 지하 층고 합 기준 GL−' + r1(Hauto) + 'm 와 ' + r1(Math.abs(num(A.H, 0) - Hauto)) + 'm 다릅니다 → 지하 층수 · 층고를 바꿨다면 굴착 깊이를 다시 확인하세요.');
     var Hs = Ash > 0 ? Math.max(1.0, r1(tMat - 0.5)) : 0;
     var P = num(A.P, 0) > 0 ? num(A.P, 0) : 4.08 * Math.sqrt(Math.max(Adeep, 1));
     var s = L.exc.slope, open = sup === 'OPEN' && nB > 0;
@@ -204,7 +209,7 @@
     LK.forEach(function (k) { Vexc[k] = Math.max(0, Vexc[k]); });
     var Aeff = Adeep + Ash + slopeA;
     var Pall = 4.08 * Math.sqrt(Math.max(Aeff, 1));
-    R.geo = { site: site, bldg: bldg, coverage: coverage, gUp: gUp, gDn: gDn, gfa: gUp + gDn, Adn: Adn, AdnEff: AdnEff, partial: partial, Adeep: Adeep, Ash: Ash, Aeff: Aeff, tMat: tMat, autoT: autoT, H: H, Hauto: Hauto, Hs: Hs, P: P, Pall: Pall, slopeA: slopeA, slopeW: open ? s * H : 0, z: z, gwl: gwl, wrockTop: wrockTop, rockTop: rockTop, Vexc: Vexc, Vtot: sumL(Vexc), Vvoid: sumL(Vvoid), hB: hB, hUp: hUp, hPH: hPH, sumB: sumB };
+    R.geo = { site: site, bldg: bldg, coverage: coverage, gUp: gUp, gDn: gDn, gfa: gUp + gDn, Adn: Adn, AdnEff: AdnEff, partial: partial, Adeep: Adeep, Ash: Ash, Aeff: Aeff, tMat: tMat, autoT: autoT, H: H, Hauto: Hauto, dH: Hfix ? 0 : dH, Hfix: Hfix, Hs: Hs, P: P, Pall: Pall, slopeA: slopeA, slopeW: open ? s * H : 0, z: z, gwl: gwl, wrockTop: wrockTop, rockTop: rockTop, Vexc: Vexc, Vtot: sumL(Vexc), Vvoid: sumL(Vvoid), hB: hB, hUp: hUp, hPH: hPH, sumB: sumB };
 
     var acts = [];
     function act(o) { o.dur = r2(o.e - o.s); acts.push(o); return o; }
@@ -860,16 +865,16 @@
     { key: 'refA', name: '사례 A', loc: '도심 업무시설', seq: 'TD', struct: 'SC', nB: 8, nUp: 31, total: 50.0, cmp: 50.0, frame: 9.5,
       actual: [['MOB + 흙막이', 4.5, ['mob', 'wall']], ['PRD', 2.8, ['prd']], ['지열', 2.6, ['geo']], ['1차 터파기', 0.5, ['exc1']], ['1F 슬래브', 1.6, ['f1']], ['지하 터파기', 16.1, ['exc']], ['기초', 1.4, ['found']], ['지상골조', 9.5, ['frame']], ['마감', 9.0, ['fin']], ['T&C', 2.0, ['tc']]],
       src: '실제 공정계획 (역타 · 철골 + ACS 코어)',
-      inp: { name: '사례 A (역타 · 업무시설)', use: 'office', site: 4802, bldg: 2768.32, gfaUp: 60398.2, gfaDn: 30665.83, nB: 8, nUp: 31, nPH: 2,
-        ground: 'CUSTOM', strata: [12, 9, 2, 8.6], gwl: 4.0, seq: 'TD', wall: 'CIP', support: 'SLAB', scw: false, found: 'MAT', geo: 110, struct: 'SC', pt: false, coreSys: 'ACS', lim: 17, lim2: 24,
+      inp: { name: '사례 A (역타 · 업무시설)', use: 'office', site: 4802, bldg: 2768.32, gfaUp: 60398.2, aDn: 3833.23, nB: 8, nUp: 31, nPH: 2,
+        ground: 'CUSTOM', strata: [12, 9, 2, 8.6], gwl: 4.0, seq: 'TD', wall: 'CIP', support: 'SLAB', scw: false, found: 'MAT', geo: 110, struct: 'SC', pt: false, coreSys: 'ACS',
         mob: 1.0, fin: 9.0, tc: 2.0, rExt: 0.702, rRC: 0.584, hours: 8, link: false,
-        adv: { H: 39.6, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, cTeams: 1, pitN: 1, crew: 20, lag: 5, prdN: 54,
+        adv: { dH: -0.2, Aexc: 4416, P: 265.8, mat: 2.1, fTeams: 2, uTeams: 1, cTeams: 1, pitN: 1, crew: 20, lag: 5, prdN: 54,
           hSpec: 'B1:7.6, B2:4.6, B3:3.7, B4:3.55, B5:3.55, B6:3.55, B7:3.55, B8:7.3, 1:4.25, 2:4.0, 3:8.25, 4-7:5.55, 8-28:4.65, 29:6.0, 30:7.75, 31:7.2, PH1:7.35, PH2:5.6' } } },
     { key: 'refB', name: '사례 B', loc: '도심 업무시설 (기존 건물 해체 후 신축)', seq: 'BU', struct: 'RC', nB: 2, nUp: 17, total: 51.5, cmp: 43.0, frame: 15.8,
       actual: [['MOB', 1.0, ['mob']], ['흙막이', 2.6, ['wall']], ['터파기 (지하해체 병행)', 5.9, ['exc']], ['지열', 2.3, ['geo']], ['기초', 1.6, ['found']], ['지하골조', 3.8, ['base']], ['지상골조', 15.8, ['frame']], ['마감', 8.0, ['fin']], ['T&C', 2.0, ['tc']]],
       excl: '지상해체 6.5 · 인수인계 2.0 제외 → 비교 기준 43.0개월',
       src: '실제 공정계획 (순타 · 어스앵커 · RC)',
-      inp: { name: '사례 B (순타 · 업무시설)', use: 'office', site: 15840, bldg: 9277.72, gfaUp: 65120.01, gfaDn: 21637.22, nB: 2, nUp: 17, nPH: 1,
+      inp: { name: '사례 B (순타 · 업무시설)', use: 'office', site: 15840, bldg: 9277.72, gfaUp: 65120.01, aDn: 10818.61, nB: 2, nUp: 17, nPH: 1,
         ground: 'CUSTOM', strata: [6, 4, 4, 8], gwl: 8.0, seq: 'BU', wall: 'CIP', support: 'ANCHOR', scw: false, found: 'MAT', geo: 90, struct: 'RC', pt: false, coreSys: 'AUTO',
         mob: 1.0, fin: 8.0, tc: 2.0, rExt: 0.649, rRC: 0.597, hours: 8, link: false,
         adv: { mat: 1.7, crew: 30, rebar: 0.10, fTeams: 3, uTeams: 3, pitN: 3, lag: 0, exVoidA: 7700, exVoidD: 14.5,
@@ -878,10 +883,10 @@
       actual: [['MOB', 1.0, ['mob']], ['토공 (SCW · PHC · 굴착)', 5.5, ['scw', 'pile', 'exc']], ['기초 · 지하골조', 3.8, ['found', 'base']], ['지상골조', 10.2, ['frame']], ['마감', 6.5, ['fin']], ['T&C', 2.0, ['tc']]],
       excl: '지상골조 10.2 = 입찰안 (DH보) 기준',
       src: '입찰 공정계획 (순타 · 오픈컷 · 강합성)',
-      inp: { name: '사례 C (오픈컷 · 데이터센터)', use: 'dc', site: 47620, bldg: 20690.67, gfaUp: 75883.07, gfaDn: 4217.83, nB: 1, nUp: 5, nPH: 1,
+      inp: { name: '사례 C (오픈컷 · 데이터센터)', use: 'dc', site: 47620, bldg: 20690.67, gfaUp: 75883.07, aDn: 4217.83, nB: 1, nUp: 5, nPH: 1,
         ground: 'CUSTOM', strata: [22, 4, 6, 6], gwl: 3.5, seq: 'BU', wall: 'NONE', support: 'OPEN', scw: true, found: 'PHC', geo: 0, struct: 'COMP', pt: false, coreSys: 'GANG',
         mob: 1.0, fin: 6.5, tc: 2.0, rExt: 0.702, rRC: 0.586, hours: 8, link: false,
-        adv: { H: 9.0, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, cTeams: 3, pitN: 4, lag: 1, liftWD: 6, backfill: 12,
+        adv: { dH: 0.1, mat: 1.9, crew: 30, fTeams: 5, uTeams: 3, cTeams: 3, pitN: 4, lag: 1, liftWD: 6, backfill: 12,
           hSpec: 'B1:6.7, 1:9.8, 2:5.5, 3:4.5, 4:5.5, 5:4.5, PH:7.5' } } }   /* '26.10.28 DC 층 사이클 적용 → 면적 Zone 보정값 zSpec '1-5:18' 삭제 (체적 Zone 사용) */
   ];
 
