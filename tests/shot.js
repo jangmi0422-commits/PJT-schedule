@@ -1,6 +1,7 @@
 /* 화면 점검 : node tests/shot.js [dist/option7.html]
    - 사례 A · B · C 재현값 (49.86 · 42.79 · 28.74)
    - 사례 C 1F 층고 9.8 → 6.0 → 9.8 즉시 재계산 (28.74 → 28.32 → 28.74)
+   - 사례 B 지하 층수 2 → 4 → 2 (42.79 → 52.98 → 42.79) · 형틀팀 3 → 1 변화 1개월 이하
    - 1440 · 390px 가로 스크롤 없음 · 콘솔 오류 0
    - 스크린샷 : tests/out/ */
 const path = require('path');
@@ -58,6 +59,39 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         res.edit = { ok: before === 28.74 && after === 28.32 && back === 28.74, before, after, back };
       } else res.edit = { ok: false, reason: '1F 층고 칸 없음' };
       if (!res.edit.ok) fail = true;
+
+      /* 사례 B 지하 층수 2 → 4 → 2 (입력 시트 in-nB change) : 화면 = node 엔진 실측 42.79 → 52.98 → 42.79 */
+      await page.evaluate(() => window.__agent.loadPreset('refB'));
+      await wait(250);
+      const setNB = async (v) => {
+        await page.evaluate((v) => {
+          const el = document.querySelector('#in-nB');
+          el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, v);
+        await wait(600);
+        return r2(await page.evaluate(() => window.__agent.R.total));
+      };
+      const nb0 = r2(await page.evaluate(() => window.__agent.R.total));
+      const nb4 = await setNB('4');
+      const nb2 = await setNB('2');
+      res.nB = { ok: nb0 === 42.79 && nb4 === 52.98 && nb2 === 42.79, before: nb0, nB4: nb4, back: nb2 };
+      if (!res.nB.ok) fail = true;
+
+      /* 사례 B 지상 형틀팀 (uTeams) 3 → 1 (조닝 지상 판 팀 칸 −) : v2.8 은 팀 = 꼬리 · 하루 1 Zone 하한만 → 변화 1개월 이하 (실측 42.79 → 43.13, +0.34) */
+      await page.evaluate(() => window.__agent.loadPreset('refB'));
+      await wait(250);
+      const tq = '[data-team="uTeams"]';
+      const u0 = r2(await page.evaluate(() => window.__agent.R.total));
+      let uN = await page.evaluate((q) => { const e = document.querySelector(q); return e ? +e.querySelector('.tm-v').textContent : null; }, tq);
+      for (let i = 0; i < 8 && uN > 1; i++) {
+        await page.click(tq + ' [data-tstep="-1"]');
+        await wait(500);
+        uN = await page.evaluate((q) => +document.querySelector(q).querySelector('.tm-v').textContent, tq);
+      }
+      const u1 = r2(await page.evaluate(() => window.__agent.R.total));
+      const uS = await page.evaluate(() => window.__agent.state.adv.uTeams);
+      res.uTeams = { ok: uN === 1 && uS === 1 && Math.abs(u1 - u0) <= 1, before: u0, teams1: u1, d: r2(u1 - u0) };
+      if (!res.uTeams.ok) fail = true;
     }
     await page.close();
   }
